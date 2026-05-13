@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       valorTotal,
       desconto,
       valorFinal,
-      status: 'PENDENTE',
+      status: 'GERADO' as any,
       itens: {
         create: itens.map(i => ({
           modeloId: i.modeloId,
@@ -95,14 +95,17 @@ export async function POST(req: NextRequest) {
         })),
       },
     },
-    include: { itens: true, cliente: { select: { nome: true } } },
+    include: { itens: true },
   })
+
+  // Buscar nome do cliente para o lançamento
+  const cliente = await prisma.cliente.findUnique({ where: { id: parsed.data.clienteId }, select: { nome: true } })
 
   // Criar lançamento financeiro automaticamente
   await prisma.lancamento.create({
     data: {
       tipo: 'RECEBER',
-      descricao: `Pedido ${pedido.numero} — ${pedido.cliente.nome}`,
+      descricao: `Pedido ${pedido.numero} — ${cliente?.nome ?? ''}`,
       valor: valorFinal,
       dataVencimento: new Date(),
       status: 'PENDENTE',
@@ -115,7 +118,7 @@ export async function POST(req: NextRequest) {
     acao: 'CREATE',
     entidade: 'Pedido',
     entidadeId: pedido.id,
-    dados: { numero: pedido.numero, valorFinal, cliente: pedido.cliente.nome },
+    dados: { numero: pedido.numero, valorFinal, cliente: cliente?.nome },
   })
 
   return NextResponse.json(pedido, { status: 201 })
