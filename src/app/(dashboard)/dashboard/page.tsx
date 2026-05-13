@@ -1,243 +1,127 @@
 import { auth } from '@/lib/auth'
 import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
-import { DashboardCharts } from './charts'
-import {
-  Users,
-  Award,
-  AlertTriangle,
-  TrendingUp,
-  ShoppingCart,
-  DollarSign,
-  Clock,
-  Handshake,
-} from 'lucide-react'
-import { formatarMoeda } from '@/lib/utils'
-import { addDays } from 'date-fns'
+import { ProducaoTab } from './producao-tab'
+import { FinanceiroTab } from './financeiro-tab'
+import { AgendaTabDash } from './agenda-tab'
+import { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+
+interface Props {
+  searchParams: Promise<{ tab?: string }>
+}
 
 async function getDashboardData() {
   const hoje = new Date()
-  const em30dias = addDays(hoje, 30)
-  const em60dias = addDays(hoje, 60)
-  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-  const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+  const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
+  const fimDia = new Date(inicioDia.getTime() + 86400000 - 1)
+  const inicioSemana = startOfWeek(hoje, { weekStartsOn: 0 })
+  const fimSemana = endOfWeek(hoje, { weekStartsOn: 0 })
+  const inicioMes = startOfMonth(hoje)
+  const fimMes = endOfMonth(hoje)
 
-  const [
-    totalClientes,
-    totalCertificadosAtivos,
-    vencendo30,
-    vencendo60,
-    pedidosMes,
-    receitaMes,
-    totalParceiros,
-    contasVencidas,
-    ultimosPedidos,
-  ] = await Promise.all([
-    prisma.cliente.count({ where: { ativo: true } }),
-    prisma.certificado.count({ where: { status: 'ATIVO' } }),
-    prisma.certificado.count({
-      where: {
-        status: 'ATIVO',
-        dataVencimento: { gte: hoje, lte: em30dias },
-      },
-    }),
-    prisma.certificado.count({
-      where: {
-        status: 'ATIVO',
-        dataVencimento: { gte: hoje, lte: em60dias },
-      },
-    }),
-    prisma.pedido.count({
-      where: {
-        createdAt: { gte: inicioMes, lte: fimMes },
-        status: { not: 'CANCELADO' },
-      },
-    }),
-    prisma.lancamento.aggregate({
-      _sum: { valor: true },
-      where: {
-        tipo: 'RECEBER',
-        status: 'PAGO',
-        dataPagamento: { gte: inicioMes, lte: fimMes },
-      },
-    }),
-    prisma.parceiro.count({ where: { ativo: true } }),
-    prisma.lancamento.count({
-      where: {
-        status: 'PENDENTE',
-        dataVencimento: { lt: hoje },
-      },
-    }),
+  const [pedidosDia, pedidosSemana, pedidosMes, pedidosDetalhes, vencendo7] = await Promise.all([
+    prisma.pedido.count({ where: { createdAt: { gte: inicioDia, lte: fimDia }, status: { not: 'CANCELADO' } } }),
+    prisma.pedido.count({ where: { createdAt: { gte: inicioSemana, lte: fimSemana }, status: { not: 'CANCELADO' } } }),
+    prisma.pedido.count({ where: { createdAt: { gte: inicioMes, lte: fimMes }, status: { not: 'CANCELADO' } } }),
     prisma.pedido.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: { cliente: { select: { nome: true } } },
+      where: { createdAt: { gte: inicioDia, lte: fimDia }, status: { not: 'CANCELADO' } },
+      include: {
+        cliente: { select: { nome: true, cpf: true, cnpj: true, tipoPessoa: true } },
+        parceiro: { select: { nome: true } },
+        itens: { include: { modelo: { select: { nome: true } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.certificado.count({
+      where: { status: 'ATIVO', dataVencimento: { gte: hoje, lte: addDays(hoje, 7) } },
     }),
   ])
 
+  // Emissões = pedidos com status EMITIDO
+  const emissoesDia = await prisma.pedido.count({ where: { emitidoEm: { gte: inicioDia, lte: fimDia } } })
+  const emissoesSemana = await prisma.pedido.count({ where: { emitidoEm: { gte: inicioSemana, lte: fimSemana } } })
+  const emissoesMes = await prisma.pedido.count({ where: { emitidoEm: { gte: inicioMes, lte: fimMes } } })
+
+  // Performance por AGR no mês
+  const agrs = ['ana.karolina', 'arlen', 'vinicius', 'laryssa']
+  const performanceAgr = await Promise.all(
+    agrs.map(async (agr) => {
+      const pedidos = await prisma.pedido.findMany({
+        where: { agr, createdAt: { gte: inicioMes, lte: fimMes }, status: { not: 'CANCELADO' } },
+        select: { valorFinal: true, emitidoEm: true },
+      })
+      const emissoes = pedidos.filter(p => p.emitidoEm)
+      const valorTotal = pedidos.reduce((acc, p) => acc + Number(p.valorFinal), 0)
+      const diasDecorridos = Math.max(1, hoje.getDate())
+      return {
+        agr,
+        vendas: pedidos.length,
+        valorVendas: valorTotal,
+        emissoes: emissoes.length,
+        mediadiaria: pedidos.length / diasDecorridos,
+      }
+    })
+  )
+
   return {
-    totalClientes,
-    totalCertificadosAtivos,
-    vencendo30,
-    vencendo60,
-    pedidosMes,
-    receitaMes: Number(receitaMes._sum.valor ?? 0),
-    totalParceiros,
-    contasVencidas,
-    ultimosPedidos,
+    pedidosDia, pedidosSemana, pedidosMes,
+    emissoesDia, emissoesSemana, emissoesMes,
+    pedidosDetalhes: pedidosDetalhes.map(p => ({
+      ...p,
+      valorFinal: Number(p.valorFinal),
+      cliente: {
+        ...p.cliente,
+        cpf: p.cliente.cpf ?? undefined,
+        cnpj: p.cliente.cnpj ?? undefined,
+      },
+      parceiro: p.parceiro ?? undefined,
+    })),
+    performanceAgr,
+    vencendo7,
+    mediaDiaria: pedidosMes / Math.max(1, hoje.getDate()),
+    projecaoMensal: (pedidosMes / Math.max(1, hoje.getDate())) * 30,
   }
 }
 
-export default async function DashboardPage() {
-  const session = await auth()
+export default async function DashboardPage({ searchParams }: Props) {
+  const params = await searchParams
+  const tab = params.tab ?? 'producao'
   const dados = await getDashboardData()
 
-  const cards = [
-    {
-      titulo: 'Clientes Ativos',
-      valor: dados.totalClientes.toLocaleString('pt-BR'),
-      icon: Users,
-      cor: 'blue',
-      descricao: 'total cadastrado',
-    },
-    {
-      titulo: 'Certificados Ativos',
-      valor: dados.totalCertificadosAtivos.toLocaleString('pt-BR'),
-      icon: Award,
-      cor: 'green',
-      descricao: 'em vigência',
-    },
-    {
-      titulo: 'Vencem em 30 dias',
-      valor: dados.vencendo30.toLocaleString('pt-BR'),
-      icon: AlertTriangle,
-      cor: dados.vencendo30 > 0 ? 'yellow' : 'green',
-      descricao: 'requerem atenção',
-    },
-    {
-      titulo: 'Pedidos no Mês',
-      valor: dados.pedidosMes.toLocaleString('pt-BR'),
-      icon: ShoppingCart,
-      cor: 'purple',
-      descricao: new Date().toLocaleString('pt-BR', { month: 'long' }),
-    },
-    {
-      titulo: 'Receita do Mês',
-      valor: formatarMoeda(dados.receitaMes),
-      icon: DollarSign,
-      cor: 'emerald',
-      descricao: 'pagamentos recebidos',
-    },
-    {
-      titulo: 'Parceiros Ativos',
-      valor: dados.totalParceiros.toLocaleString('pt-BR'),
-      icon: Handshake,
-      cor: 'indigo',
-      descricao: 'indicadores cadastrados',
-    },
-    {
-      titulo: 'Contas Vencidas',
-      valor: dados.contasVencidas.toLocaleString('pt-BR'),
-      icon: Clock,
-      cor: dados.contasVencidas > 0 ? 'red' : 'green',
-      descricao: 'a receber/pagar',
-    },
-    {
-      titulo: 'Vencem em 60 dias',
-      valor: dados.vencendo60.toLocaleString('pt-BR'),
-      icon: TrendingUp,
-      cor: 'orange',
-      descricao: 'oportunidades de renovação',
-    },
+  const tabs = [
+    { id: 'producao', label: 'Produção' },
+    { id: 'agenda', label: 'Agenda' },
+    { id: 'financeiro', label: 'Financeiro' },
   ]
 
-  const corMap: Record<string, string> = {
-    blue: 'bg-blue-100 text-blue-700',
-    green: 'bg-green-100 text-green-700',
-    yellow: 'bg-yellow-100 text-yellow-700',
-    purple: 'bg-purple-100 text-purple-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    indigo: 'bg-indigo-100 text-indigo-700',
-    red: 'bg-red-100 text-red-700',
-    orange: 'bg-orange-100 text-orange-700',
-  }
-
   return (
-    <div>
+    <div className="flex flex-col h-full">
       <Header titulo="Dashboard" />
 
-      <div className="p-6 space-y-6">
-        {/* Cards de métricas */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {cards.map((card) => (
-            <div
-              key={card.titulo}
-              className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition"
+      {/* Abas */}
+      <div className="bg-white border-b border-gray-200 px-6">
+        <nav className="flex gap-1">
+          {tabs.map(t => (
+            <a
+              key={t.id}
+              href={`/dashboard?tab=${t.id}`}
+              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                tab === t.id
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    {card.titulo}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{card.valor}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{card.descricao}</p>
-                </div>
-                <div className={`p-2.5 rounded-lg ${corMap[card.cor]}`}>
-                  <card.icon className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Gráficos */}
-        <DashboardCharts />
-
-        {/* Últimos pedidos */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Últimos Pedidos</h2>
-            <a href="/pedidos" className="text-sm text-blue-600 hover:underline">
-              Ver todos
+              {t.label}
             </a>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {dados.ultimosPedidos.length === 0 && (
-              <p className="px-6 py-8 text-center text-sm text-gray-400">
-                Nenhum pedido encontrado
-              </p>
-            )}
-            {dados.ultimosPedidos.map((pedido) => (
-              <div
-                key={pedido.id}
-                className="flex items-center justify-between px-6 py-3 hover:bg-gray-50"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{pedido.numero}</p>
-                  <p className="text-xs text-gray-500">{pedido.cliente.nome}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {formatarMoeda(Number(pedido.valorFinal))}
-                  </p>
-                  <span
-                    className={`inline-flex text-xs px-2 py-0.5 rounded-full font-medium ${
-                      pedido.status === 'CONCLUIDO'
-                        ? 'bg-green-100 text-green-700'
-                        : pedido.status === 'PENDENTE'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : pedido.status === 'CANCELADO'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
-                    {pedido.status.replace('_', ' ')}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+          ))}
+        </nav>
+      </div>
+
+      {/* Conteúdo */}
+      <div className="flex-1 overflow-y-auto">
+        {tab === 'producao' && <ProducaoTab dados={dados} />}
+        {tab === 'agenda' && <AgendaTabDash />}
+        {tab === 'financeiro' && <FinanceiroTab />}
       </div>
     </div>
   )

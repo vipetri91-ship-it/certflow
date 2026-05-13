@@ -34,9 +34,9 @@ enum StatusCertificado {
 }
 
 enum StatusPedido {
-  PENDENTE
-  EM_ANDAMENTO
-  CONCLUIDO
+  GERADO
+  VERIFICADO
+  EMITIDO
   CANCELADO
 }
 
@@ -255,14 +255,20 @@ model Pedido {
   clienteId        String
   parceiroId       String?
   usuarioId        String
-  status           StatusPedido @default(PENDENTE)
+  agr              String?      // ana.karolina | arlen | vinicius | laryssa
+  status           StatusPedido @default(GERADO)
   valorTotal       Decimal      @db.Decimal(10, 2)
   desconto         Decimal      @default(0) @db.Decimal(10, 2)
   valorFinal       Decimal      @db.Decimal(10, 2)
   formaPagamento   String?
+  tipoAtendimento  String?      // presencial | videoconferencia
+  numeroCompra     String?      // número da compra na Safeweb
+  voucher          String?
   boletoUrl        String?
   boletoCodigo     String?
   boletoVencimento DateTime?
+  verificadoEm    DateTime?
+  emitidoEm       DateTime?
   observacoes      String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
