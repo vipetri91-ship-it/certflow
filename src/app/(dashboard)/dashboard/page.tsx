@@ -1,4 +1,3 @@
-import { auth } from '@/lib/auth'
 import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
 import { ProducaoTab } from './producao-tab'
@@ -85,12 +84,17 @@ async function getDashboardData() {
 
 export default async function DashboardPage({ searchParams }: Props) {
   const params = await searchParams
-  const tab = params.tab ?? 'producao'
+  const tab = params.tab ?? 'agenda'
   const dados = await getDashboardData()
 
+  // URL do Google Calendar configurada no banco
+  const calendarConfig = await prisma.configuracao.findUnique({
+    where: { chave: 'google_calendar_embed_url' },
+  })
+
   const tabs = [
-    { id: 'producao', label: 'Produção' },
     { id: 'agenda', label: 'Agenda' },
+    { id: 'producao', label: 'Produção' },
     { id: 'financeiro', label: 'Financeiro' },
   ]
 
@@ -120,7 +124,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       {/* Conteúdo */}
       <div className="flex-1 overflow-y-auto">
         {tab === 'producao' && <ProducaoTab dados={dados} />}
-        {tab === 'agenda' && <AgendaTabDash />}
+        {tab === 'agenda' && <AgendaTabDash calendarUrl={calendarConfig?.valor ?? undefined} />}
         {tab === 'financeiro' && <FinanceiroTab />}
       </div>
     </div>
