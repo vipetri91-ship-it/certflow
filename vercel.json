@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/jobs/relatorio-diario",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/jobs/processar-emails",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
