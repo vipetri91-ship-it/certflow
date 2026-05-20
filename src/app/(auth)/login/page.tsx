@@ -59,18 +59,12 @@ export default function LoginPage() {
         {/* Conteúdo central */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-center">
 
-          {/* Anel do logo — integra com a composição */}
-          <div className="relative mb-10" style={{ width: 120, height: 120 }}>
-            {/* Anel externo do logo */}
-            <div className="absolute inset-0 rounded-full"
-              style={{ border: '1px solid rgba(255,255,255,0.2)' }} />
-            {/* Anel interno */}
-            <div className="absolute inset-2 rounded-full"
-              style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)' }} />
-            {/* Logo */}
-            <div className="absolute inset-4 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
-              <img src="/vaz-mark.svg" alt="VAZ" style={{ width: 56, height: 'auto' }} />
+          {/* Logo — igual ao sidebar */}
+          <div className="flex items-center gap-3 mb-10 bg-white/95 rounded-2xl px-5 py-3 shadow-lg">
+            <img src="/vaz-mark.svg" alt="VAZ Group" style={{ height: 32, width: 'auto' }} />
+            <div className="text-left">
+              <p className={`${GeistSans.className} font-bold text-sm text-blue-700 tracking-tight leading-tight`}>CertFlow</p>
+              <p className="text-[10px] text-gray-500 leading-tight">V&G Certificação Digital</p>
             </div>
           </div>
 
