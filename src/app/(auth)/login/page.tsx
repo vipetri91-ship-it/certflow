@@ -61,7 +61,18 @@ export default function LoginPage() {
 
           {/* Logo — igual ao sidebar */}
           <div className="flex items-center gap-3 mb-10 bg-white/95 rounded-2xl px-5 py-3 shadow-lg">
-            <img src="/vaz-mark.svg" alt="VAZ Group" style={{ height: 32, width: 'auto' }} />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 62" fill="none" style={{ height: 28, width: 'auto' }}>
+              <defs>
+                <linearGradient id="lg" x1="0" y1="0" x2="98" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%"   stopColor="#d4d8ff"/>
+                  <stop offset="42%"  stopColor="#6622ee"/>
+                  <stop offset="100%" stopColor="#00aaff"/>
+                </linearGradient>
+              </defs>
+              <path d="M 4,20 C 9,20 13,52 22,52 C 31,52 34,6 46,6 C 54,6 56,38 60,38" stroke="url(#lg)" strokeWidth="7" strokeLinecap="round" fill="none"/>
+              <circle cx="46" cy="58" r="4.5" fill="#6622ee"/>
+              <path d="M 70,6 L 92,6 L 70,52 L 92,52" stroke="url(#lg)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
             <div className="text-left">
               <p className={`${GeistSans.className} font-bold text-sm text-blue-700 tracking-tight leading-tight`}>CertFlow</p>
               <p className="text-[10px] text-gray-500 leading-tight">V&G Certificação Digital</p>
@@ -93,7 +104,18 @@ export default function LoginPage() {
 
           {/* Logo mobile */}
           <div className="flex lg:hidden items-center gap-3 justify-center mb-10">
-            <img src="/vaz-mark.svg" alt="VAZ" className="h-8 w-auto" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 62" fill="none" className="h-8 w-auto">
+              <defs>
+                <linearGradient id="lgm" x1="0" y1="0" x2="98" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%"   stopColor="#d4d8ff"/>
+                  <stop offset="42%"  stopColor="#6622ee"/>
+                  <stop offset="100%" stopColor="#00aaff"/>
+                </linearGradient>
+              </defs>
+              <path d="M 4,20 C 9,20 13,52 22,52 C 31,52 34,6 46,6 C 54,6 56,38 60,38" stroke="url(#lgm)" strokeWidth="7" strokeLinecap="round" fill="none"/>
+              <circle cx="46" cy="58" r="4.5" fill="#6622ee"/>
+              <path d="M 70,6 L 92,6 L 70,52 L 92,52" stroke="url(#lgm)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
             <div>
               <p className="font-bold text-gray-900 leading-tight">CertFlow</p>
               <p className="text-xs text-gray-500">V&G Certificação Digital</p>
