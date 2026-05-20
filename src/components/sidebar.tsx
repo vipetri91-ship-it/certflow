@@ -2,188 +2,230 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
+import { useEffect } from 'react'
 import {
-  ShieldCheck,
-  LayoutDashboard,
-  Users,
-  Award,
-  Handshake,
-  ShoppingCart,
-  DollarSign,
-  BarChart3,
-  Settings,
-  LogOut,
-  ChevronLeft,
-  Bell,
-  UserCog,
-  ClipboardList,
-  Calendar,
-  X,
+  LayoutDashboard, Users, Handshake,
+  DollarSign, BarChart3, Settings, LogOut,
+  Bell, UserCog, ClipboardList, Monitor, ShoppingBag,
+  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
-const MENU = [
+type MenuItem  = { label: string; href: string; icon: React.ElementType }
+type MenuGroup = { tipo: 'grupo'; label: string; icon: React.ElementType; itens: MenuItem[] }
+type MenuSingle = { tipo: 'item'; label: string; href: string; icon: React.ElementType }
+type MenuEntry  = MenuGroup | MenuSingle
+
+const MENU_PADRAO: MenuEntry[] = [
+  { tipo: 'item', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+
   {
-    titulo: 'Principal',
+    tipo: 'grupo', label: 'Cadastros', icon: Users,
     itens: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Clientes',     href: '/clientes',     icon: User },
+      { label: 'Parceiros',    href: '/parceiros',    icon: Handshake },
+      { label: 'Fornecedores', href: '/fornecedores', icon: ShoppingBag },
     ],
   },
+
   {
-    titulo: 'Comercial',
+    tipo: 'grupo', label: 'Certificado Digital', icon: Monitor,
     itens: [
-      { label: 'Pedidos', href: '/pedidos', icon: ShoppingCart },
-      { label: 'Clientes', href: '/clientes', icon: Users },
-      { label: 'Certificados', href: '/certificados', icon: Award },
-      { label: 'Parceiros', href: '/parceiros', icon: Handshake },
+      { label: 'Nova Venda',    href: '/pedidos/nova-venda',    icon: Plus },
+      { label: 'Monitoramento', href: '/pedidos/monitoramento', icon: Monitor },
+      { label: 'Recibo',        href: '/recibo',                icon: Receipt },
     ],
   },
+
+  { tipo: 'item', label: 'Renovações', href: '/renovacoes', icon: RefreshCw },
+
   {
-    titulo: 'Gestão',
+    tipo: 'grupo', label: 'Financeiro', icon: DollarSign,
     itens: [
-      { label: 'Financeiro', href: '/financeiro', icon: DollarSign },
-      { label: 'Relatórios', href: '/relatorios', icon: BarChart3 },
-      { label: 'Google Agenda', href: '/agenda', icon: Calendar },
-      { label: 'E-mails', href: '/configuracoes/emails', icon: Bell },
+      { label: 'Contas a Receber', href: '/financeiro/contas-a-receber', icon: DollarSign },
+      { label: 'Contas a Pagar',   href: '/financeiro/contas-a-pagar',   icon: BarChart3 },
+      { label: 'Relatórios',       href: '/relatorios',                  icon: BarChart3 },
     ],
   },
+
   {
-    titulo: 'Configurações',
+    tipo: 'grupo', label: 'Configurações', icon: Settings,
     itens: [
-      { label: 'Usuários', href: '/usuarios', icon: UserCog },
-      { label: 'Auditoria', href: '/configuracoes/auditoria', icon: ClipboardList },
-      { label: 'Sistema', href: '/configuracoes', icon: Settings },
+      { label: 'Usuários',   href: '/usuarios',                     icon: UserCog },
+      { label: 'Modelos',    href: '/configuracoes/modelos',        icon: Award },
+      { label: 'E-mails',    href: '/configuracoes/emails',         icon: Bell },
+      { label: 'Auditoria',  href: '/configuracoes/auditoria',      icon: ClipboardList },
+      { label: 'Assistente', href: '/configuracoes/assistente',     icon: Sparkles },
+      { label: 'Empresa',    href: '/configuracoes/empresa',        icon: Building2 },
+      { label: 'Integrações', href: '/configuracoes',                icon: Settings },
     ],
   },
 ]
 
-interface SidebarProps {
-  aberta?: boolean
-  onFechar?: () => void
-}
+const MENU_FINANCEIRO: MenuEntry[] = [
+  { tipo: 'item', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  {
+    tipo: 'grupo', label: 'Financeiro', icon: DollarSign,
+    itens: [
+      { label: 'Contas a Receber', href: '/financeiro/contas-a-receber', icon: DollarSign },
+    ],
+  },
+]
+
+interface SidebarProps { aberta?: boolean; onFechar?: () => void }
 
 export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
   const pathname = usePathname()
-  const [recolhida, setRecolhida] = useState(false)
+  const { data: session } = useSession()
+  const [recolhida, setRecolhida] = useState(true)
+
+  // Detecta PWA standalone ou dispositivo sem hover (touch) → sempre expandida
+  useEffect(() => {
+    const isStandalone  = window.matchMedia('(display-mode: standalone)').matches
+    const isTouchOnly   = window.matchMedia('(hover: none)').matches
+    if (isStandalone || isTouchOnly) setRecolhida(false)
+  }, [])
+
+  // No mobile drawer (onFechar definido) ou touch/PWA, sempre expandida
+  const expandido = !recolhida || !!onFechar
+
+  const MENU = session?.user?.role === 'FINANCEIRO' ? MENU_FINANCEIRO : MENU_PADRAO
+
+  const gruposAbertosInicial = MENU.reduce<Record<string, boolean>>((acc, entry) => {
+    if (entry.tipo === 'grupo') {
+      // No mobile, abre todos os grupos por padrão para facilitar a navegação
+      acc[entry.label] = !!onFechar || entry.itens.some(i => pathname.startsWith(i.href))
+    }
+    return acc
+  }, {})
+
+  const [gruposAbertos, setGruposAbertos] = useState<Record<string, boolean>>(gruposAbertosInicial)
+
+  function toggleGrupo(label: string) {
+    setGruposAbertos(prev => ({ ...prev, [label]: !prev[label] }))
+  }
 
   return (
     <>
-      {/* Overlay mobile */}
       {aberta && onFechar && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={onFechar}
-        />
+        <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={onFechar} />
       )}
 
       <aside
         className={cn(
           'flex flex-col h-screen z-40 transition-all duration-300 shrink-0',
-          'bg-gradient-to-b from-blue-600 to-blue-700 text-white',
-          // Mobile: drawer lateral
+          'bg-white dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 shadow-sm',
           'fixed lg:relative',
-          onFechar
-            ? aberta ? 'translate-x-0' : '-translate-x-full'
-            : 'translate-x-0',
-          recolhida ? 'w-16' : 'w-64'
+          onFechar ? aberta ? 'translate-x-0' : '-translate-x-full' : 'translate-x-0',
+          expandido ? 'w-60' : 'w-16'
         )}
+        onMouseEnter={() => !onFechar && setRecolhida(false)}
+        onMouseLeave={() => !onFechar && setRecolhida(true)}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 h-16 border-b border-blue-500/40">
-          {!recolhida && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg">
-                <ShieldCheck className="w-5 h-5 text-white" />
+        {/* Logo */}
+        <div className="flex items-center justify-between px-3 h-14 border-b border-gray-100 dark:border-slate-700 shrink-0">
+          {expandido ? (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <img src="/vaz-mark.svg" alt="VAZ Group" className="h-7 w-auto shrink-0" />
+              <div className="min-w-0">
+                <p className="font-bold text-sm text-blue-700 dark:text-blue-400 tracking-tight leading-tight">CertFlow</p>
+                <p className="text-[10px] text-gray-400 dark:text-slate-500 leading-tight truncate">V&G Certificação Digital</p>
               </div>
-              <span className="font-bold text-lg tracking-tight">CertFlow</span>
+            </div>
+          ) : (
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mx-auto shrink-0"
+              style={{ background: 'linear-gradient(135deg, #6622ee, #00aaff)' }}>
+              <span className="text-white font-bold text-sm leading-none">V</span>
             </div>
           )}
-          {recolhida && (
-            <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg mx-auto">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-          )}
-
-          {/* Fechar no mobile */}
           {onFechar && (
-            <button
-              onClick={onFechar}
-              className="lg:hidden p-1 rounded hover:bg-white/20 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Recolher no desktop */}
-          {!onFechar && !recolhida && (
-            <button
-              onClick={() => setRecolhida(true)}
-              className="hidden lg:flex p-1 rounded hover:bg-white/20 transition"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          )}
-          {!onFechar && recolhida && (
-            <button
-              onClick={() => setRecolhida(false)}
-              className="hidden lg:flex absolute left-16 top-4 z-50 items-center justify-center w-6 h-6 bg-blue-600 rounded-full border border-blue-400 hover:bg-blue-500 transition"
-            >
-              <ChevronLeft className="w-3 h-3 rotate-180" />
+            <button onClick={onFechar} className="lg:hidden p-1 rounded hover:bg-gray-100 text-gray-500">
+              <Menu className="w-4 h-4" />
             </button>
           )}
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5">
-          {MENU.map((grupo) => (
-            <div key={grupo.titulo}>
-              {!recolhida && (
-                <p className="px-3 mb-1 text-xs font-semibold text-blue-200/70 uppercase tracking-wider">
-                  {grupo.titulo}
-                </p>
-              )}
-              <ul className="space-y-0.5">
-                {grupo.itens.map((item) => {
-                  const ativo = pathname === item.href || pathname.startsWith(item.href + '/')
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={onFechar}
-                        className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                          ativo
-                            ? 'bg-white/20 text-white shadow-sm'
-                            : 'text-blue-100 hover:bg-white/10 hover:text-white',
-                          recolhida && 'justify-center px-2'
-                        )}
-                        title={recolhida ? item.label : undefined}
-                      >
-                        <item.icon className="w-5 h-5 shrink-0" />
-                        {!recolhida && <span>{item.label}</span>}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+          {MENU.map(entry => {
+            if (entry.tipo === 'item') {
+              const ativo = pathname === entry.href || pathname.startsWith(entry.href + '/')
+              return (
+                <Link key={entry.href} href={entry.href} onClick={onFechar}
+                  title={!expandido ? entry.label : undefined}
+                  className={cn(
+                    'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all',
+                    ativo ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 hover:font-semibold',
+                    !expandido && 'justify-center px-2'
+                  )}>
+                  <entry.icon className={cn('w-4 h-4 shrink-0', ativo ? 'text-blue-600' : 'text-gray-400')} />
+                  {expandido && <span>{entry.label}</span>}
+                </Link>
+              )
+            }
+
+            const grupo = entry as MenuGroup
+            const grupoAtivo = grupo.itens.some(i => pathname.startsWith(i.href))
+            const aberto = gruposAbertos[grupo.label] ?? false
+
+            if (!expandido) {
+              return (
+                <div key={grupo.label} className="space-y-0.5">
+                  <div className={cn('flex justify-center py-2.5 px-2 rounded-lg', grupoAtivo ? 'text-blue-600' : 'text-gray-400')}>
+                    <grupo.icon className="w-4 h-4" />
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div key={grupo.label}>
+                <button onClick={() => toggleGrupo(grupo.label)}
+                  className={cn(
+                    'flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-all',
+                    grupoAtivo ? 'text-blue-700 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 hover:font-semibold'
+                  )}>
+                  <div className="flex items-center gap-2.5">
+                    <grupo.icon className={cn('w-4 h-4 shrink-0', grupoAtivo ? 'text-blue-600' : 'text-gray-400')} />
+                    <span>{grupo.label}</span>
+                  </div>
+                  <ChevronDown className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', aberto && 'rotate-180')} />
+                </button>
+
+                {aberto && (
+                  <div className="ml-6 mt-0.5 space-y-0.5 border-l border-gray-100 dark:border-slate-700 pl-3">
+                    {grupo.itens.map(item => {
+                      const ativo = pathname.startsWith(item.href)
+                      return (
+                        <Link key={item.href} href={item.href} onClick={onFechar}
+                          className={cn(
+                            'flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-all',
+                            ativo ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold' : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 hover:font-semibold'
+                          )}>
+                          <item.icon className={cn('w-3.5 h-3.5 shrink-0', ativo ? 'text-blue-600' : 'text-gray-400')} />
+                          <span>{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-blue-500/40">
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+        <div className="px-2 pb-3 pt-2 border-t border-gray-100 dark:border-slate-700 shrink-0">
+          <button onClick={() => signOut({ callbackUrl: '/login' })}
+            title={!expandido ? 'Sair' : undefined}
             className={cn(
-              'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-blue-100 hover:bg-white/10 hover:text-white transition',
-              recolhida && 'justify-center px-2'
-            )}
-            title={recolhida ? 'Sair' : undefined}
-          >
-            <LogOut className="w-5 h-5 shrink-0" />
-            {!recolhida && <span>Sair</span>}
+              'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-gray-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 hover:font-semibold transition-all',
+              !expandido && 'justify-center px-2'
+            )}>
+            <LogOut className="w-4 h-4 shrink-0" />
+            {expandido && <span>Sair</span>}
           </button>
         </div>
       </aside>
