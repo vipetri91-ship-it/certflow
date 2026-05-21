@@ -59,9 +59,9 @@ export default function LoginPage() {
         {/* Conteúdo central */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-center">
 
-          {/* Logo — igual ao sidebar */}
-          <div className="flex items-center gap-3 mb-10 bg-white/95 rounded-2xl px-5 py-3 shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 62" fill="none" style={{ height: 28, width: 'auto' }}>
+          {/* Símbolo VAZ */}
+          <div className="mb-10 bg-white/95 rounded-2xl px-6 py-4 shadow-lg inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 62" fill="none" style={{ height: 40, width: 'auto' }}>
               <defs>
                 <linearGradient id="lg" x1="0" y1="0" x2="98" y2="0" gradientUnits="userSpaceOnUse">
                   <stop offset="0%"   stopColor="#d4d8ff"/>
@@ -73,10 +73,6 @@ export default function LoginPage() {
               <circle cx="46" cy="58" r="4.5" fill="#6622ee"/>
               <path d="M 70,6 L 92,6 L 70,52 L 92,52" stroke="url(#lg)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
-            <div className="text-left">
-              <p className={`${GeistSans.className} font-bold text-sm text-blue-700 tracking-tight leading-tight`}>CertFlow</p>
-              <p className="text-[10px] text-gray-500 leading-tight">V&G Certificação Digital</p>
-            </div>
           </div>
 
           {/* Tipografia limpa */}
