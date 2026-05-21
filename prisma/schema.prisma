@@ -85,19 +85,25 @@ enum TipoEmailAutomatico {
 // ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
 
 model Usuario {
-  id        String   @id @default(cuid())
-  nome      String
-  email     String   @unique
-  senha     String
-  role      Role     @default(OPERADOR)
-  ativo     Boolean  @default(true)
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  nome       String
+  email      String   @unique
+  senha      String
+  role       Role     @default(OPERADOR)
+  ativo      Boolean  @default(true)
+  avatar     String?
+  // Novos campos
+  whatsapp   String?
+  nomeAgrDs  String?   // Nome do AGR no Digisac
+  unidade    String?   // Cidade/unidade (Piracaia, Bragança...)
+  comissao   Decimal?  @db.Decimal(5, 2) // % comissão
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  sessoes   Sessao[]
-  auditoria AuditLog[]
-  pedidos   Pedido[]
+  sessoes           Sessao[]
+  auditoria         AuditLog[]
+  pedidos           Pedido[]
+  historicoContatos HistoricoContato[]
 
   @@map("usuarios")
 }
@@ -138,6 +144,8 @@ model Cliente {
   cidade         String?
   estado         String?
   observacoes    String?
+  pisNis         String?
+  ddd            String?
   ativo          Boolean    @default(true)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -145,11 +153,31 @@ model Cliente {
   parceiro   Parceiro? @relation(fields: [parceiroId], references: [id])
   parceiroId String?
 
-  certificados Certificado[]
-  pedidos      Pedido[]
-  emails       EmailLog[]
+  certificados      Certificado[]
+  pedidos           Pedido[]
+  emails            EmailLog[]
+  historicoContatos HistoricoContato[]
 
   @@map("clientes")
+}
+
+// ─── HISTÓRICO DE CONTATOS ────────────────────────────────────────────────────
+
+model HistoricoContato {
+  id             String    @id @default(cuid())
+  clienteId      String
+  certificadoId  String?
+  observacao     String    @db.Text
+  dataContato    DateTime  @default(now())
+  proximoContato DateTime?
+  usuarioId      String?
+  createdAt      DateTime  @default(now())
+
+  cliente     Cliente      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  certificado Certificado? @relation(fields: [certificadoId], references: [id])
+  usuario     Usuario?     @relation(fields: [usuarioId], references: [id])
+
+  @@map("historico_contatos")
 }
 
 // ─── PARCEIROS INDICADORES ────────────────────────────────────────────────────
@@ -175,9 +203,10 @@ model Parceiro {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  clientes  Cliente[]
-  comissoes Comissao[]
-  pedidos   Pedido[]
+  clientes    Cliente[]
+  comissoes   Comissao[]
+  pedidos     Pedido[]
+  lancamentos Lancamento[]
 
   @@map("parceiros")
 }
@@ -242,7 +271,8 @@ model Certificado {
   modelo  ModeloCertificado @relation(fields: [modeloId], references: [id])
   pedido  Pedido?           @relation(fields: [pedidoId], references: [id])
 
-  emailsEnviados EmailLog[]
+  emailsEnviados    EmailLog[]
+  historicoContatos HistoricoContato[]
 
   @@map("certificados")
 }
@@ -260,16 +290,21 @@ model Pedido {
   valorTotal       Decimal      @db.Decimal(10, 2)
   desconto         Decimal      @default(0) @db.Decimal(10, 2)
   valorFinal       Decimal      @db.Decimal(10, 2)
-  formaPagamento   String?
-  tipoAtendimento  String?      // presencial | videoconferencia
-  numeroCompra     String?      // número da compra na Safeweb
-  voucher          String?
-  boletoUrl        String?
-  boletoCodigo     String?
-  boletoVencimento DateTime?
-  verificadoEm    DateTime?
-  emitidoEm       DateTime?
-  observacoes      String?
+  formaPagamento       String?
+  tipoAtendimento      String?      // presencial | videoconferencia
+  numeroCompra         String?      // número do protocolo Safeweb (Hope)
+  voucher              String?
+  boletoUrl            String?
+  boletoCodigo         String?
+  boletoVencimento     DateTime?
+  verificadoEm         DateTime?
+  emitidoEm            DateTime?
+  observacoes          String?
+  contabilidade        String?      // escritório de contabilidade / parceiro indicador
+  codigoCobranca       String?      // código de cobrança (financeiro)
+  atendimentoExterno   Boolean      @default(false)
+  valorDeslocamento    Decimal?     @db.Decimal(10, 2)
+  unidadeAtendimento   String?      // cidade / unidade do AGR
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -323,13 +358,24 @@ model Lancamento {
   status         StatusLancamento @default(PENDENTE)
   categoriaId    String?
   pedidoId       String?
-  comprovante    String?
-  observacoes    String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  parceiroId     String?
+  comprovante      String?
+  notaFiscal       String?
+  boleto           String?    // linha digitável
+  observacoes      String?
+  referencia       String?
+  tipoConta        String?
+  centroCusto      String?
+  formaPagamento   String?
+  banco            String?
+  interCobrancaId  String?    // nosso número Inter
+  pixCopiaECola    String?    // Pix copia e cola
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   categoria CategoriaFinanceira? @relation(fields: [categoriaId], references: [id])
   pedido    Pedido?              @relation(fields: [pedidoId], references: [id])
+  parceiro  Parceiro?            @relation(fields: [parceiroId], references: [id])
 
   @@map("lancamentos")
 }

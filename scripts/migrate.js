@@ -19,6 +19,43 @@ async function migrate() {
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "voucher" TEXT`,
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "verificadoEm" TIMESTAMP(3)`,
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "emitidoEm" TIMESTAMP(3)`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "contabilidade" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "codigoCobranca" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "atendimentoExterno" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "valorDeslocamento" DECIMAL(10,2)`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "unidadeAtendimento" TEXT`,
+    `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "pisNis" TEXT`,
+    `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "ddd" TEXT`,
+    `ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "whatsapp" TEXT`,
+    `ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "nomeAgrDs" TEXT`,
+    `ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "unidade" TEXT`,
+    `ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "comissao" DECIMAL(5,2)`,
+    `CREATE TABLE IF NOT EXISTS "historico_contatos" (
+      "id" TEXT NOT NULL,
+      "clienteId" TEXT NOT NULL,
+      "certificadoId" TEXT,
+      "observacao" TEXT NOT NULL,
+      "dataContato" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "proximoContato" TIMESTAMP(3),
+      "usuarioId" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "historico_contatos_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "historico_contatos_clienteId_fkey" FOREIGN KEY ("clienteId") REFERENCES "clientes"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
+    // Garante que tabelas internas não tenham RLS bloqueando o Prisma
+    `ALTER TABLE "configuracoes" DISABLE ROW LEVEL SECURITY`,
+    // Novos campos do módulo financeiro
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "parceiroId" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "notaFiscal" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "boleto" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "referencia" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "tipoConta" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "centroCusto" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "formaPagamento" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "banco" TEXT`,
+    // Integração Banco Inter
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "interCobrancaId" TEXT`,
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "pixCopiaECola" TEXT`,
   ]
 
   for (const q of queries) {
