@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, ExternalLink, X, Inbox, Maximize2 } from 'lucide-react'
+import { Mail, ExternalLink, X, Maximize2 } from 'lucide-react'
 
 const EMAIL        = 'piracaia@vegcertificado.com.br'
 const WEBMAIL_URL  = 'https://webmail-seguro.com.br/vegcertificado.com.br/'
@@ -31,23 +31,14 @@ export function WidgetEmail() {
           </button>
         </div>
 
-        {/* Conta */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-0">
-          <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center">
-            <Mail className="w-8 h-8 text-red-500" />
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-gray-400 dark:text-slate-500 mb-1">Caixa de entrada</p>
-            <p className="text-sm font-bold text-gray-800 dark:text-white break-all">{EMAIL}</p>
-          </div>
-          <a
-            href={WEBMAIL_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition"
-          >
-            <Inbox className="w-4 h-4" /> Abrir E-mail
-          </a>
+        {/* Iframe direto no widget */}
+        <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-gray-100 dark:border-slate-700 -mx-1">
+          <iframe
+            src={AUTOLOGIN_URL}
+            className="w-full h-full border-0"
+            title="Webmail"
+            style={{ minHeight: 0 }}
+          />
         </div>
       </div>
 
@@ -94,7 +85,7 @@ export function WidgetEmail() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition"
               >
-                <Inbox className="w-5 h-5" /> Abrir Caixa de Entrada
+                <Mail className="w-5 h-5" /> Abrir Caixa de Entrada
               </a>
             </div>
           ) : (
