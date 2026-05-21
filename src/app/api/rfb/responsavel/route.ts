@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
       erro: 'CPF não corresponde a nenhum responsável desta empresa',
       empresa: dados.razaoSocial,
       permitido: false,
+      _debug: dados.qsa.map(m => ({ cpf: m.cnpj_cpf_do_socio, nome: m.nome_socio.slice(0, 8) + '...' })),
     })
   }
 
