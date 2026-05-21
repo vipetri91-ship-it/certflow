@@ -9,6 +9,7 @@ import { PedidosAbertos } from './pedidos-abertos'
 import { KpiCarousel } from './kpi-carousel'
 import { WidgetFinanceiro } from './widget-financeiro'
 import { WidgetRFB } from './widget-rfb'
+import { WidgetCalculadora } from './widget-calculadora'
 import { Header } from '@/components/header'
 import { MetaCelebracao } from '@/components/meta-celebracao'
 
@@ -230,9 +231,8 @@ export default async function DashboardPage({ searchParams }: Props) {
 
               {/* 5 — Responsável RFB */}
               <WidgetRFB />
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-600 flex items-center justify-center">
-                <p className="text-sm text-gray-400 dark:text-slate-500 text-center px-4">Widget 6<br/><span className="text-xs">A definir</span></p>
-              </div>
+              {/* 6 — Calculadora de deslocamento */}
+              <WidgetCalculadora />
             </div>
 
             {/* ── Controle de Vencimentos (full width) ───────────── */}
