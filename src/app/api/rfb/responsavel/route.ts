@@ -18,9 +18,9 @@ interface CNPJNorm {
 function cpfMatchesMasked(cpfInput: string, masked: string): boolean {
   const clean = cpfInput.replace(/\D/g, '')
   if (clean.length !== 11) return false
-  const visivel = clean.slice(3, 9)                          // dígitos 4–9
-  const maskedOnly = masked.replace(/[.\-\s*]/g, '').trim() // remove tudo exceto dígitos
-  return maskedOnly === visivel
+  const visivel     = clean.slice(3, 9)          // 6 dígitos centrais do CPF
+  const maskedDigits = masked.replace(/\D/g, '') // só os dígitos visíveis (remove *, ., -)
+  return maskedDigits === visivel
 }
 
 async function buscarBrasilAPI(cnpj: string): Promise<CNPJNorm | null> {
@@ -58,8 +58,8 @@ async function buscarCNPJws(cnpj: string): Promise<CNPJNorm | null> {
       situacao:    ((d.estabelecimento?.situacao_cadastral ?? 'ATIVA') as string).toUpperCase(),
       qsa: ((d.socios ?? []) as Record<string, unknown>[]).map(s => ({
         nome_socio:         (s.nome as string) ?? '',
-        cnpj_cpf_do_socio:  (s.cpf  as string) ?? '',
-        qualificacao_socio: ((s.qualificacao as Record<string,unknown>)?.descricao as string) ?? '',
+        cnpj_cpf_do_socio:  ((s.cpf_cnpj_socio ?? s.cpf) as string) ?? '',   // campo correto cnpj.ws
+        qualificacao_socio: ((s.qualificacao_socio as Record<string,unknown>)?.descricao as string)?.trim() ?? '',
       })),
     }
   } catch { return null }
@@ -106,7 +106,6 @@ export async function POST(req: NextRequest) {
       erro: 'CPF não corresponde a nenhum responsável desta empresa',
       empresa: dados.razaoSocial,
       permitido: false,
-      _debug: dados.qsa.map(m => ({ cpf: m.cnpj_cpf_do_socio, nome: m.nome_socio.slice(0, 8) + '...' })),
     })
   }
 

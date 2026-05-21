@@ -9,6 +9,7 @@ type Resultado = {
   cargo?:    string
   erro?:     string
   permitido: boolean
+  _debug?:   Array<{ cpf: string; nome: string }>
 }
 
 function mascaraCNPJ(v: string) {
