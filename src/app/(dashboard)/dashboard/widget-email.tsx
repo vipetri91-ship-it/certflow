@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { Mail, ExternalLink, X, Inbox, Maximize2 } from 'lucide-react'
 
-const EMAIL       = 'piracaia@vegcertificado.com.br'
-const WEBMAIL_URL = 'https://webmail-seguro.com.br/vegcertificado.com.br/'
+const EMAIL        = 'piracaia@vegcertificado.com.br'
+const WEBMAIL_URL  = 'https://webmail-seguro.com.br/vegcertificado.com.br/'
+const AUTOLOGIN_URL = '/api/webmail/autologin'
 
 export function WidgetEmail() {
   const [expandido,  setExpandido]  = useState(false)
@@ -98,7 +99,7 @@ export function WidgetEmail() {
             </div>
           ) : (
             <iframe
-              src={WEBMAIL_URL}
+              src={AUTOLOGIN_URL}
               className="flex-1 w-full border-0"
               title="Webmail"
               onError={() => setIframeErro(true)}
