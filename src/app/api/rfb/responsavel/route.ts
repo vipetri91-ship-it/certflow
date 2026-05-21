@@ -1,27 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 
-interface QSAMember {
-  nome_socio:          string
-  cnpj_cpf_do_socio:   string
-  qualificacao_socio:  string
+interface QSANorm {
+  nome_socio:         string
+  cnpj_cpf_do_socio:  string
+  qualificacao_socio: string
 }
 
-interface CNPJResponse {
-  razao_social:       string
-  nome_fantasia?:     string
-  situacao_cadastral: string
-  qsa?:               QSAMember[]
+interface CNPJNorm {
+  razaoSocial: string
+  situacao:    string
+  qsa:         QSANorm[]
 }
 
-// Receita Federal mascara primeiro 3 e último 2 dígitos do CPF: ***027.448-**
-// Compara os 6 dígitos do meio com o CPF informado
+// Receita Federal mascara primeiro 3 e último 2 dígitos: ***027.448-**
+// Compara os 6 dígitos centrais com o CPF informado
 function cpfMatchesMasked(cpfInput: string, masked: string): boolean {
   const clean = cpfInput.replace(/\D/g, '')
   if (clean.length !== 11) return false
-  const visivel = clean.slice(3, 9) // dígitos 4 a 9
-  const maskedVisible = masked.replace(/[.*\-\s]/g, '').replace(/\*/g, '')
-  return maskedVisible.trim() === visivel
+  const visivel = clean.slice(3, 9)                          // dígitos 4–9
+  const maskedOnly = masked.replace(/[.\-\s*]/g, '').trim() // remove tudo exceto dígitos
+  return maskedOnly === visivel
+}
+
+async function buscarBrasilAPI(cnpj: string): Promise<CNPJNorm | null> {
+  try {
+    const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!r.ok) return null
+    const d = await r.json()
+    return {
+      razaoSocial: d.razao_social ?? '',
+      situacao:    (d.situacao_cadastral ?? '').toUpperCase(),
+      qsa: (d.qsa ?? []).map((m: Record<string, unknown>) => ({
+        nome_socio:         (m.nome_socio as string) ?? '',
+        cnpj_cpf_do_socio:  (m.cnpj_cpf_do_socio as string) ?? '',
+        qualificacao_socio: typeof m.qualificacao_socio === 'object'
+          ? ((m.qualificacao_socio as Record<string, unknown>)?.descricao as string ?? '')
+          : (m.qualificacao_socio as string) ?? '',
+      })),
+    }
+  } catch { return null }
+}
+
+async function buscarCNPJws(cnpj: string): Promise<CNPJNorm | null> {
+  try {
+    const r = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!r.ok) return null
+    const d = await r.json()
+    return {
+      razaoSocial: (d.razao_social ?? '') as string,
+      situacao:    ((d.estabelecimento?.situacao_cadastral ?? 'ATIVA') as string).toUpperCase(),
+      qsa: ((d.socios ?? []) as Record<string, unknown>[]).map(s => ({
+        nome_socio:         (s.nome as string) ?? '',
+        cnpj_cpf_do_socio:  (s.cpf  as string) ?? '',
+        qualificacao_socio: ((s.qualificacao as Record<string,unknown>)?.descricao as string) ?? '',
+      })),
+    }
+  } catch { return null }
 }
 
 export async function POST(req: NextRequest) {
@@ -35,51 +76,43 @@ export async function POST(req: NextRequest) {
   if (!cnpjNum || cnpjNum.length !== 14) return NextResponse.json({ erro: 'CNPJ inválido' }, { status: 422 })
   if (!cpfNum  || cpfNum.length  !== 11) return NextResponse.json({ erro: 'CPF inválido'  }, { status: 422 })
 
-  try {
-    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjNum}`, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    })
+  // Tenta BrasilAPI primeiro, depois CNPJ.ws
+  const dados = (await buscarBrasilAPI(cnpjNum)) ?? (await buscarCNPJws(cnpjNum))
 
-    if (!res.ok) return NextResponse.json({ erro: 'CNPJ não encontrado na Receita Federal' }, { status: 404 })
-
-    const data: CNPJResponse = await res.json()
-
-    if (data.situacao_cadastral !== 'ATIVA') {
-      return NextResponse.json({
-        erro: `Empresa com situação "${data.situacao_cadastral}" na Receita Federal`,
-        empresa: data.razao_social,
-        permitido: false,
-      })
-    }
-
-    if (!data.qsa?.length) {
-      return NextResponse.json({
-        erro: 'Nenhum sócio/administrador encontrado para este CNPJ',
-        empresa: data.razao_social,
-        permitido: false,
-      })
-    }
-
-    const match = data.qsa.find(m =>
-      m.cnpj_cpf_do_socio && cpfMatchesMasked(cpfNum, m.cnpj_cpf_do_socio)
-    )
-
-    if (!match) {
-      return NextResponse.json({
-        erro: 'CPF não corresponde a nenhum responsável desta empresa',
-        empresa: data.razao_social,
-        permitido: false,
-      })
-    }
-
-    return NextResponse.json({
-      nome:     match.nome_socio,
-      empresa:  data.razao_social,
-      cargo:    match.qualificacao_socio,
-      permitido: true,
-    })
-  } catch {
-    return NextResponse.json({ erro: 'Erro ao consultar Receita Federal' }, { status: 500 })
+  if (!dados) {
+    return NextResponse.json({ erro: 'CNPJ não encontrado na Receita Federal' }, { status: 404 })
   }
+
+  if (dados.situacao && !dados.situacao.includes('ATIVA') && !dados.situacao.includes('ATIVA')) {
+    return NextResponse.json({
+      erro: `Empresa com situação "${dados.situacao}" na Receita Federal`,
+      empresa: dados.razaoSocial,
+      permitido: false,
+    })
+  }
+
+  if (!dados.qsa.length) {
+    return NextResponse.json({
+      erro: 'Nenhum sócio/administrador encontrado para este CNPJ',
+      empresa: dados.razaoSocial,
+      permitido: false,
+    })
+  }
+
+  const match = dados.qsa.find(m => m.cnpj_cpf_do_socio && cpfMatchesMasked(cpfNum, m.cnpj_cpf_do_socio))
+
+  if (!match) {
+    return NextResponse.json({
+      erro: 'CPF não corresponde a nenhum responsável desta empresa',
+      empresa: dados.razaoSocial,
+      permitido: false,
+    })
+  }
+
+  return NextResponse.json({
+    nome:      match.nome_socio,
+    empresa:   dados.razaoSocial,
+    cargo:     match.qualificacao_socio,
+    permitido: true,
+  })
 }
