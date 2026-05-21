@@ -53,6 +53,9 @@ async function getDashboardData() {
     fatDia, fatSemana, fatMes, fatAno,
     detalheDia, detalheSemana, detalheMes, detalheAno,
     aReceberAgg,
+    aReceberVencidosAgg,
+    aReceberContagemAgg,
+    aReceberVencidosContagem,
   ] = await Promise.all([
     prisma.pedido.count({ where: { createdAt: { gte: inicioDia,   lte: fimDia   }, status: { not: 'CANCELADO' } } }),
     prisma.pedido.count({ where: { createdAt: { gte: inicioSemana,lte: fimSemana}, status: { not: 'CANCELADO' } } }),
@@ -71,7 +74,14 @@ async function getDashboardData() {
     buscarPedidos(inicioSemana, fimSemana, 500),
     buscarPedidos(inicioMes,    fimMes,    500),
     buscarPedidos(inicioAno,    fimAno,    1000),
-    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { gte: inicioMes, lte: fimMes } } }),
+    // Contas a receber: total pendente (todos os meses)
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
+    // Contas vencidas (pendente + vencimento < hoje)
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
+    // Quantidade de contas pendentes
+    prisma.lancamento.count({ where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
+    // Quantidade de contas vencidas
+    prisma.lancamento.count({ where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
   ])
 
   const diasDecorridos = Math.max(1, hoje.getDate())
@@ -106,7 +116,10 @@ async function getDashboardData() {
     vendasMes:      pedidosMes,
     faturamentoMes: Number(fatMes._sum.valorFinal ?? 0),
     emissoesMes,
-    aReceber:       Number(aReceberAgg._sum.valor ?? 0),
+    aReceber:            Number(aReceberAgg._sum.valor          ?? 0),
+    aReceberVencidos:    Number(aReceberVencidosAgg._sum.valor  ?? 0),
+    aReceberQtd:         aReceberContagemAgg,
+    aReceberVencidosQtd: aReceberVencidosContagem,
   }
 }
 
@@ -216,11 +229,12 @@ export default async function DashboardPage({ searchParams }: Props) {
                 projecaoMensal={dados.projecaoMensal}
               />
 
-              {/* 2 — Financeiro */}
+              {/* 2 — Contas a Receber */}
               <WidgetFinanceiro
-                faturamentoMes={dados.faturamentoMes}
                 aReceber={dados.aReceber}
-                vencendo7={dados.vencendo7}
+                aReceberVencidos={dados.aReceberVencidos}
+                aReceberQtd={dados.aReceberQtd}
+                aReceberVencidosQtd={dados.aReceberVencidosQtd}
               />
 
               {/* 3 — Agenda */}
