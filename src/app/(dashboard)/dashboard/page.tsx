@@ -10,6 +10,7 @@ import { KpiCarousel } from './kpi-carousel'
 import { WidgetFinanceiro } from './widget-financeiro'
 import { WidgetRFB } from './widget-rfb'
 import { WidgetCalculadora } from './widget-calculadora'
+import { WidgetEmail } from './widget-email'
 import { Header } from '@/components/header'
 import { MetaCelebracao } from '@/components/meta-celebracao'
 
@@ -222,12 +223,16 @@ export default async function DashboardPage({ searchParams }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
               style={{ gridAutoRows: '288px' }}>
 
-              {/* 1 — Carrossel de vendas (azul, com setas) */}
-              <KpiCarousel
-                slides={dados.slides}
-                mediaDiaria={dados.mediaDiaria}
-                projecaoMensal={dados.projecaoMensal}
-              />
+              {/* 1 — Vendas (admin/gerente) ou E-mail (operador/visualizador) */}
+              {['OPERADOR', 'VISUALIZADOR'].includes(session.user.role) ? (
+                <WidgetEmail />
+              ) : (
+                <KpiCarousel
+                  slides={dados.slides}
+                  mediaDiaria={dados.mediaDiaria}
+                  projecaoMensal={dados.projecaoMensal}
+                />
+              )}
 
               {/* 2 — Contas a Receber */}
               <WidgetFinanceiro
