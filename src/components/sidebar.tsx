@@ -91,7 +91,14 @@ export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
   // No mobile drawer (onFechar definido) ou touch/PWA, sempre expandida
   const expandido = !recolhida || !!onFechar
 
-  const MENU = session?.user?.role === 'FINANCEIRO' ? MENU_FINANCEIRO : MENU_PADRAO
+  const role = session?.user?.role
+  const semFinanceiro = ['OPERADOR', 'VISUALIZADOR']
+
+  const MENU = role === 'FINANCEIRO'
+    ? MENU_FINANCEIRO
+    : semFinanceiro.includes(role ?? '')
+      ? MENU_PADRAO.filter(e => !(e.tipo === 'grupo' && e.label === 'Financeiro'))
+      : MENU_PADRAO
 
   const gruposAbertosInicial = MENU.reduce<Record<string, boolean>>((acc, entry) => {
     if (entry.tipo === 'grupo') {
