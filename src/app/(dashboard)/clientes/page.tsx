@@ -34,7 +34,7 @@ export default async function ClientesPage({ searchParams }: Props) {
       where,
       include: {
         parceiro: { select: { nome: true } },
-        _count: { select: { certificados: true, pedidos: true } },
+        _count: { select: { certificados: true } },
       },
       orderBy: { nome: 'asc' },
       skip,
@@ -46,7 +46,7 @@ export default async function ClientesPage({ searchParams }: Props) {
   return (
     <div>
       <Header titulo="Clientes" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 lg:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
             {total.toLocaleString('pt-BR')} cliente{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}

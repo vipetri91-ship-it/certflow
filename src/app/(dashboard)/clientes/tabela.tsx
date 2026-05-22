@@ -24,7 +24,7 @@ interface ClienteRow {
   cpf?: string
   cnpj?: string
   parceiro?: { nome: string }
-  _count: { certificados: number; pedidos: number }
+  _count: { certificados: number }
 }
 
 interface Props {
@@ -113,14 +113,13 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Contato</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Parceiro</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Certs.</th>
-                <th className="text-center px-4 py-3 font-medium text-gray-600">Pedidos</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {clientes.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                     Nenhum cliente encontrado
                   </td>
                 </tr>
@@ -171,11 +170,6 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
                   <td className="px-4 py-3 text-center">
                     <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-50 text-blue-700 rounded-full font-semibold text-xs">
                       {cliente._count.certificados}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center justify-center w-7 h-7 bg-gray-100 text-gray-600 rounded-full font-semibold text-xs">
-                      {cliente._count.pedidos}
                     </span>
                   </td>
                   <td className="px-4 py-3">
