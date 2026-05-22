@@ -23,120 +23,148 @@ function gerarMensagemEmail(dados: {
 }): { assunto: string; html: string } {
   const { nomeCliente, modeloCertificado, dataVencimento, diasRestantes, valorRenovacao } = dados
 
-  const vencido = diasRestantes < 0
-  const urgente = diasRestantes <= 7 && !vencido
-  const alerta  = diasRestantes > 7 && diasRestantes <= 30
+  const primeiroNome = nomeCliente.split(' ')[0]
+  const vencido  = diasRestantes < 0
+  const critico  = !vencido && diasRestantes <= 7
+  const urgente  = !vencido && diasRestantes > 7 && diasRestantes <= 15
+  const atencao  = !vencido && diasRestantes > 15 && diasRestantes <= 30
+  const tranquilo = !vencido && diasRestantes > 30
 
-  const corFaixa = vencido ? '#D50000' : urgente ? '#F4511E' : alerta ? '#F6BF26' : '#0B8043'
-  const textoCor = vencido ? '#D50000' : urgente ? '#F4511E' : '#1a1a2e'
-
+  // ── Assunto personalizado por faixa ──────────────────────────────────────
   const assunto = vencido
-    ? `🚨 Seu certificado digital VENCEU — Renove agora!`
+    ? `⚠️ ${primeiroNome}, seu certificado expirou — vamos resolver isso juntos?`
+    : critico
+    ? `🔴 ${primeiroNome}, restam apenas ${diasRestantes} dias — hora de agir!`
     : urgente
-    ? `⚠️ URGENTE: Seu certificado vence em ${diasRestantes} dias!`
-    : alerta
-    ? `📅 Seu certificado digital vence em ${diasRestantes} dias`
-    : `📋 Lembrete: Certificado digital vence em ${diasRestantes} dias`
+    ? `⏰ ${primeiroNome}, seu certificado vence em ${diasRestantes} dias`
+    : atencao
+    ? `📋 ${primeiroNome}, lembrete amigável sobre seu certificado digital`
+    : `😊 ${primeiroNome}, tudo certo com seu certificado? Passamos para avisar!`
 
-  const mensagemPrincipal = vencido
-    ? `Seu certificado digital <strong style="color:${corFaixa}">VENCEU</strong>. Você pode estar enfrentando problemas para assinar documentos e acessar sistemas governamentais.`
+  // ── Cor e badge por faixa ────────────────────────────────────────────────
+  const corHeader = vencido ? '#b91c1c' : critico ? '#c2410c' : urgente ? '#d97706' : '#1d4ed8'
+  const badgeLabel = vencido ? '⚠️ CERTIFICADO VENCIDO' : critico ? '🔴 AÇÃO NECESSÁRIA' : urgente ? '⏰ VENCE EM BREVE' : atencao ? '📋 LEMBRETE' : '😊 AVISO ANTECIPADO'
+
+  // ── Texto principal personalizado ────────────────────────────────────────
+  const textoPrincipal = vencido
+    ? `Notamos que o seu certificado digital <strong>${modeloCertificado}</strong> expirou em <strong>${dataVencimento}</strong>.<br><br>
+       Sabemos que isso pode estar gerando transtornos — desde dificuldades para assinar documentos até bloqueios em sistemas da Receita Federal. <strong>Mas não se preocupe: a renovação é simples e rápida!</strong><br><br>
+       Nossa equipe está pronta para te ajudar agora mesmo, sem complicações.`
+    : critico
+    ? `Estamos passando para te avisar que faltam apenas <strong>${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}</strong> para o seu certificado <strong>${modeloCertificado}</strong> vencer (${dataVencimento}).<br><br>
+       A gente sabe que a rotina é corrida e às vezes esses prazos escapam — por isso estamos aqui para te lembrar antes que aconteça qualquer inconveniente. <strong>Vamos resolver isso hoje?</strong>`
     : urgente
-    ? `Seu certificado digital vence <strong style="color:${corFaixa}">em apenas ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}</strong>. Não deixe para última hora — renove agora!`
-    : `Seu certificado digital vence em <strong>${diasRestantes} dias</strong>. Aproveite para renovar com antecedência e evitar transtornos.`
+    ? `Você tem <strong>${diasRestantes} dias</strong> antes do vencimento do seu certificado <strong>${modeloCertificado}</strong> em <strong>${dataVencimento}</strong>.<br><br>
+       Ainda dá tempo de renovar com toda a tranquilidade, sem correria! Nosso processo é 100% online, feito por videoconferência, e você não precisa sair de casa. <strong>Que tal agendar agora e já tirar isso da sua lista?</strong>`
+    : atencao
+    ? `Passamos aqui para um lembrete amigável: seu certificado <strong>${modeloCertificado}</strong> vence em <strong>${diasRestantes} dias</strong> (${dataVencimento}).<br><br>
+       Quem renova com antecedência evita correria de última hora e garante que tudo continue funcionando sem interrupção. É um investimento que vale a pena! 😊`
+    : `Antes de qualquer correria, queríamos te avisar com antecedência: seu certificado <strong>${modeloCertificado}</strong> vence em <strong>${diasRestantes} dias</strong> (${dataVencimento}).<br><br>
+       Ainda tem bastante tempo, mas quem agenda cedo garante o melhor horário e renova sem estresse. Vai um cafezinho e a gente cuida do certificado? ☕`
+
+  const mensagemPosicao = vencido
+    ? `Após a renovação, tudo volta ao normal imediatamente.`
+    : `Renovação em minutos, via videoconferência — sem sair de casa.`
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${assunto}</title>
-</head>
-<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${assunto}</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px;">
+<tr><td align="center">
+<table width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.10);">
 
-        <!-- Header -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:32px 40px;text-align:center;">
-            <div style="background:#fff;border-radius:12px;display:inline-block;padding:12px 24px;margin-bottom:16px;">
-              <span style="font-size:22px;font-weight:900;color:#1e3a8a;letter-spacing:-0.5px;">V&G</span>
-              <span style="font-size:13px;color:#64748b;display:block;margin-top:2px;letter-spacing:2px;">CERTIFICAÇÃO DIGITAL</span>
-            </div>
-            <div style="display:inline-block;background:${corFaixa};color:#fff;font-size:13px;font-weight:700;padding:6px 16px;border-radius:20px;letter-spacing:1px;">
-              ${vencido ? '🚨 VENCIDO' : urgente ? '⚠️ URGENTE' : alerta ? '📅 ATENÇÃO' : '📋 LEMBRETE'}
-            </div>
-          </td>
-        </tr>
+  <!-- Header colorido por faixa -->
+  <tr>
+    <td style="background:linear-gradient(135deg,${corHeader},${corHeader}cc);padding:36px 40px 28px;text-align:center;">
+      <div style="background:rgba(255,255,255,0.15);border-radius:14px;display:inline-block;padding:10px 22px;margin-bottom:14px;border:1px solid rgba(255,255,255,0.3);">
+        <span style="font-size:20px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">V&amp;G</span>
+        <span style="font-size:11px;color:rgba(255,255,255,0.85);display:block;margin-top:2px;letter-spacing:3px;">CERTIFICAÇÃO DIGITAL</span>
+      </div>
+      <div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;letter-spacing:1px;border:1px solid rgba(255,255,255,0.4);">
+        ${badgeLabel}
+      </div>
+    </td>
+  </tr>
 
-        <!-- Body -->
-        <tr>
-          <td style="padding:40px 40px 24px;">
-            <p style="margin:0 0 8px;font-size:14px;color:#64748b;">Olá,</p>
-            <h1 style="margin:0 0 24px;font-size:22px;font-weight:700;color:#1e293b;line-height:1.3;">
-              ${nomeCliente.split(' ').slice(0,3).join(' ')}
-            </h1>
-            <p style="margin:0 0 24px;font-size:16px;color:#374151;line-height:1.6;">
-              ${mensagemPrincipal}
-            </p>
+  <!-- Saudação pessoal -->
+  <tr>
+    <td style="padding:36px 40px 0;">
+      <p style="margin:0 0 6px;font-size:13px;color:#94a3b8;letter-spacing:0.5px;">Para: ${nomeCliente.split(' ').slice(0,2).join(' ')}</p>
+      <h1 style="margin:0 0 20px;font-size:24px;font-weight:800;color:#0f172a;line-height:1.25;">
+        ${vencido ? 'Precisamos conversar sobre seu certificado' : critico ? 'Não deixe para depois!' : urgente ? 'Hora de garantir sua continuidade!' : atencao ? 'Um lembrete com carinho 💙' : 'Tudo certo por aqui? 😊'}
+      </h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.75;">
+        ${textoPrincipal}
+      </p>
+    </td>
+  </tr>
 
-            <!-- Card do certificado -->
-            <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:20px 24px;margin:0 0 28px;">
-              <p style="margin:0 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;">Detalhes do Certificado</p>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding:6px 0;font-size:14px;color:#64748b;width:40%;">Titular:</td>
-                  <td style="padding:6px 0;font-size:14px;font-weight:600;color:#1e293b;">${nomeCliente}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;font-size:14px;color:#64748b;">Tipo:</td>
-                  <td style="padding:6px 0;font-size:14px;font-weight:600;color:#1e293b;">${modeloCertificado}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;font-size:14px;color:#64748b;">Vencimento:</td>
-                  <td style="padding:6px 0;font-size:14px;font-weight:700;color:${textoCor};">${dataVencimento}</td>
-                </tr>
-                ${valorRenovacao ? `
-                <tr>
-                  <td style="padding:6px 0;font-size:14px;color:#64748b;">Valor renovação:</td>
-                  <td style="padding:6px 0;font-size:14px;font-weight:700;color:#16a34a;">R$ ${valorRenovacao.toFixed(2).replace('.',',')}</td>
-                </tr>` : ''}
-              </table>
-            </div>
+  <!-- Card do certificado -->
+  <tr>
+    <td style="padding:0 40px 28px;">
+      <div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:14px;padding:20px 24px;">
+        <p style="margin:0 0 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;">Seu certificado</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:5px 0;font-size:13px;color:#64748b;width:38%;">Titular</td>
+            <td style="padding:5px 0;font-size:13px;font-weight:600;color:#1e293b;">${nomeCliente}</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;font-size:13px;color:#64748b;">Tipo</td>
+            <td style="padding:5px 0;font-size:13px;font-weight:600;color:#1e293b;">${modeloCertificado}</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;font-size:13px;color:#64748b;">Vencimento</td>
+            <td style="padding:5px 0;font-size:14px;font-weight:700;color:${corHeader};">${dataVencimento} ${vencido ? '(vencido)' : `(${diasRestantes}d restantes)`}</td>
+          </tr>
+          ${valorRenovacao ? `<tr><td style="padding:5px 0;font-size:13px;color:#64748b;">Renovação</td><td style="padding:5px 0;font-size:14px;font-weight:700;color:#16a34a;">R$ ${valorRenovacao.toFixed(2).replace('.',',')}</td></tr>` : ''}
+        </table>
+      </div>
+    </td>
+  </tr>
 
-            <!-- CTA -->
-            <div style="text-align:center;margin:0 0 32px;">
-              <p style="margin:0 0 8px;font-size:14px;color:#64748b;">A renovação é <strong>rápida, simples e online</strong> — pode ser feita por videoconferência sem sair de casa!</p>
-              <a href="https://wa.me/5511933323003?text=Olá!%20Quero%20renovar%20meu%20certificado%20digital."
-                style="display:inline-block;background:#16a34a;color:#fff;font-size:16px;font-weight:700;padding:14px 36px;border-radius:10px;text-decoration:none;margin-top:16px;letter-spacing:0.3px;">
-                📅 Agendar Renovação Agora
-              </a>
-            </div>
+  <!-- CTA principal -->
+  <tr>
+    <td style="padding:0 40px 28px;text-align:center;">
+      <p style="margin:0 0 16px;font-size:14px;color:#64748b;">${mensagemPosicao}</p>
+      <a href="https://wa.me/5511933323003?text=Olá!%20Quero%20renovar%20meu%20certificado%20digital."
+        style="display:inline-block;background:${corHeader};color:#fff;font-size:16px;font-weight:700;padding:16px 40px;border-radius:12px;text-decoration:none;letter-spacing:0.3px;">
+        📅 Agendar minha renovação
+      </a>
+      <p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">Clique para abrir o WhatsApp e falar com a nossa equipe</p>
+    </td>
+  </tr>
 
-            <!-- Info processo -->
-            <div style="background:#f0fdf4;border-radius:10px;padding:16px 20px;margin-bottom:8px;">
-              <p style="margin:0;font-size:13px;color:#166534;line-height:1.6;">
-                ✅ <strong>Processo 100% digital</strong> — sem sair de casa<br>
-                ✅ <strong>Videoconferência</strong> — rápido e seguro<br>
-                ✅ <strong>Suporte completo</strong> — te guiamos em cada etapa
-              </p>
-            </div>
-          </td>
-        </tr>
+  <!-- Benefícios -->
+  <tr>
+    <td style="padding:0 40px 28px;">
+      <div style="background:#f0fdf4;border-radius:12px;padding:18px 22px;border:1px solid #bbf7d0;">
+        <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#166534;">Por que renovar com a V&amp;G?</p>
+        <p style="margin:0;font-size:13px;color:#15803d;line-height:1.9;">
+          ✅ <strong>100% online</strong> — sem precisar sair de casa<br>
+          ✅ <strong>Videoconferência</strong> — rápido, seguro e descomplicado<br>
+          ✅ <strong>Atendimento personalizado</strong> — te guiamos em cada passo<br>
+          ✅ <strong>Emissão imediata</strong> — seu certificado pronto na hora
+        </p>
+      </div>
+    </td>
+  </tr>
 
-        <!-- Contato -->
-        <tr>
-          <td style="padding:0 40px 32px;">
-            <div style="border-top:1px solid #f1f5f9;padding-top:24px;">
-              <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#374151;">Dúvidas? Entre em contato:</p>
-              <p style="margin:0;font-size:13px;color:#64748b;line-height:1.8;">
-                📞 <strong>(11) 94315-6015</strong><br>
-                💬 <strong>WhatsApp: (11) 93332-3003</strong><br>
-                ✉️ <a href="mailto:vinicius.petri@vegcertificado.com.br" style="color:#2563eb;">vinicius.petri@vegcertificado.com.br</a>
-              </p>
-            </div>
-          </td>
-        </tr>
+  <!-- Contato e assinatura -->
+  <tr>
+    <td style="padding:0 40px 32px;">
+      <div style="border-top:1px solid #f1f5f9;padding-top:24px;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#1e293b;">Vinicius Petri</p>
+        <p style="margin:0 0 14px;font-size:12px;color:#64748b;">V&amp;G Certificação Digital — Parceiro Safeweb</p>
+        <p style="margin:0;font-size:13px;color:#64748b;line-height:1.9;">
+          📞 <a href="tel:+5511943156015" style="color:#2563eb;text-decoration:none;">(11) 94315-6015</a><br>
+          💬 <a href="https://wa.me/5511933323003" style="color:#16a34a;text-decoration:none;">WhatsApp: (11) 93332-3003</a><br>
+          ✉️ <a href="mailto:piracaia@vegcertificado.com.br" style="color:#2563eb;text-decoration:none;">piracaia@vegcertificado.com.br</a>
+        </p>
+      </div>
+    </td>
+  </tr>
 
         <!-- Footer -->
         <tr>
@@ -168,7 +196,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await transporte.sendMail({
-      from: process.env.SMTP_FROM,
+      from: `"V&G Certificação Digital" <${process.env.SMTP_FROM ?? 'piracaia@vegcertificado.com.br'}>`,
       to: parsed.data.emailDestino,
       subject: assunto,
       html,
