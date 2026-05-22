@@ -23,7 +23,7 @@ interface ClienteRow {
   celular?: string
   cpf?: string
   cnpj?: string
-  grupo?: string
+  grupo?: string | null
   parceiro?: { nome: string }
   _count: { certificados: number }
 }
