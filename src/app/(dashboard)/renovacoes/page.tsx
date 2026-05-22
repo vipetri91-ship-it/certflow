@@ -25,7 +25,7 @@ export default async function RenovacoesPage({ searchParams }: Props) {
     cliente: {
       select: {
         id: true, nome: true, email: true, celular: true, telefone: true,
-        cpf: true, cnpj: true, razaoSocial: true, responsavel: true, tipoPessoa: true,
+        cpf: true, cnpj: true, razaoSocial: true, responsavel: true, tipoPessoa: true, grupo: true,
         parceiro: { select: { nome: true, razaoSocial: true, celular: true, telefone: true } },
       },
     },
@@ -66,6 +66,7 @@ export default async function RenovacoesPage({ searchParams }: Props) {
       telefone: c.cliente.telefone ?? null,
       razaoSocial: c.cliente.razaoSocial ?? null,
       responsavel: c.cliente.responsavel ?? null,
+      grupo:       c.cliente.grupo       ?? null,
       parceiro: c.cliente.parceiro ? {
         nome: c.cliente.parceiro.nome,
         razaoSocial: c.cliente.parceiro.razaoSocial ?? null,
@@ -92,6 +93,7 @@ export default async function RenovacoesPage({ searchParams }: Props) {
       telefone: c.cliente.telefone ?? null,
       razaoSocial: c.cliente.razaoSocial ?? null,
       responsavel: c.cliente.responsavel ?? null,
+      grupo:       c.cliente.grupo       ?? null,
       parceiro: c.cliente.parceiro ? {
         nome: c.cliente.parceiro.nome,
         razaoSocial: c.cliente.parceiro.razaoSocial ?? null,
