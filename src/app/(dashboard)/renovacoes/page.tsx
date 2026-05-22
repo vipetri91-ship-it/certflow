@@ -21,13 +21,6 @@ export default async function RenovacoesPage({ searchParams }: Props) {
   const inicioMes = new Date(ano, mes, 1)
   const fimMes    = new Date(ano, mes + 1, 0, 23, 59, 59)
 
-  // Se estiver no mês atual, estende para incluir os próximos 60 dias
-  // (captura certificados que vencem no início do próximo mês)
-  const eMesAtual = mes === mesAtual && ano === anoAtual
-  const fimBusca  = eMesAtual
-    ? new Date(Math.max(fimMes.getTime(), hoje.getTime() + 60 * 86_400_000))
-    : fimMes
-
   const include = {
     cliente: {
       select: {
@@ -42,7 +35,7 @@ export default async function RenovacoesPage({ searchParams }: Props) {
 
   const [certificadosMes, vencidos] = await Promise.all([
     prisma.certificado.findMany({
-      where: { status: 'ATIVO', dataVencimento: { gte: inicioMes, lte: fimBusca } },
+      where: { status: 'ATIVO', dataVencimento: { gte: inicioMes, lte: fimMes } },
       include,
       orderBy: { dataVencimento: 'asc' },
     }),
