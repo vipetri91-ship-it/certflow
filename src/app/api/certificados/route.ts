@@ -6,13 +6,18 @@ import { z } from 'zod'
 import { addMonths } from 'date-fns'
 
 const schemaCertificado = z.object({
-  clienteId: z.string(),
-  modeloId: z.string(),
-  pedidoId: z.string().optional(),
-  numeroSerie: z.string().optional(),
-  dataEmissao: z.string(),
-  safewebId: z.string().optional(),
-  observacoes: z.string().optional(),
+  clienteId:      z.string(),
+  modeloId:       z.string(),
+  pedidoId:       z.string().optional(),
+  numeroSerie:    z.string().optional(),
+  dataEmissao:    z.string(),
+  dataVencimento: z.string().optional(), // override calculado quando informado
+  status:         z.enum(['ATIVO','VENCIDO','RENOVADO','CANCELADO']).optional(),
+  safewebId:      z.string().optional(),
+  observacoes:    z.string().optional(),
+  agr:            z.string().optional(),     // cadastro manual
+  valorFinal:     z.number().optional(),     // cadastro manual
+  origemManual:   z.boolean().optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -60,42 +65,61 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
+  try {
+    const session = await auth()
+    if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
-  const body = await req.json()
-  const parsed = schemaCertificado.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ erro: 'Dados inválidos', detalhes: parsed.error.flatten() }, { status: 422 })
+    const body = await req.json()
+    const parsed = schemaCertificado.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ erro: 'Dados inválidos', detalhes: parsed.error.flatten() }, { status: 422 })
+    }
+
+    const modelo = await prisma.modeloCertificado.findUnique({ where: { id: parsed.data.modeloId } })
+    if (!modelo) return NextResponse.json({ erro: 'Modelo não encontrado' }, { status: 404 })
+
+    const dataEmissao = new Date(parsed.data.dataEmissao)
+    const dataVencimento = parsed.data.dataVencimento
+      ? new Date(parsed.data.dataVencimento)
+      : addMonths(dataEmissao, modelo.validadeMeses)
+
+    let observacoes = parsed.data.observacoes ?? ''
+    if (parsed.data.origemManual) {
+      const extras = [
+        parsed.data.agr        && `AGR: ${parsed.data.agr}`,
+        parsed.data.valorFinal && `Valor: R$ ${parsed.data.valorFinal.toFixed(2)}`,
+        'Cadastro manual',
+      ].filter(Boolean).join(' | ')
+      observacoes = extras + (observacoes ? ` | ${observacoes}` : '')
+    }
+
+    const certificado = await prisma.certificado.create({
+      data: {
+        clienteId:    parsed.data.clienteId,
+        modeloId:     parsed.data.modeloId,
+        pedidoId:     parsed.data.pedidoId,
+        numeroSerie:  parsed.data.numeroSerie,
+        dataEmissao,
+        dataVencimento,
+        status:       parsed.data.status ?? 'ATIVO',
+        safewebId:    parsed.data.safewebId,
+        observacoes:  observacoes || undefined,
+      },
+      include: { cliente: true, modelo: true },
+    })
+
+    await registrarAuditoria({
+      usuarioId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'Certificado',
+      entidadeId: certificado.id,
+      dados: { cliente: certificado.cliente.nome, modelo: certificado.modelo.nome },
+    })
+
+    return NextResponse.json(certificado, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/certificados]', err)
+    const msg = err instanceof Error ? err.message : 'Erro interno'
+    return NextResponse.json({ erro: msg }, { status: 500 })
   }
-
-  const modelo = await prisma.modeloCertificado.findUnique({ where: { id: parsed.data.modeloId } })
-  if (!modelo) return NextResponse.json({ erro: 'Modelo não encontrado' }, { status: 404 })
-
-  const dataEmissao = new Date(parsed.data.dataEmissao)
-  const dataVencimento = addMonths(dataEmissao, modelo.validadeMeses)
-
-  const certificado = await prisma.certificado.create({
-    data: {
-      clienteId: parsed.data.clienteId,
-      modeloId: parsed.data.modeloId,
-      pedidoId: parsed.data.pedidoId,
-      numeroSerie: parsed.data.numeroSerie,
-      dataEmissao,
-      dataVencimento,
-      safewebId: parsed.data.safewebId,
-      observacoes: parsed.data.observacoes,
-    },
-    include: { cliente: true, modelo: true },
-  })
-
-  await registrarAuditoria({
-    usuarioId: session.user.id,
-    acao: 'CREATE',
-    entidade: 'Certificado',
-    entidadeId: certificado.id,
-    dados: { cliente: certificado.cliente.nome, modelo: certificado.modelo.nome },
-  })
-
-  return NextResponse.json(certificado, { status: 201 })
 }
