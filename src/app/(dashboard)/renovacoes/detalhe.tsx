@@ -239,10 +239,9 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
                   </a>
                 )}
                 {cert.cliente.email && (
-                  <a href={`mailto:${cert.cliente.email}`}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition">
-                    <Mail className="w-3.5 h-3.5" /> E-mail
-                  </a>
+                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <Mail className="w-3 h-3" /> {cert.cliente.email}
+                  </span>
                 )}
               </div>
             )}
