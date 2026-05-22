@@ -28,15 +28,23 @@ export function CadastrarCertificado({ clienteId, modelos }: Props) {
 
   const hoje = new Date().toISOString().split('T')[0]
 
-  const [form, setForm] = useState({
-    modeloId:      '',
-    dataEmissao:   hoje,
+  const formInicial = {
+    modeloId:       '',
+    dataEmissao:    hoje,
     dataVencimento: '',
-    valor:         '',
-    protocolo:     '',
-    agr:           'vinicius',
-    status:        'ATIVO' as 'ATIVO' | 'VENCIDO' | 'RENOVADO' | 'CANCELADO',
-  })
+    valor:          '',
+    protocolo:      '',
+    agr:            'vinicius',
+    status:         'ATIVO' as 'ATIVO' | 'VENCIDO' | 'RENOVADO' | 'CANCELADO',
+  }
+
+  const [form, setForm] = useState(formInicial)
+
+  function abrirForm() {
+    setForm({ ...formInicial, dataEmissao: new Date().toISOString().split('T')[0] })
+    setErro('')
+    setAberto(true)
+  }
 
   function set(k: keyof typeof form, v: string) {
     setForm(f => ({ ...f, [k]: v }))
@@ -91,7 +99,9 @@ export function CadastrarCertificado({ clienteId, modelos }: Props) {
       })
       const data = await res.json()
       if (!res.ok) { setErro(data.erro ?? 'Erro ao salvar'); return }
-      setAberto(false)
+      // Reseta o form para cadastrar outro certificado sem fechar o modal
+      setForm({ ...formInicial, dataEmissao: new Date().toISOString().split('T')[0] })
+      setErro('✓ Certificado salvo! Pode cadastrar outro ou fechar.')
       router.refresh()
     } catch { setErro('Erro de conexão') }
     finally { setSalvando(false) }
@@ -99,7 +109,7 @@ export function CadastrarCertificado({ clienteId, modelos }: Props) {
 
   return (
     <>
-      <button onClick={() => setAberto(true)}
+      <button onClick={abrirForm}
         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
         <Plus className="w-3.5 h-3.5" /> Cadastrar Certificado
       </button>
@@ -181,7 +191,11 @@ export function CadastrarCertificado({ clienteId, modelos }: Props) {
                 </div>
               </div>
 
-              {erro && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{erro}</p>}
+              {erro && (
+                <p className={`text-sm rounded-lg px-3 py-2 ${erro.startsWith('✓') ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                  {erro}
+                </p>
+              )}
 
               <div className="flex gap-2 pt-1">
                 <button type="submit" disabled={salvando}
@@ -189,9 +203,9 @@ export function CadastrarCertificado({ clienteId, modelos }: Props) {
                   {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {salvando ? 'Salvando...' : 'Salvar Certificado'}
                 </button>
-                <button type="button" onClick={() => setAberto(false)}
+                <button type="button" onClick={() => { setAberto(false); setErro('') }}
                   className="px-4 py-2.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
-                  Cancelar
+                  Fechar
                 </button>
               </div>
             </form>

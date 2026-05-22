@@ -139,7 +139,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Modelo</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Vencimento</th>
                     <th className="text-right px-4 py-3 font-medium text-gray-600">Valor</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Pedido</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Protocolo</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">AGR</th>
                     <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
                     <th className="text-center px-4 py-3 font-medium text-gray-600">Renovação</th>
@@ -176,7 +176,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                           {formatarMoeda(Number(cert.pedido?.valorFinal ?? 0))}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                          {cert.pedido?.numeroCompra ?? '—'}
+                          {cert.numeroSerie ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-600">
                           {cert.pedido?.agr ?? '—'}
