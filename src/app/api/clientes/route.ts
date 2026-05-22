@@ -26,6 +26,7 @@ const schemaCliente = z.object({
   estado: z.string().optional(),
   observacoes: z.string().optional(),
   parceiroId: z.string().optional(),
+  grupo: z.string().optional(),
 })
 
 export async function GET(req: NextRequest) {

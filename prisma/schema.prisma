@@ -144,6 +144,7 @@ model Cliente {
   cidade         String?
   estado         String?
   observacoes    String?
+  grupo          String?
   pisNis         String?
   ddd            String?
   ativo          Boolean    @default(true)

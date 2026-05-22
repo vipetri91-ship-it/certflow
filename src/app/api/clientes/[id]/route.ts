@@ -24,6 +24,7 @@ const schemaUpdate = z.object({
   estado: z.string().optional(),
   observacoes: z.string().optional(),
   parceiroId: z.string().optional().nullable(),
+  grupo: z.string().optional().nullable(),
   ativo: z.boolean().optional(),
 })
 

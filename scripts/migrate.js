@@ -56,6 +56,8 @@ async function migrate() {
     // Integração Banco Inter
     `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "interCobrancaId" TEXT`,
     `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "pixCopiaECola" TEXT`,
+    // Grupos de clientes
+    `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "grupo" TEXT`,
   ]
 
   for (const q of queries) {

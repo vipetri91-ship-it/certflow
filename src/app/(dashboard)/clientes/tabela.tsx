@@ -23,6 +23,7 @@ interface ClienteRow {
   celular?: string
   cpf?: string
   cnpj?: string
+  grupo?: string
   parceiro?: { nome: string }
   _count: { certificados: number }
 }
@@ -111,6 +112,7 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Cliente</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Documento</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Contato</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Grupo</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Parceiro</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Certs.</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Ações</th>
@@ -119,7 +121,7 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
             <tbody className="divide-y divide-gray-50">
               {clientes.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                     Nenhum cliente encontrado
                   </td>
                 </tr>
@@ -163,6 +165,11 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
                     <p className="text-xs text-gray-400">
                       {cliente.celular ? formatarTelefone(cliente.celular) : ''}
                     </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    {cliente.grupo
+                      ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">{cliente.grupo}</span>
+                      : <span className="text-gray-300 text-xs">—</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-xs">
                     {cliente.parceiro?.nome ?? '—'}
