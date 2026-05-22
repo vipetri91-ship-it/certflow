@@ -248,7 +248,7 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
             )}
           </Secao>
 
-          <Secao titulo="Contabilidade / Parceiro">
+          <Secao titulo="Contabilidade / Parceiro" defaultOpen>
             {cert.cliente.parceiro ? (
               <div className="grid grid-cols-2 gap-4 pt-1">
                 <Campo label="Nome" value={cert.cliente.parceiro.razaoSocial ?? cert.cliente.parceiro.nome} />
