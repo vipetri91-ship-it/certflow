@@ -78,7 +78,7 @@ function gerarMensagemEmail(dados: {
   <tr>
     <td style="background:linear-gradient(135deg,${corHeader},${corHeader}cc);padding:36px 40px 28px;text-align:center;">
       <div style="margin-bottom:14px;">
-        <img src="https://certflow-nine.vercel.app/logo-vg.png"
+        <img src="https://4uvdfywq1qlqpdri.public.blob.vercel-storage.com/vg-logo-jEQ8b69Sfi9ucfePhmxuMoHLc6BUCG.png"
           alt="V&G Certificação Digital" width="140" height="56"
           style="display:block;margin:0 auto;max-width:140px;height:auto;" />
       </div>
