@@ -159,8 +159,9 @@ function gerarMensagemEmail(dados: {
         <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#1e293b;">Vinicius Petri</p>
         <p style="margin:0 0 14px;font-size:12px;color:#64748b;">V&amp;G Certificação Digital — Parceiro Safeweb</p>
         <p style="margin:0;font-size:13px;color:#64748b;line-height:1.9;">
-          📞 <a href="tel:+5511943156015" style="color:#2563eb;text-decoration:none;">(11) 94315-6015</a><br>
-          💬 <a href="https://wa.me/5511933323003" style="color:#16a34a;text-decoration:none;">WhatsApp: (11) 93332-3003</a><br>
+          💬 <a href="https://wa.me/5511933323003" style="color:#16a34a;text-decoration:none;">WhatsApp: (11) 93332-3003 / (11) 94315-6015</a><br>
+          📸 <a href="https://instagram.com/vegcertificadora" style="color:#2563eb;text-decoration:none;">@vegcertificadora</a><br>
+          🌐 <a href="https://www.vegcertificadora.com.br" style="color:#2563eb;text-decoration:none;">www.vegcertificadora.com.br</a><br>
           ✉️ <a href="mailto:piracaia@vegcertificado.com.br" style="color:#2563eb;text-decoration:none;">piracaia@vegcertificado.com.br</a>
         </p>
       </div>
