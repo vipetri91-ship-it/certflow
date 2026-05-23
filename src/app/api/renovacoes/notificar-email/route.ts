@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { transporte } from '@/lib/email/transporte'
 import { z } from 'zod'
+import fs from 'fs'
+import path from 'path'
 
 const schema = z.object({
   certificadoId: z.string(),
@@ -78,8 +80,8 @@ function gerarMensagemEmail(dados: {
   <tr>
     <td style="background:linear-gradient(135deg,${corHeader},${corHeader}cc);padding:36px 40px 28px;text-align:center;">
       <div style="margin-bottom:14px;">
-        <img src="https://4uvdfywq1qlqpdri.public.blob.vercel-storage.com/vg-logo-jEQ8b69Sfi9ucfePhmxuMoHLc6BUCG.png"
-          alt="V&G Certificação Digital" width="140" height="auto"
+        <img src="cid:logo-vg@certflow"
+          alt="V&G Certificação Digital" width="140"
           style="display:block;margin:0 auto;max-width:140px;height:auto;" />
       </div>
       <div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;letter-spacing:1px;border:1px solid rgba(255,255,255,0.4);">
@@ -196,11 +198,20 @@ export async function POST(req: NextRequest) {
   const { assunto, html } = gerarMensagemEmail(parsed.data)
 
   try {
+    const logoPath = path.join(process.cwd(), 'public', 'logo-vg.png')
+    const logoContent = fs.readFileSync(logoPath)
+
     await transporte.sendMail({
       from: `"V&G Certificação Digital" <${process.env.SMTP_FROM ?? 'piracaia@vegcertificado.com.br'}>`,
       to: parsed.data.emailDestino,
       subject: assunto,
       html,
+      attachments: [{
+        filename: 'logo-vg.png',
+        content: logoContent,
+        cid: 'logo-vg@certflow',
+        contentType: 'image/png',
+      }],
     })
 
     // Registra no histórico de contatos
