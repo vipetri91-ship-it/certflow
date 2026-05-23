@@ -12,8 +12,10 @@ interface Mensagem {
 
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    SpeechRecognition: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    webkitSpeechRecognition: any
   }
 }
 
@@ -34,7 +36,8 @@ export function AssistenteWidget() {
   const mensagensRef  = useRef(mensagens)
   const vozAtivaRef   = useRef(vozAtiva)
   const enviandoRef   = useRef(enviando)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef       = useRef<HTMLTextAreaElement>(null)
 
@@ -161,7 +164,8 @@ export function AssistenteWidget() {
     rec.onerror  = () => setGravando(false)
     rec.onend    = () => setGravando(false)
 
-    rec.onresult = (event) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.trim()
       setGravando(false)
       if (!transcript) return
