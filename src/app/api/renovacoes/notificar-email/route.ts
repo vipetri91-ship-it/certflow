@@ -77,9 +77,10 @@ function gerarMensagemEmail(dados: {
   <!-- Header colorido por faixa -->
   <tr>
     <td style="background:linear-gradient(135deg,${corHeader},${corHeader}cc);padding:36px 40px 28px;text-align:center;">
-      <div style="background:rgba(255,255,255,0.15);border-radius:14px;display:inline-block;padding:10px 22px;margin-bottom:14px;border:1px solid rgba(255,255,255,0.3);">
-        <span style="font-size:20px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">V&amp;G</span>
-        <span style="font-size:11px;color:rgba(255,255,255,0.85);display:block;margin-top:2px;letter-spacing:3px;">CERTIFICAÇÃO DIGITAL</span>
+      <div style="margin-bottom:14px;">
+        <img src="https://4uvdfywq1qlqpdri.public.blob.vercel-storage.com/vg-logo-jEQ8b69Sfi9ucfePhmxuMoHLc6BUCG.png"
+          alt="V&G Certificação Digital" width="140" height="auto"
+          style="display:block;margin:0 auto;max-width:140px;height:auto;" />
       </div>
       <div style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;letter-spacing:1px;border:1px solid rgba(255,255,255,0.4);">
         ${badgeLabel}
