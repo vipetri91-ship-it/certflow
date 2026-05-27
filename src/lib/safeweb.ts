@@ -78,7 +78,7 @@ async function req(
   method: 'GET' | 'POST',
   path: string,
   body?: object,
-): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
+): Promise<{ ok: boolean; status: number; data: Record<string, unknown>; raw: string }> {
   const { baseUrl } = cfg()
   const token = await getToken()
 
@@ -91,8 +91,10 @@ async function req(
     ...(body ? { body: JSON.stringify(body) } : {}),
   })
 
-  const data = await res.json().catch(() => ({}))
-  return { ok: res.ok, status: res.status, data }
+  const raw = await res.text()
+  let data: Record<string, unknown> = {}
+  try { data = JSON.parse(raw) } catch { data = { _raw: raw } }
+  return { ok: res.ok, status: res.status, data, raw }
 }
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -177,8 +179,8 @@ export async function listarProdutos(): Promise<{
 }> {
   const { codigoAR } = cfg()
   try {
-    const { ok, data } = await req('GET', `/api/produtos?codigoAR=${codigoAR}`)
-    if (!ok) return { ok: false, erro: String(data.mensagem ?? 'Erro ao listar produtos') }
+    const { ok, status, data, raw } = await req('GET', `/api/produtos?codigoAR=${codigoAR}`)
+    if (!ok) return { ok: false, erro: `HTTP ${status}: ${data.mensagem ?? data.message ?? raw}` }
     const produtos = Array.isArray(data) ? data : (data.produtos as Record<string, unknown>[] ?? [])
     return { ok: true, produtos }
   } catch (err) {
