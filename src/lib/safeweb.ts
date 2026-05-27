@@ -19,9 +19,11 @@ function cfg() {
     ? (process.env.SAFEWEB_BASE_URL_HOMOLOG ?? 'https://h-pss.safewebpss.com.br/Service/Microservice')
     : (process.env.SAFEWEB_BASE_URL          ?? 'https://pss.safewebpss.com.br/Service/Microservice')
 
-  const codigoAR = process.env.SAFEWEB_CODIGO_AR ?? ''
+  const codigoAR          = process.env.SAFEWEB_CODIGO_AR            ?? ''
+  const cnpjAR            = process.env.SAFEWEB_CNPJ_AR              ?? ''
+  const attendancePlaceId = Number(process.env.SAFEWEB_ATTENDANCE_PLACE_ID ?? 0)
 
-  return { identificador, segredo, baseUrl, codigoAR, homolog }
+  return { identificador, segredo, baseUrl, codigoAR, cnpjAR, attendancePlaceId, homolog }
 }
 
 // ── Cache de token JWT ────────────────────────────────────────────────────────
@@ -125,7 +127,7 @@ export async function adicionarVideoconferencia(
     ?? `${process.env.NEXTAUTH_URL}/api/safeweb/webhook`
 
   try {
-    const { ok, data } = await req('POST', '/api/solicitacao/videoconferencia', {
+    const { ok, data } = await req('POST', '/Shared/Partner/api/Add/3', {
       cpf:            params.cpf,
       cnpj:           params.cnpj,
       nome:           params.nome,
@@ -149,8 +151,13 @@ export async function adicionarVideoconferencia(
 // Passo obrigatório após adicionarVideoconferencia — torna o protocolo visível no HOPE
 
 export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; erro?: string }> {
+  const { attendancePlaceId } = cfg()
   try {
-    const { ok, data } = await req('POST', '/api/hope/primeiraemissao', { protocolo })
+    const { ok, data } = await req('POST', '/Hope/Shared/api/integration/solicitation', {
+      protocol:            Number(protocolo),
+      attendancePlaceId,
+      aciRemocalCandidate: false,
+    })
     if (!ok) return { ok: false, erro: String(data.mensagem ?? data.message ?? 'Erro ao vincular ao HOPE') }
     return { ok: true }
   } catch (err) {
@@ -160,9 +167,17 @@ export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; 
 
 // ── 3. Cancelar Solicitação ───────────────────────────────────────────────────
 
-export async function cancelarSolicitacao(protocolo: string): Promise<{ ok: boolean; erro?: string }> {
+export async function cancelarSolicitacao(
+  protocolo: string,
+  idJustificativa = 4,
+): Promise<{ ok: boolean; erro?: string }> {
+  const { cnpjAR } = cfg()
   try {
-    const { ok, data } = await req('POST', '/api/solicitacao/cancelar', { protocolo })
+    const { ok, data } = await req('POST', '/Shared/Partner/api/CancelarSolicitacao', {
+      Protocolo:      Number(protocolo),
+      CnpjAR:         cnpjAR,
+      idJustificativa,
+    })
     if (!ok) return { ok: false, erro: String(data.mensagem ?? data.message ?? 'Erro ao cancelar') }
     return { ok: true }
   } catch (err) {
