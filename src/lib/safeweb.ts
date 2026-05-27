@@ -179,7 +179,7 @@ export async function listarProdutos(): Promise<{
 }> {
   const { codigoAR } = cfg()
   try {
-    const { ok, status, data, raw } = await req('GET', `/api/produtos?codigoAR=${codigoAR}`)
+    const { ok, status, data, raw } = await req('GET', `/Shared/Product/api/GetListProdutoByAR/${codigoAR}`)
     if (!ok) return { ok: false, erro: `HTTP ${status}: ${data.mensagem ?? data.message ?? raw}` }
     const produtos = Array.isArray(data) ? data : (data.produtos as Record<string, unknown>[] ?? [])
     return { ok: true, produtos }
