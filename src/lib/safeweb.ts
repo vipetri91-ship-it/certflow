@@ -187,14 +187,14 @@ export async function cancelarSolicitacao(
 
 // ── 4. Listar Produtos disponíveis para a AR ──────────────────────────────────
 
-export async function listarProdutos(): Promise<{
+export async function listarProdutos(idTipoEmissao = 3): Promise<{
   ok: boolean
   produtos?: Record<string, unknown>[]
   erro?: string
 }> {
-  const { codigoAR } = cfg()
+  const { cnpjAR } = cfg()
   try {
-    const { ok, status, data, raw } = await req('GET', `/Shared/Product/api/GetListProdutoByAR/${codigoAR}`)
+    const { ok, status, data, raw } = await req('GET', `/Shared/Product/api/GetListProdutoByAR/${idTipoEmissao}/${cnpjAR}`)
     if (!ok) return { ok: false, erro: `HTTP ${status}: ${data.mensagem ?? data.message ?? raw}` }
     const produtos = Array.isArray(data) ? data : (data.produtos as Record<string, unknown>[] ?? [])
     return { ok: true, produtos }
