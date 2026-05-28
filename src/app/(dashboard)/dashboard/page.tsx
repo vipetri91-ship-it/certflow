@@ -246,13 +246,17 @@ export default async function DashboardPage({ searchParams }: Props) {
                 />
               )}
 
-              {/* 2 — Contas a Receber */}
-              <WidgetFinanceiro
-                aReceber={dados.aReceber}
-                aReceberVencidos={dados.aReceberVencidos}
-                aReceberQtd={dados.aReceberQtd}
-                aReceberVencidosQtd={dados.aReceberVencidosQtd}
-              />
+              {/* 2 — Pedidos em Aberto (operador/AGR) ou Contas a Receber (outros) */}
+              {session.user.role === 'OPERADOR' ? (
+                <PedidosAbertos />
+              ) : (
+                <WidgetFinanceiro
+                  aReceber={dados.aReceber}
+                  aReceberVencidos={dados.aReceberVencidos}
+                  aReceberQtd={dados.aReceberQtd}
+                  aReceberVencidosQtd={dados.aReceberVencidosQtd}
+                />
+              )}
 
               {/* 3 — Contas a Pagar (admin/gerente) ou Agenda Pessoal (outros) */}
               {isAdmin ? (
@@ -266,9 +270,16 @@ export default async function DashboardPage({ searchParams }: Props) {
                 <WidgetAgendaPessoal />
               )}
 
-              {/* 4 — Agenda Pessoal (admin/gerente) ou Pedidos em Aberto (outros) */}
+              {/* 4 — Agenda Pessoal (admin/gerente), Contas a Receber (operador/AGR) ou Pedidos em Aberto (outros) */}
               {isAdmin ? (
                 <WidgetAgendaPessoal />
+              ) : session.user.role === 'OPERADOR' ? (
+                <WidgetFinanceiro
+                  aReceber={dados.aReceber}
+                  aReceberVencidos={dados.aReceberVencidos}
+                  aReceberQtd={dados.aReceberQtd}
+                  aReceberVencidosQtd={dados.aReceberVencidosQtd}
+                />
               ) : (
                 <PedidosAbertos />
               )}
