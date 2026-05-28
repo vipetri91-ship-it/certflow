@@ -2,7 +2,7 @@ import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
 import { ClientesTabela } from './tabela'
 import Link from 'next/link'
-import { UserPlus } from 'lucide-react'
+import { UserPlus, Upload } from 'lucide-react'
 
 interface Props {
   searchParams: Promise<{ q?: string; tipo?: string; page?: string }>
@@ -53,13 +53,22 @@ export default async function ClientesPage({ searchParams }: Props) {
           <p className="text-sm text-gray-500">
             {total.toLocaleString('pt-BR')} cliente{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
-          <Link
-            href="/clientes/novo"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
-          >
-            <UserPlus className="w-4 h-4" />
-            Novo Cliente
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/clientes/importar"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Link>
+            <Link
+              href="/clientes/novo"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+            >
+              <UserPlus className="w-4 h-4" />
+              Novo Cliente
+            </Link>
+          </div>
         </div>
 
         <ClientesTabela
