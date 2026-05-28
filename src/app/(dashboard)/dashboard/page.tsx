@@ -233,9 +233,11 @@ export default async function DashboardPage({ searchParams }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
               style={{ gridAutoRows: '288px' }}>
 
-              {/* 1 — Vendas (admin/gerente) ou E-mail (operador/visualizador) */}
-              {['OPERADOR', 'VISUALIZADOR'].includes(session.user.role) ? (
+              {/* 1 — Vendas (admin/gerente), Meta (operador/AGR) ou E-mail (visualizador) */}
+              {session.user.role === 'VISUALIZADOR' ? (
                 <WidgetEmail />
+              ) : session.user.role === 'OPERADOR' ? (
+                <WidgetMetaVendas vendasMes={dados.vendasMes} mesNome={mesNome} />
               ) : (
                 <KpiCarousel
                   slides={dados.slides}
