@@ -44,8 +44,10 @@ function parsarLinha(row: Record<string, unknown>): ClienteData | null {
   const docBruto   = limparDoc(row['CPF / CNPJ'])
   const cpfResp    = limparDoc(row['CPF Responsável'])
 
-  const cpf  = tipoPessoa === 'PF' ? docBruto  : cpfResp
-  const cnpj = tipoPessoa === 'PJ' ? docBruto  : null
+  // Para PJ: cpf field fica null (responsável pode ser de várias empresas — não é único)
+  // CPF do responsável vai para observações
+  const cpf  = tipoPessoa === 'PF' ? docBruto : null
+  const cnpj = tipoPessoa === 'PJ' ? docBruto : null
 
   // Sem documento válido: descarta
   if (!cpf && !cnpj) return null
@@ -80,7 +82,10 @@ function parsarLinha(row: Record<string, unknown>): ClienteData | null {
     bairro:         String(row['Bairro']      ?? '').trim() || null,
     cidade:         String(row['Município']   ?? '').trim() || null,
     estado:         String(row['UF']          ?? '').trim() || null,
-    observacoes:    montarObs(row),
+    observacoes:    [
+      cpfResp ? `CPF Responsável: ${cpfResp}` : '',
+      montarObs(row) ?? '',
+    ].filter(Boolean).join(' | ') || null,
   }
 }
 
