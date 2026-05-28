@@ -109,13 +109,42 @@ export async function POST(req: NextRequest) {
 
   const total = rows.length
   const erros: string[] = []
+
+  // 1a. Contar quantas vezes cada CPF Responsável aparece em PJs (para grupos)
+  const contagemCpfResp = new Map<string, string>() // cpf → nomeResponsavel
+  const cpfRespCount    = new Map<string, number>()
+  for (const row of rows) {
+    const tipo    = String(row['Tipo Pessoa'] ?? '').includes('Jurídica') ? 'PJ' : 'PF'
+    const cpfResp = limparDoc(row['CPF Responsável'])
+    if (tipo === 'PJ' && cpfResp) {
+      cpfRespCount.set(cpfResp, (cpfRespCount.get(cpfResp) ?? 0) + 1)
+      if (!contagemCpfResp.has(cpfResp)) {
+        contagemCpfResp.set(cpfResp, String(row['Nome Responsável'] ?? '').trim())
+      }
+    }
+  }
+  // CPFs que aparecem em 2+ empresas → viram grupos
+  const gruposPorCpf = new Map<string, string>()
+  for (const [cpf, count] of cpfRespCount) {
+    if (count >= 2) gruposPorCpf.set(cpf, contagemCpfResp.get(cpf) ?? cpf)
+  }
+
   const candidatos: ClienteData[] = []
 
   for (const row of rows) {
     try {
       const d = parsarLinha(row)
-      if (d) candidatos.push(d)
-      else erros.push(`Linha sem CPF/CNPJ válido: ${row['Razão Social'] ?? ''}`)
+      if (!d) { erros.push(`Linha sem CPF/CNPJ válido: ${row['Razão Social'] ?? ''}`); continue }
+
+      // Atribui grupo para PJ cujo responsável aparece em 2+ empresas
+      if (d.tipoPessoa === 'PJ') {
+        const cpfResp = limparDoc(row['CPF Responsável'])
+        if (cpfResp && gruposPorCpf.has(cpfResp)) {
+          d.grupo = gruposPorCpf.get(cpfResp)
+        }
+      }
+
+      candidatos.push(d)
     } catch (err) {
       erros.push(`${row['Razão Social'] ?? '?'}: ${String(err).slice(0, 100)}`)
     }
@@ -151,6 +180,8 @@ export async function POST(req: NextRequest) {
     novos.push(c)
   }
 
+  const totalGrupos = gruposPorCpf.size
+
   // 4. Modo simulação — não salva nada, só retorna o que aconteceria
   const simulacao = formData.get('simulacao') === 'true'
   if (simulacao) {
@@ -158,9 +189,11 @@ export async function POST(req: NextRequest) {
       total, simulacao: true,
       importados: novos.length,
       pulados,
+      totalGrupos,
+      grupos: [...gruposPorCpf.values()].sort().slice(0, 20),
       erros,
       amostra: novos.slice(0, 5).map(c => ({
-        nome: c.nome, tipoPessoa: c.tipoPessoa,
+        nome: c.nome, tipoPessoa: c.tipoPessoa, grupo: c.grupo,
         cpf: c.cpf, cnpj: c.cnpj, email: c.email, cidade: c.cidade,
       })),
     })
@@ -176,5 +209,5 @@ export async function POST(req: NextRequest) {
     importados += result.count
   }
 
-  return NextResponse.json({ total, importados, pulados, erros })
+  return NextResponse.json({ total, importados, pulados, totalGrupos, erros })
 }

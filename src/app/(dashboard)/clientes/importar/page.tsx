@@ -6,12 +6,14 @@ import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, Ar
 import Link from 'next/link'
 
 interface Resultado {
-  total:       number
-  importados:  number
-  pulados:     number
-  erros:       string[]
-  simulacao?:  boolean
-  amostra?:    { nome: string; tipoPessoa: string; cpf?: string; cnpj?: string; email?: string; cidade?: string }[]
+  total:        number
+  importados:   number
+  pulados:      number
+  totalGrupos?: number
+  grupos?:      string[]
+  erros:        string[]
+  simulacao?:   boolean
+  amostra?:     { nome: string; tipoPessoa: string; grupo?: string; cpf?: string; cnpj?: string; email?: string; cidade?: string }[]
 }
 
 export default function ImportarClientesPage() {
@@ -163,7 +165,7 @@ export default function ImportarClientesPage() {
               {isSimulacao ? 'Resultado da simulação' : 'Resultado da importação'}
             </h3>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="text-center p-3 bg-gray-50 dark:bg-slate-700/40 rounded-xl">
                 <p className="text-2xl font-bold text-gray-800 dark:text-white">{resultado.total}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Total na planilha</p>
@@ -176,7 +178,34 @@ export default function ImportarClientesPage() {
                 <p className="text-2xl font-bold text-yellow-600">{resultado.pulados}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Duplicatas</p>
               </div>
+              {(resultado.totalGrupos ?? 0) > 0 && (
+                <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                  <p className="text-2xl font-bold text-blue-600">{resultado.totalGrupos}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Grupos detectados</p>
+                </div>
+              )}
             </div>
+
+            {/* Grupos detectados */}
+            {isSimulacao && resultado.grupos && resultado.grupos.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">
+                  Grupos que serão criados (sócios com 2+ empresas):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {resultado.grupos.map((g, i) => (
+                    <span key={i} className="text-xs px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full font-medium">
+                      {g}
+                    </span>
+                  ))}
+                  {(resultado.totalGrupos ?? 0) > 20 && (
+                    <span className="text-xs px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full">
+                      +{(resultado.totalGrupos ?? 0) - 20} mais...
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Amostra de registros (simulação) */}
             {isSimulacao && resultado.amostra && resultado.amostra.length > 0 && (
