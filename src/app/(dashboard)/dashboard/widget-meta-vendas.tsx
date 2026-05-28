@@ -24,26 +24,22 @@ export function WidgetMetaVendas({ vendasMes, mesNome }: Props) {
         : '#2dd4bf'
 
   return (
-    <div className="relative bg-slate-800 rounded-2xl p-5 flex flex-col h-full overflow-hidden">
-      {/* Brilho de fundo */}
-      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full opacity-10"
-          style={{ background: cor, filter: 'blur(40px)' }} />
-      </div>
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-5 flex flex-col h-full overflow-hidden">
 
       {/* Header */}
-      <div className="relative shrink-0 mb-1">
-        <p className="text-slate-400 text-xs uppercase tracking-wide font-medium">Meta Mensal</p>
-        <p className="text-white font-bold text-sm">{mesNome}</p>
+      <div className="shrink-0 mb-1">
+        <p className="text-gray-400 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">Meta Mensal</p>
+        <p className="text-gray-700 dark:text-white font-bold text-sm">{mesNome}</p>
       </div>
 
       {/* Gauge SVG */}
-      <div className="relative flex-1 flex flex-col items-center justify-center min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
         <svg viewBox="0 0 200 115" className="w-full max-w-[200px]" style={{ overflow: 'visible' }}>
           {/* Trilha */}
           <path
             d="M 10 110 A 90 90 0 0 1 190 110"
-            fill="none" stroke="#334155" strokeWidth="14" strokeLinecap="round"
+            fill="none" stroke="#e5e7eb" strokeWidth="14" strokeLinecap="round"
+            className="dark:[stroke:#334155]"
           />
           {/* Progresso */}
           <path
@@ -58,7 +54,7 @@ export function WidgetMetaVendas({ vendasMes, mesNome }: Props) {
           />
 
           {/* Percentual central */}
-          <text x="100" y="92" textAnchor="middle" fill="white"
+          <text x="100" y="92" textAnchor="middle" fill="#111827"
             fontSize="32" fontWeight="bold" fontFamily="inherit">
             {pct}%
           </text>
@@ -66,23 +62,23 @@ export function WidgetMetaVendas({ vendasMes, mesNome }: Props) {
 
         {/* Vendas / meta */}
         <div className="text-center -mt-2">
-          <p className="text-white text-2xl font-bold leading-tight">
+          <p className="text-gray-900 dark:text-white text-2xl font-bold leading-tight">
             {vendasMes}
-            <span className="text-slate-400 text-base font-normal"> / {META}</span>
+            <span className="text-gray-400 dark:text-slate-400 text-base font-normal"> / {META}</span>
           </p>
-          <p className="text-slate-400 text-xs mt-0.5">vendas no mês</p>
+          <p className="text-gray-400 dark:text-slate-400 text-xs mt-0.5">vendas no mês</p>
         </div>
       </div>
 
       {/* Rodapé */}
-      <div className="relative shrink-0 mt-3 pt-3 border-t border-slate-700">
+      <div className="shrink-0 mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
         {atingida ? (
-          <p className="text-green-400 text-xs font-semibold text-center">
+          <p className="text-green-600 text-xs font-semibold text-center">
             🎉 Meta atingida! Parabéns à equipe!
           </p>
         ) : (
-          <p className="text-slate-400 text-xs text-center">
-            Faltam <span className="text-white font-semibold">{faltam} vendas</span> para bater a meta
+          <p className="text-gray-400 dark:text-slate-400 text-xs text-center">
+            Faltam <span className="text-gray-800 dark:text-white font-semibold">{faltam} vendas</span> para bater a meta
           </p>
         )}
       </div>
