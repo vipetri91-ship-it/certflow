@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { UserPlus, Upload } from 'lucide-react'
 
 interface Props {
-  searchParams: Promise<{ q?: string; tipo?: string; page?: string }>
+  searchParams: Promise<{ q?: string; tipo?: string; grupo?: string; page?: string }>
 }
 
 export default async function ClientesPage({ searchParams }: Props) {
@@ -28,7 +28,8 @@ export default async function ClientesPage({ searchParams }: Props) {
           ],
         }
       : {}),
-    ...(params.tipo ? { tipoPessoa: params.tipo as 'PF' | 'PJ' } : {}),
+    ...(params.tipo  ? { tipoPessoa: params.tipo as 'PF' | 'PJ' } : {}),
+    ...(params.grupo ? { grupo: { contains: params.grupo, mode: 'insensitive' as const } } : {}),
   }
 
   const [clientes, total] = await Promise.all([

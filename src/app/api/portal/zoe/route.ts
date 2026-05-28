@@ -57,6 +57,17 @@ const TOOLS: Anthropic.Messages.Tool[] = [
       properties: {},
     },
   },
+  {
+    name: 'buscar_grupo',
+    description: 'Lista todas as empresas de um grupo empresarial (sócio com várias empresas). Use quando perguntarem "quais empresas são do grupo X", "empresas do sócio Y", "grupo Jafé" etc.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        grupo: { type: 'string', description: 'Nome do grupo ou do sócio responsável' },
+      },
+      required: ['grupo'],
+    },
+  },
 ]
 
 async function executarFerramenta(nome: string, input: Record<string, string>, parceiroId: string): Promise<string> {
@@ -172,6 +183,41 @@ async function executarFerramenta(nome: string, input: Record<string, string>, p
   🟡 Vencem em até 60 dias: ${venc60}
 
 **Indicações este mês:** ${pedidosMes}`
+  }
+
+  if (nome === 'buscar_grupo') {
+    const { grupo } = input
+    if (!grupo?.trim()) return 'Nome do grupo não informado.'
+
+    const empresas = await prisma.cliente.findMany({
+      where: {
+        parceiroId,
+        grupo: { contains: grupo.trim(), mode: 'insensitive' },
+        tipoPessoa: 'PJ',
+      },
+      include: {
+        certificados: {
+          where: { status: 'ATIVO' },
+          include: { modelo: { select: { nome: true } } },
+          orderBy: { dataVencimento: 'asc' },
+          take: 1,
+        },
+      },
+      orderBy: { nome: 'asc' },
+    })
+
+    if (empresas.length === 0) return `Nenhuma empresa encontrada no grupo "${grupo}".`
+
+    const lista = empresas.map(e => {
+      const doc = e.cnpj ? `CNPJ: ${fmtCNPJ(e.cnpj)}` : ''
+      const cert = e.certificados[0]
+      const certInfo = cert
+        ? `Cert: ${cert.modelo.nome} — vence ${fmtData(cert.dataVencimento)} ${urgenciaLabel(diasRestantes(cert.dataVencimento))}`
+        : 'Sem certificado ativo'
+      return `• **${e.razaoSocial || e.nome}** ${doc ? `(${doc})` : ''}\n  ${certInfo}`
+    }).join('\n')
+
+    return `## 🏢 Grupo "${grupo}" — ${empresas.length} empresa${empresas.length !== 1 ? 's' : ''}\n\n${lista}`
   }
 
   return 'Ferramenta não reconhecida.'

@@ -42,7 +42,8 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [busca, setBusca] = useState(searchParams.get('q') ?? '')
-  const [tipo, setTipo] = useState(searchParams.get('tipo') ?? '')
+  const [tipo,  setTipo]  = useState(searchParams.get('tipo')  ?? '')
+  const [grupo, setGrupo] = useState(searchParams.get('grupo') ?? '')
   const [, startTransition] = useTransition()
 
   function navegar(novoParams: Record<string, string>) {
@@ -55,9 +56,9 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
     startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }
 
-  function aplicarBusca(e: React.FormEvent) {
+  function aplicarBusca(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    navegar({ q: busca, tipo })
+    navegar({ q: busca, tipo, grupo })
   }
 
   const totalPaginas = Math.ceil(total / porPagina)
@@ -94,6 +95,17 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
             <option value="PF">Pessoa Física</option>
             <option value="PJ">Pessoa Jurídica</option>
           </select>
+        </div>
+
+        <div className="w-44">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Grupo</label>
+          <input
+            type="text"
+            value={grupo}
+            onChange={(e) => setGrupo(e.target.value)}
+            placeholder="Nome do grupo..."
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         <button
