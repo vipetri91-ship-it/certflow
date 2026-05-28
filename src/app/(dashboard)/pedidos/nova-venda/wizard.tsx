@@ -258,21 +258,34 @@ export function NovaVendaWizard({
     const cpf = dados.cpfResponsavel.replace(/\D/g,'')
     if (cpf.length !== 11) return
     try {
-      const res = await fetch(`/api/clientes?search=${cpf}&limit=1`)
+      const res = await fetch(`/api/clientes?q=${cpf}&limit=1`)
       const data = await res.json()
       const c = data.clientes?.[0]
       if (c?.cpf === cpf) {
         setDados(d => ({
-          ...d, clienteId: c.id, nomeResponsavel: c.nome, nome: c.nome,
-          dataNascimento: c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNascimento,
-          email: c.email ?? d.email, ddd: c.ddd ?? d.ddd, telefone: c.celular ?? d.telefone,
-          cep: c.cep ? fmtCEP(c.cep) : d.cep, logradouro: c.logradouro ?? d.logradouro,
-          numero: c.numero ?? d.numero, bairro: c.bairro ?? d.bairro,
-          municipio: c.cidade ?? d.municipio, estado: c.estado ?? d.estado,
-          validado: true,
+          ...d,
+          // Para PF: preenche clienteId e todos os dados
+          ...(d.tipoPessoa === 'PF' ? { clienteId: c.id, validado: true } : {}),
+          // Para ambos: preenche nome responsável e data de nascimento
+          nomeResponsavel: c.nome ?? d.nomeResponsavel,
+          nome:            c.nome ?? d.nome,
+          dataNascimento:  c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNascimento,
+          dataNasc:        c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNasc,
+          email:     c.email    ?? d.email,
+          ddd:       c.ddd      ?? d.ddd,
+          telefone:  c.celular  ?? d.telefone,
+          pisNis:    c.pisNis   ?? d.pisNis,
+          cep:       c.cep      ? fmtCEP(c.cep) : d.cep,
+          logradouro: c.logradouro ?? d.logradouro,
+          numero:    c.numero   ?? d.numero,
+          bairro:    c.bairro   ?? d.bairro,
+          municipio: c.cidade   ?? d.municipio,
+          estado:    c.estado   ?? d.estado,
         }))
-        fetch(`/api/pedidos?clienteId=${c.id}&limit=5`)
-          .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
+        if (c.tipoPessoa === 'PF') {
+          fetch(`/api/pedidos?clienteId=${c.id}&limit=5`)
+            .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
+        }
       }
     } catch {}
   }
@@ -475,7 +488,7 @@ export function NovaVendaWizard({
               <Campo label={dados.tipoPessoa === 'PJ' ? 'CPF do Responsável' : 'CPF'} required>
                 <Input value={dados.cpfResponsavel}
                   onChange={e => { set('cpfResponsavel', fmtCPF(e.target.value)); set('validado', false) }}
-                  onBlur={() => dados.tipoPessoa === 'PF' && buscarClientePorCPF()}
+                  onBlur={() => buscarClientePorCPF()}
                   placeholder="000.000.000-00" maxLength={14} />
               </Campo>
               <Campo label="Data de Nascimento" required>
