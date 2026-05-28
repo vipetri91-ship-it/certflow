@@ -188,8 +188,15 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Link portal parceiro */}
+          <div className="mt-6 text-center">
+            <a href="/portal/login" className="text-xs text-gray-400 hover:text-blue-500 transition">
+              Sou parceiro → Acessar Portal de Parceiros
+            </a>
+          </div>
+
           {/* Rodapé mobile */}
-          <p className="text-center text-xs text-gray-400 mt-10 lg:hidden">
+          <p className="text-center text-xs text-gray-400 mt-6 lg:hidden">
             © {new Date().getFullYear()} V&G Certificado Digital
           </p>
         </div>

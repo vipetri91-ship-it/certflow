@@ -55,11 +55,7 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'relatorios:read',
   ],
   FINANCEIRO: [
-    'clientes:read',
-    'certificados:read',
-    'pedidos:read',
-    'financeiro:read', 'financeiro:write', 'financeiro:delete',
-    'relatorios:read',
+    'financeiro:read',
   ],
   VISUALIZADOR: [
     'clientes:read',

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Calendar, Plus, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { ListaEventos } from './lista-eventos'
 
 const AGR_CONFIG = {
   vinicius: { nome: 'Vinicius' },
@@ -12,6 +13,7 @@ const AGR_CONFIG = {
 const TIPO_CONFIG: Record<string, { label: string }> = {
   presencial:       { label: 'Presencial' },
   videoconferencia: { label: 'Videoconferência' },
+  externo:          { label: 'Atendimento Externo' },
   bonificado:       { label: 'Bonificado' },
   pessoal:          { label: 'Pessoal/Reunião' },
   'pre-agendado':   { label: 'Pré-agendado' },
@@ -20,8 +22,10 @@ const TIPO_CONFIG: Record<string, { label: string }> = {
 const PREVIEW_CORES: Record<string, string> = {
   'vinicius-presencial':       'bg-green-700',
   'vinicius-videoconferencia': 'bg-green-400',
+  'vinicius-externo':          'bg-yellow-400',
   'arlen-presencial':          'bg-blue-800',
   'arlen-videoconferencia':    'bg-blue-400',
+  'arlen-externo':             'bg-rose-300',
   'ana-presencial':            'bg-purple-700',
   'ana-videoconferencia':      'bg-purple-400',
   'bonificado':                'bg-orange-500',
@@ -30,7 +34,7 @@ const PREVIEW_CORES: Record<string, string> = {
 }
 
 type AGRType = 'vinicius' | 'ana' | 'arlen'
-type TipoType = 'presencial' | 'videoconferencia' | 'bonificado' | 'pessoal' | 'pre-agendado'
+type TipoType = 'presencial' | 'videoconferencia' | 'externo' | 'bonificado' | 'pessoal' | 'pre-agendado'
 
 interface EventoForm {
   titulo: string
@@ -147,7 +151,7 @@ export function AgendaView({ conectado, calendarios }: Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Formulário */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="px-5 py-4 border-b border-gray-100">
@@ -190,6 +194,7 @@ export function AgendaView({ conectado, calendarios }: Props) {
                 >
                   <option value="presencial">Presencial</option>
                   <option value="videoconferencia">Videoconferência</option>
+                  <option value="externo">Atendimento Externo</option>
                   <option value="bonificado">Bonificado (laranja)</option>
                   <option value="pre-agendado">Pré-agendado (cinza)</option>
                   <option value="pessoal">Pessoal/Reunião (vermelho)</option>
@@ -278,6 +283,11 @@ export function AgendaView({ conectado, calendarios }: Props) {
           </form>
         </div>
 
+        {/* Eventos da semana — clicáveis com editor */}
+        <div className="xl:col-span-1">
+          <ListaEventos />
+        </div>
+
         {/* Preview */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="px-5 py-4 border-b border-gray-100">
@@ -308,6 +318,12 @@ export function AgendaView({ conectado, calendarios }: Props) {
                         <div className={`w-3 h-3 rounded-sm shrink-0 ${PREVIEW_CORES[`${agr}-videoconferencia`]}`} />
                         <span className="text-xs text-gray-500">Videoconferência</span>
                       </div>
+                      {PREVIEW_CORES[`${agr}-externo`] && (
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-sm shrink-0 ${PREVIEW_CORES[`${agr}-externo`]}`} />
+                          <span className="text-xs text-gray-500">Externo</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

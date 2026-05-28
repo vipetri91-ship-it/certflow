@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   X, ChevronDown, ChevronUp, Plus, Loader2, Send, MessageSquare,
-  Phone, Mail, Building2, RefreshCw, Calendar, User, Clock, CheckCircle2
+  Phone, Mail, Building2, RefreshCw, Calendar, User, Clock, CheckCircle2, XCircle
 } from 'lucide-react'
 
 interface Certificado {
@@ -66,6 +67,7 @@ function Campo({ label, value }: { label: string; value?: string | null }) {
 }
 
 export function DetalheRenovacao({ cert, onFechar }: Props) {
+  const router = useRouter()
   const [historico, setHistorico] = useState<HistoricoItem[]>([])
   const [carregandoHist, setCarregandoHist] = useState(false)
   const [novaObs, setNovaObs] = useState('')
@@ -79,6 +81,10 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
   const [enviandoWA, setEnviandoWA] = useState(false)
   const [waEnviado, setWaEnviado] = useState(false)
   const [erroWA, setErroWA] = useState('')
+
+  const [confirmandoNaoRenovar, setConfirmandoNaoRenovar] = useState(false)
+  const [marcandoNaoRenovar, setMarcandoNaoRenovar] = useState(false)
+  const [motivoNaoRenovar, setMotivoNaoRenovar] = useState('')
 
   const vencido = cert.diasRestantes < 0
   const corFaixa = vencido ? 'bg-red-600' : cert.diasRestantes <= 7 ? 'bg-orange-500' : cert.diasRestantes <= 15 ? 'bg-yellow-500' : 'bg-green-600'
@@ -143,6 +149,25 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
     finally { setEnviandoWA(false) }
   }
 
+  async function marcarNaoRenovar() {
+    setMarcandoNaoRenovar(true)
+    try {
+      const obs = motivoNaoRenovar.trim()
+        ? motivoNaoRenovar.trim()
+        : 'Marcado como Não Renovado.'
+      const res = await fetch(`/api/certificados/${cert.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'VENCIDO', observacao: obs }),
+      })
+      if (res.ok) {
+        onFechar()
+        router.refresh()
+      }
+    } catch {}
+    finally { setMarcandoNaoRenovar(false) }
+  }
+
   async function enviarEmail() {
     if (!cert.cliente.email) { setErroEmail('Cliente sem e-mail cadastrado'); return }
     setEnviandoEmail(true)
@@ -191,7 +216,6 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
               <RefreshCw className="w-3.5 h-3.5" /> Renovar
             </a>
 
-            {/* WhatsApp via Digisac — envia e registra no histórico */}
             <button onClick={enviarWA} disabled={enviandoWA || (!cert.cliente.celular && !cert.cliente.telefone)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-semibold transition disabled:opacity-50">
               {enviandoWA ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : waEnviado ? <CheckCircle2 className="w-3.5 h-3.5" /> : <MessageSquare className="w-3.5 h-3.5" />}
@@ -203,11 +227,42 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
               {enviandoEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : emailEnviado ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
               {emailEnviado ? 'E-mail enviado!' : 'E-mail'}
             </button>
+
+            <button onClick={() => setConfirmandoNaoRenovar(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-black/20 hover:bg-black/30 rounded-lg text-xs font-semibold transition ml-auto">
+              <XCircle className="w-3.5 h-3.5" /> Não Renovou
+            </button>
           </div>
           {erroWA    && <p className="text-xs text-white/80 mt-1">⚠️ WhatsApp: {erroWA}</p>}
           {erroEmail && <p className="text-xs text-white/80 mt-1">⚠️ E-mail: {erroEmail}</p>}
           {!cert.cliente.celular && !cert.cliente.telefone && <p className="text-xs text-white/60 mt-1">⚠️ Sem telefone cadastrado</p>}
           {!cert.cliente.email && <p className="text-xs text-white/60 mt-1">⚠️ Sem e-mail cadastrado</p>}
+
+          {/* Painel de confirmação: Não Renovou */}
+          {confirmandoNaoRenovar && (
+            <div className="mt-3 bg-black/20 rounded-xl p-3 space-y-2">
+              <p className="text-xs text-white font-semibold">Confirmar: este cliente não vai renovar?</p>
+              <p className="text-xs text-white/70">O certificado sairá do controle de vencimentos e irá para a aba "Não Renovados".</p>
+              <textarea
+                value={motivoNaoRenovar}
+                onChange={e => setMotivoNaoRenovar(e.target.value)}
+                placeholder="Motivo (opcional): encerrou empresa, renovou em outro lugar..."
+                rows={2}
+                className="w-full px-2.5 py-1.5 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-white/50 resize-none"
+              />
+              <div className="flex gap-2">
+                <button onClick={marcarNaoRenovar} disabled={marcandoNaoRenovar}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-red-700 font-semibold rounded-lg text-xs hover:bg-red-50 disabled:opacity-50 transition">
+                  {marcandoNaoRenovar ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                  Confirmar Não Renovou
+                </button>
+                <button onClick={() => { setConfirmandoNaoRenovar(false); setMotivoNaoRenovar('') }}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white transition">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Conteúdo com scroll */}

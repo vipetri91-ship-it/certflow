@@ -58,6 +58,87 @@ async function migrate() {
     `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "pixCopiaECola" TEXT`,
     // Grupos de clientes
     `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "grupo" TEXT`,
+    // Integração Safeweb — status do último evento recebido via webhook
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "safewebStatus" TEXT`,
+    // Módulo Parceiros — campos extras
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "nomeFantasia" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "nivel" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "tipoParceria" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "renovacoes" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "responsavelId" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "contadorResponsavel" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "pessoaContato" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "emailAlternativo" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "telefone2" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "informacoesEnvio" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "tipoComissao" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "diaPagamento" INTEGER`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "loginParceiro" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "senhaParceiro" TEXT`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "statusPainel" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "permissoesPainel" JSONB`,
+    // Unique em loginParceiro (ignora se já existir)
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'parceiros_loginParceiro_key') THEN ALTER TABLE "parceiros" ADD CONSTRAINT "parceiros_loginParceiro_key" UNIQUE ("loginParceiro"); END IF; END $$`,
+    // Tabela de contatos do parceiro
+    `CREATE TABLE IF NOT EXISTS "contatos_parceiro" (
+      "id" TEXT NOT NULL,
+      "parceiroId" TEXT NOT NULL,
+      "nome" TEXT NOT NULL,
+      "cpf" TEXT,
+      "cargo" TEXT,
+      "dataNascimento" TIMESTAMP(3),
+      "telefone" TEXT,
+      "email" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "contatos_parceiro_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "contatos_parceiro_parceiroId_fkey" FOREIGN KEY ("parceiroId") REFERENCES "parceiros"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`,
+    // Comissões — novos campos
+    `ALTER TABLE "comissoes" ALTER COLUMN "percentual" DROP NOT NULL`,
+    `ALTER TABLE "comissoes" ADD COLUMN IF NOT EXISTS "valorCusto" DECIMAL(10,2)`,
+    `ALTER TABLE "comissoes" ADD COLUMN IF NOT EXISTS "valorCliente" DECIMAL(10,2)`,
+    // Notícias / Comunicados
+    `CREATE TABLE IF NOT EXISTS "noticias" (
+      "id" TEXT NOT NULL,
+      "titulo" TEXT NOT NULL,
+      "resumo" TEXT,
+      "conteudo" TEXT NOT NULL,
+      "categoria" TEXT NOT NULL DEFAULT 'Avisos',
+      "publicada" BOOLEAN NOT NULL DEFAULT false,
+      "fixada" BOOLEAN NOT NULL DEFAULT false,
+      "autorNome" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "noticias_pkey" PRIMARY KEY ("id")
+    )`,
+    // SST — Segurança e Saúde no Trabalho
+    `CREATE TABLE IF NOT EXISTS "sst_historico" (
+      "id" TEXT NOT NULL,
+      "leadId" TEXT NOT NULL,
+      "texto" TEXT NOT NULL,
+      "autorNome" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "sst_historico_pkey" PRIMARY KEY ("id")
+    )`,
+    `CREATE TABLE IF NOT EXISTS "sst_leads" (
+      "id" TEXT NOT NULL,
+      "nome" TEXT NOT NULL,
+      "empresa" TEXT,
+      "cnpj" TEXT,
+      "telefone" TEXT,
+      "email" TEXT,
+      "funcionarios" INTEGER,
+      "laudos" TEXT,
+      "valorEstimado" DECIMAL(10,2),
+      "parcelas" INTEGER,
+      "origem" TEXT,
+      "etapa" TEXT NOT NULL DEFAULT 'PROSPECCAO',
+      "observacoes" TEXT,
+      "responsavelNome" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "sst_leads_pkey" PRIMARY KEY ("id")
+    )`,
   ]
 
   for (const q of queries) {

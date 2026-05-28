@@ -25,7 +25,7 @@ export default async function PedidosPage() {
   return (
     <div>
       <Header titulo="Pedidos de Venda" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 lg:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''}</p>
           <Link
@@ -39,7 +39,7 @@ export default async function PedidosPage() {
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Nº Pedido</th>

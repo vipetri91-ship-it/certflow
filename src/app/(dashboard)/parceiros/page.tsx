@@ -17,7 +17,7 @@ export default async function ParceirosPage() {
   return (
     <div>
       <Header titulo="Parceiros Indicadores" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 lg:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">{parceiros.length} parceiro{parceiros.length !== 1 ? 's' : ''} ativo{parceiros.length !== 1 ? 's' : ''}</p>
           <Link

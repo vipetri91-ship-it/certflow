@@ -4,12 +4,14 @@ import { redirect } from 'next/navigation'
 import { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
 import { PainelAGR } from './painel-agr'
 import { VencimentosWidget } from './vencimentos-widget'
-import { CalendarioMini } from './calendario-mini'
+import { WidgetAgendaPessoal } from './widget-agenda-pessoal'
 import { PedidosAbertos } from './pedidos-abertos'
 import { KpiCarousel } from './kpi-carousel'
 import { WidgetFinanceiro } from './widget-financeiro'
+import { WidgetFinanceiroPagar } from './widget-financeiro-pagar'
 import { WidgetRFB } from './widget-rfb'
 import { WidgetCalculadora } from './widget-calculadora'
+import { WidgetMetaVendas } from './widget-meta-vendas'
 import { WidgetEmail } from './widget-email'
 import { Header } from '@/components/header'
 import { MetaCelebracao } from '@/components/meta-celebracao'
@@ -57,6 +59,10 @@ async function getDashboardData() {
     aReceberVencidosAgg,
     aReceberContagemAgg,
     aReceberVencidosContagem,
+    aPagarAgg,
+    aPagarVencidosAgg,
+    aPagarContagemAgg,
+    aPagarVencidosContagem,
   ] = await Promise.all([
     prisma.pedido.count({ where: { createdAt: { gte: inicioDia,   lte: fimDia   }, status: { not: 'CANCELADO' } } }),
     prisma.pedido.count({ where: { createdAt: { gte: inicioSemana,lte: fimSemana}, status: { not: 'CANCELADO' } } }),
@@ -75,14 +81,14 @@ async function getDashboardData() {
     buscarPedidos(inicioSemana, fimSemana, 500),
     buscarPedidos(inicioMes,    fimMes,    500),
     buscarPedidos(inicioAno,    fimAno,    1000),
-    // Contas a receber: total pendente (todos os meses)
     prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
-    // Contas vencidas (pendente + vencimento < hoje)
     prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
-    // Quantidade de contas pendentes
     prisma.lancamento.count({ where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
-    // Quantidade de contas vencidas
     prisma.lancamento.count({ where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE' } }),
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
+    prisma.lancamento.count({ where: { tipo: 'PAGAR', status: 'PENDENTE' } }),
+    prisma.lancamento.count({ where: { tipo: 'PAGAR', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
   ])
 
   const diasDecorridos = Math.max(1, hoje.getDate())
@@ -121,6 +127,10 @@ async function getDashboardData() {
     aReceberVencidos:    Number(aReceberVencidosAgg._sum.valor  ?? 0),
     aReceberQtd:         aReceberContagemAgg,
     aReceberVencidosQtd: aReceberVencidosContagem,
+    aPagar:              Number(aPagarAgg._sum.valor            ?? 0),
+    aPagarVencidos:      Number(aPagarVencidosAgg._sum.valor    ?? 0),
+    aPagarQtd:           aPagarContagemAgg,
+    aPagarVencidosQtd:   aPagarVencidosContagem,
   }
 }
 
@@ -178,13 +188,13 @@ export default async function DashboardPage({ searchParams }: Props) {
   const params = await searchParams
   const tab = params.tab ?? 'producao'
 
-  const [dados, vencimentos, calendarConfig] = await Promise.all([
+  const [dados, vencimentos] = await Promise.all([
     getDashboardData(),
     getVencimentosData(),
-    prisma.configuracao.findUnique({ where: { chave: 'google_calendar_embed_url' } }),
   ])
 
-  const isAdmin = ['ADMIN', 'GERENTE'].includes(session.user.role)
+  const isAdmin  = ['ADMIN', 'GERENTE'].includes(session.user.role)
+  const mesNome  = new Date().toLocaleDateString('pt-BR', { month: 'long' })
 
   return (
     <div className="flex flex-col h-full bg-[#EEF2FF] dark:bg-slate-900">
@@ -242,14 +252,29 @@ export default async function DashboardPage({ searchParams }: Props) {
                 aReceberVencidosQtd={dados.aReceberVencidosQtd}
               />
 
-              {/* 3 — Agenda */}
-              <CalendarioMini calendarUrl={calendarConfig?.valor ?? undefined} />
+              {/* 3 — Contas a Pagar (admin/gerente) ou Agenda Pessoal (outros) */}
+              {isAdmin ? (
+                <WidgetFinanceiroPagar
+                  aPagar={dados.aPagar}
+                  aPagarVencidos={dados.aPagarVencidos}
+                  aPagarQtd={dados.aPagarQtd}
+                  aPagarVencidosQtd={dados.aPagarVencidosQtd}
+                />
+              ) : (
+                <WidgetAgendaPessoal />
+              )}
 
-              {/* 4 — Pedidos em Aberto */}
-              <PedidosAbertos />
+              {/* 4 — Agenda Pessoal (admin/gerente) ou Pedidos em Aberto (outros) */}
+              {isAdmin ? (
+                <WidgetAgendaPessoal />
+              ) : (
+                <PedidosAbertos />
+              )}
 
-              {/* 5 — Responsável RFB */}
-              <WidgetRFB />
+              {/* 5 — Meta de Vendas (admin/gerente) ou RFB (outros) */}
+              {isAdmin
+                ? <WidgetMetaVendas vendasMes={dados.vendasMes} mesNome={mesNome} />
+                : <WidgetRFB />}
               {/* 6 — Calculadora de deslocamento */}
               <WidgetCalculadora />
             </div>

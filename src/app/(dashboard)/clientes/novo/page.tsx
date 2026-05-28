@@ -97,7 +97,8 @@ export default function NovoClientePage() {
         ...f,
         razaoSocial:  data.razaoSocial  ?? f.razaoSocial,
         nomeFantasia: data.nomeFantasia ?? f.nomeFantasia,
-        // Endereço da empresa
+        email:        data.email        ?? f.email,
+        telefone:     data.telefone     ?? f.telefone,
         cep:          data.cep         ? formatarCEP(data.cep)    : f.cep,
         logradouro:   data.logradouro  ?? f.logradouro,
         numero:       data.numero      ?? f.numero,
@@ -146,7 +147,7 @@ export default function NovoClientePage() {
 
     const payload = {
       tipoPessoa: tipo,
-      nome: tipo === 'PF' ? form.nome : (form.nomeFantasia || form.razaoSocial),
+      nome: tipo === 'PF' ? form.nome : form.razaoSocial,
       email: form.email || undefined,
       telefone: form.telefone || undefined,
       celular: form.celular || undefined,

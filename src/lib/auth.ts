@@ -2,6 +2,7 @@ import NextAuth, { type DefaultSession } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
+import { verificarRateLimit, registrarFalha, registrarSucesso } from './rate-limit'
 import type { Role } from '../generated/prisma/client'
 
 declare module 'next-auth' {
@@ -25,22 +26,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: 'E-mail', type: 'email' },
         password: { label: 'Senha', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null
+
+        // Rate limiting por IP (anti brute-force)
+        const ip = (request as Request & { headers?: { get?: (k: string) => string | null } })
+          ?.headers?.get?.('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+
+        const { bloqueado } = verificarRateLimit(ip)
+        if (bloqueado) {
+          throw new Error('Muitas tentativas. Tente novamente em 30 minutos.')
+        }
 
         const usuario = await prisma.usuario.findUnique({
           where: { email: credentials.email as string },
         })
 
-        if (!usuario || !usuario.ativo) return null
+        if (!usuario || !usuario.ativo) {
+          registrarFalha(ip)
+          return null
+        }
 
         const senhaValida = await bcrypt.compare(
           credentials.password as string,
           usuario.senha
         )
 
-        if (!senhaValida) return null
+        if (!senhaValida) {
+          registrarFalha(ip)
+          return null
+        }
 
+        registrarSucesso(ip)
         return {
           id: usuario.id,
           name: usuario.nome,

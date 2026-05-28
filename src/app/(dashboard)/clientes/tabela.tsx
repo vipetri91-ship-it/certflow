@@ -19,6 +19,8 @@ interface ClienteRow {
   id: string
   tipoPessoa: 'PF' | 'PJ'
   nome: string
+  razaoSocial?: string | null
+  nomeFantasia?: string | null
   email?: string
   celular?: string
   cpf?: string
@@ -144,9 +146,15 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{cliente.nome}</p>
+                        <p className="font-medium text-gray-900">
+                          {cliente.tipoPessoa === 'PJ'
+                            ? (cliente.razaoSocial || cliente.nome)
+                            : cliente.nome}
+                        </p>
                         <p className="text-xs text-gray-400">
-                          {cliente.tipoPessoa === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física'}
+                          {cliente.tipoPessoa === 'PJ'
+                            ? (cliente.nomeFantasia || 'Pessoa Jurídica')
+                            : 'Pessoa Física'}
                         </p>
                       </div>
                     </div>

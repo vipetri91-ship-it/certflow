@@ -7,6 +7,10 @@
     {
       "path": "/api/jobs/processar-emails",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/jobs/processar-whatsapp",
+      "schedule": "0 9 * * *"
     }
   ]
 }

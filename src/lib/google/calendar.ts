@@ -31,10 +31,11 @@ export interface EventoAgenda {
 }
 
 function getOAuth2Client() {
+  const baseUrl = (process.env.NEXTAUTH_URL ?? '').trim().replace(/\/$/, '')
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.NEXTAUTH_URL}/api/google/callback`
+    `${baseUrl}/api/google/callback`
   )
 }
 
@@ -113,10 +114,68 @@ export async function listarEventos(
     calendarId,
     timeMin: (inicio ?? new Date()).toISOString(),
     timeMax: fim?.toISOString(),
-    maxResults: 100,
+    maxResults: 200,
     singleEvents: true,
     orderBy: 'startTime',
   })
 
   return response.data.items ?? []
+}
+
+export async function atualizarEvento(
+  accessToken: string,
+  refreshToken: string,
+  eventId: string,
+  updates: {
+    titulo?: string
+    descricao?: string
+    localizacao?: string
+    agr?: AGR
+    tipo?: TipoAtendimento
+    inicio?: string
+    fim?: string
+  },
+  calendarId: string = 'primary'
+) {
+  const oauth2Client = getOAuth2Client()
+  oauth2Client.setCredentials({ access_token: accessToken, refresh_token: refreshToken })
+
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+
+  // Busca o evento atual para fazer patch
+  const atual = await calendar.events.get({ calendarId, eventId })
+
+  const chave = updates.tipo === 'bonificado' || updates.tipo === 'pessoal' || updates.tipo === 'pre-agendado'
+    ? (updates.tipo ?? '')
+    : `${updates.agr ?? 'vinicius'}-${updates.tipo ?? 'videoconferencia'}`
+
+  const colorId = (updates.agr || updates.tipo) ? (CORES_AGENDA[chave] ?? atual.data.colorId ?? '0') : undefined
+
+  const response = await calendar.events.patch({
+    calendarId,
+    eventId,
+    requestBody: {
+      ...(updates.titulo ? { summary: updates.titulo } : {}),
+      ...(updates.descricao !== undefined ? { description: updates.descricao } : {}),
+      ...(updates.localizacao !== undefined ? { location: updates.localizacao } : {}),
+      ...(colorId ? { colorId } : {}),
+      ...(updates.inicio ? { start: { dateTime: updates.inicio, timeZone: 'America/Sao_Paulo' } } : {}),
+      ...(updates.fim ? { end: { dateTime: updates.fim, timeZone: 'America/Sao_Paulo' } } : {}),
+    },
+  })
+
+  return response.data
+}
+
+export async function deletarEvento(
+  accessToken: string,
+  refreshToken: string,
+  eventId: string,
+  calendarId: string = 'primary'
+) {
+  const oauth2Client = getOAuth2Client()
+  oauth2Client.setCredentials({ access_token: accessToken, refresh_token: refreshToken })
+
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+  await calendar.events.delete({ calendarId, eventId })
 }

@@ -165,7 +165,7 @@ export default function EditarClientePage() {
     setErro('')
 
     const payload = {
-      nome: tipo === 'PF' ? form.nome : (form.nomeFantasia || form.razaoSocial),
+      nome: tipo === 'PF' ? form.nome : form.razaoSocial,
       email: form.email || undefined,
       telefone: form.telefone.replace(/\D/g,'') || undefined,
       celular: form.celular.replace(/\D/g,'') || undefined,

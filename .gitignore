@@ -36,6 +36,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# arquivos sensíveis gerados localmente
+.env.blob
+.env.local
+scripts/check-db.js
+scripts/upload-logo.js
+scripts/seed-*.js
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

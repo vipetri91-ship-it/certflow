@@ -100,10 +100,11 @@ model Usuario {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  sessoes           Sessao[]
-  auditoria         AuditLog[]
-  pedidos           Pedido[]
-  historicoContatos HistoricoContato[]
+  sessoes              Sessao[]
+  auditoria            AuditLog[]
+  pedidos              Pedido[]
+  historicoContatos    HistoricoContato[]
+  parceirosResponsavel Parceiro[]          @relation("ParceiroResponsavel")
 
   @@map("usuarios")
 }
@@ -199,26 +200,63 @@ model Parceiro {
   conta       String?
   tipoConta   String?
   chavePix    String?
-  observacoes String?
-  ativo       Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  observacoes          String?
+  ativo                Boolean    @default(true)
+  // Campos extras
+  nomeFantasia         String?
+  nivel                String?
+  tipoParceria         String?
+  renovacoes           String?
+  responsavelId        String?
+  contadorResponsavel  String?
+  pessoaContato        String?
+  emailAlternativo     String?
+  telefone2            String?
+  informacoesEnvio     String?    @db.Text
+  tipoComissao         String?
+  diaPagamento         Int?
+  loginParceiro        String?    @unique
+  senhaParceiro        String?
+  statusPainel         Boolean    @default(false)
+  permissoesPainel     Json?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 
-  clientes    Cliente[]
-  comissoes   Comissao[]
-  pedidos     Pedido[]
-  lancamentos Lancamento[]
+  responsavel      Usuario?          @relation("ParceiroResponsavel", fields: [responsavelId], references: [id])
+  clientes         Cliente[]
+  comissoes        Comissao[]
+  pedidos          Pedido[]
+  lancamentos      Lancamento[]
+  contatosParceiro ContatoParceiro[]
 
   @@map("parceiros")
+}
+
+model ContatoParceiro {
+  id             String    @id @default(cuid())
+  parceiroId     String
+  nome           String
+  cpf            String?
+  cargo          String?
+  dataNascimento DateTime?
+  telefone       String?
+  email          String?
+  createdAt      DateTime  @default(now())
+
+  parceiro Parceiro @relation(fields: [parceiroId], references: [id], onDelete: Cascade)
+
+  @@map("contatos_parceiro")
 }
 
 model Comissao {
   id         String   @id @default(cuid())
   parceiroId String
   modeloId   String
-  percentual Decimal  @db.Decimal(5, 2)
-  valorFixo  Decimal? @db.Decimal(10, 2)
-  ativo      Boolean  @default(true)
+  percentual   Decimal?  @db.Decimal(5, 2)
+  valorFixo    Decimal?  @db.Decimal(10, 2)
+  valorCusto   Decimal?  @db.Decimal(10, 2)
+  valorCliente Decimal?  @db.Decimal(10, 2)
+  ativo        Boolean   @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -306,6 +344,7 @@ model Pedido {
   atendimentoExterno   Boolean      @default(false)
   valorDeslocamento    Decimal?     @db.Decimal(10, 2)
   unidadeAtendimento   String?      // cidade / unidade do AGR
+  safewebStatus        String?      // último evento recebido via webhook Safeweb
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -438,4 +477,56 @@ model Configuracao {
   valor String @db.Text
 
   @@map("configuracoes")
+}
+
+// ─── NOTÍCIAS / COMUNICADOS ───────────────────────────────────────────────────
+
+model Noticia {
+  id        String   @id @default(cuid())
+  titulo    String
+  resumo    String?
+  conteudo  String   @db.Text
+  categoria String   @default("Avisos")
+  publicada Boolean  @default(false)
+  fixada    Boolean  @default(false)
+  autorNome String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("noticias")
+}
+
+// ─── SST — SEGURANÇA E SAÚDE NO TRABALHO ─────────────────────────────────────
+
+model SSTLead {
+  id              String         @id @default(cuid())
+  nome            String
+  empresa         String?
+  cnpj            String?
+  telefone        String?
+  email           String?
+  funcionarios    Int?
+  laudos          String?
+  valorEstimado   Decimal?       @db.Decimal(10, 2)
+  parcelas        Int?
+  origem          String?
+  etapa           String         @default("PROSPECCAO")
+  observacoes     String?        @db.Text
+  responsavelNome String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  historico       SSTHistorico[]
+
+  @@map("sst_leads")
+}
+
+model SSTHistorico {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      SSTLead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  texto     String   @db.Text
+  autorNome String?
+  createdAt DateTime @default(now())
+
+  @@map("sst_historico")
 }

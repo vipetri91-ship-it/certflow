@@ -24,22 +24,25 @@ const BOAS_VINDAS = `Olá! Sou a ZOE, assistente da V&G Certificado Digital. Pod
 export function AssistenteWidget() {
   const { data: session } = useSession()
 
-  const [aberto,     setAberto]     = useState(false)
-  const [mensagens,  setMensagens]  = useState<Mensagem[]>([{ role: 'assistant', content: BOAS_VINDAS }])
-  const [input,      setInput]      = useState('')
-  const [enviando,   setEnviando]   = useState(false)
-  const [gravando,   setGravando]   = useState(false)
-  const [vozAtiva,   setVozAtiva]   = useState(true)
-  const [suporteVoz, setSuporteVoz] = useState(false)
+  const [aberto,      setAberto]      = useState(false)
+  const [mensagens,   setMensagens]   = useState<Mensagem[]>([{ role: 'assistant', content: BOAS_VINDAS }])
+  const [input,       setInput]       = useState('')
+  const [enviando,    setEnviando]    = useState(false)
+  const [gravando,    setGravando]    = useState(false)
+  const [aguardando,  setAguardando]  = useState(false)
+  const [erroVoz,     setErroVoz]     = useState<string | null>(null)
+  const [vozAtiva,    setVozAtiva]    = useState(true)
+  const [suporteVoz,  setSuporteVoz]  = useState(false)
 
   // Refs para evitar closures desatualizados
-  const mensagensRef  = useRef(mensagens)
-  const vozAtivaRef   = useRef(vozAtiva)
-  const enviandoRef   = useRef(enviando)
+  const mensagensRef   = useRef(mensagens)
+  const vozAtivaRef    = useRef(vozAtiva)
+  const enviandoRef    = useRef(enviando)
+  const vozFemRef      = useRef<SpeechSynthesisVoice | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef       = useRef<HTMLTextAreaElement>(null)
+  const recognitionRef  = useRef<any>(null)
+  const messagesEndRef  = useRef<HTMLDivElement>(null)
+  const inputRef        = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { mensagensRef.current = mensagens },  [mensagens])
   useEffect(() => { vozAtivaRef.current  = vozAtiva  },  [vozAtiva])
@@ -49,6 +52,30 @@ export function AssistenteWidget() {
     const ok = ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
             && ('speechSynthesis' in window)
     setSuporteVoz(ok)
+
+    if (!('speechSynthesis' in window)) return
+
+    const nomesFem = ['maria', 'luciana', 'francisca', 'female', 'feminina', 'woman']
+    const nomesMasc = ['male', 'masculin', 'daniel', 'ricardo', 'bruno']
+
+    function escolherVoz(vozes: SpeechSynthesisVoice[]) {
+      const ptBR = vozes.filter(v => v.lang === 'pt-BR' || v.lang === 'pt_BR')
+      const ptAll = vozes.filter(v => v.lang.startsWith('pt'))
+      const cands = ptBR.length > 0 ? ptBR : ptAll
+      return cands.find(v => nomesFem.some(f => v.name.toLowerCase().includes(f)))
+        ?? cands.find(v => !nomesMasc.some(f => v.name.toLowerCase().includes(f)))
+        ?? cands[0]
+        ?? null
+    }
+
+    function carregarVozes() {
+      const vozes = window.speechSynthesis.getVoices()
+      if (vozes.length > 0) vozFemRef.current = escolherVoz(vozes)
+    }
+
+    carregarVozes()
+    window.speechSynthesis.addEventListener('voiceschanged', carregarVozes)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', carregarVozes)
   }, [])
 
   useEffect(() => {
@@ -75,11 +102,8 @@ export function AssistenteWidget() {
     const utter = new SpeechSynthesisUtterance(limpo)
     utter.lang = 'pt-BR'
     utter.rate = 1.0
-    utter.pitch = 1.05
-
-    const vozes = window.speechSynthesis.getVoices()
-    const voz = vozes.find(v => v.lang === 'pt-BR') || vozes.find(v => v.lang.startsWith('pt'))
-    if (voz) utter.voice = voz
+    utter.pitch = 1.1
+    if (vozFemRef.current) utter.voice = vozFemRef.current
 
     window.speechSynthesis.speak(utter)
   }
@@ -145,7 +169,12 @@ export function AssistenteWidget() {
   }
 
   // ── Reconhecimento de voz ───────────────────────────────────────────────────
-  function toggleGravacao() {
+  function mostrarErroVoz(msg: string) {
+    setErroVoz(msg)
+    setTimeout(() => setErroVoz(null), 8000)
+  }
+
+  async function toggleGravacao() {
     if (gravando) {
       recognitionRef.current?.stop()
       setGravando(false)
@@ -153,33 +182,73 @@ export function AssistenteWidget() {
     }
 
     const API = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!API) return
+    if (!API) {
+      mostrarErroVoz('Seu navegador não suporta reconhecimento de voz. Use Chrome ou Edge.')
+      return
+    }
+
+    setErroVoz(null)
+    setAguardando(true)
+
+    // Testa a permissão explicitamente antes de iniciar o reconhecimento
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach(t => t.stop())
+    } catch (err: unknown) {
+      setAguardando(false)
+      const name = (err as { name?: string }).name ?? ''
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        mostrarErroVoz('Microfone bloqueado. Clique no ícone 🔒 à esquerda da URL → Microfone → Permitir, depois recarregue (F5).')
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        mostrarErroVoz('Nenhum microfone encontrado no dispositivo. Verifique se está conectado.')
+      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+        mostrarErroVoz('Microfone em uso por outro aplicativo (Teams, Zoom, etc.). Feche-os e tente novamente.')
+      } else {
+        mostrarErroVoz(`Erro ao acessar microfone: ${name || String(err)}`)
+      }
+      return
+    }
 
     const rec = new API()
     rec.lang = 'pt-BR'
     rec.continuous = false
     rec.interimResults = false
 
-    rec.onstart  = () => setGravando(true)
-    rec.onerror  = () => setGravando(false)
-    rec.onend    = () => setGravando(false)
+    rec.onstart = () => {
+      setAguardando(false)
+      setGravando(true)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onerror = (event: any) => {
+      setAguardando(false)
+      setGravando(false)
+      if (event.error === 'no-speech') mostrarErroVoz('Nenhum som detectado. Fale mais perto do microfone.')
+      else if (event.error === 'network') mostrarErroVoz('Erro de rede. Verifique sua conexão com a internet.')
+      else if (event.error !== 'aborted') mostrarErroVoz(`Erro no reconhecimento: ${event.error}`)
+    }
+
+    rec.onend = () => {
+      setAguardando(false)
+      setGravando(false)
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.trim()
       setGravando(false)
       if (!transcript) return
-
-      // Mostra o que foi reconhecido no input por 700ms, depois envia
       setInput(transcript)
-      setTimeout(() => {
-        setInput('')
-        enviar(transcript)
-      }, 700)
+      setTimeout(() => { setInput(''); enviar(transcript) }, 700)
     }
 
     recognitionRef.current = rec
-    rec.start()
+    try {
+      rec.start()
+    } catch {
+      setAguardando(false)
+      mostrarErroVoz('Não foi possível iniciar o microfone. Tente novamente.')
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -239,7 +308,13 @@ export function AssistenteWidget() {
             </div>
           </div>
 
-          {/* Indicador de gravação */}
+          {/* Indicador de estado de voz */}
+          {aguardando && !gravando && (
+            <div className="bg-yellow-500 px-4 py-2 flex items-center gap-2 shrink-0">
+              <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+              <span className="text-xs text-white font-medium">Aguardando permissão do microfone...</span>
+            </div>
+          )}
           {gravando && (
             <div className="bg-red-500 px-4 py-2 flex items-center gap-2 shrink-0">
               <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
@@ -248,6 +323,12 @@ export function AssistenteWidget() {
                 className="ml-auto text-white/80 hover:text-white text-xs underline">
                 Cancelar
               </button>
+            </div>
+          )}
+          {erroVoz && (
+            <div className="bg-orange-50 border-t border-orange-200 px-4 py-2 flex items-start gap-2 shrink-0">
+              <span className="text-orange-500 text-sm mt-0.5">⚠️</span>
+              <p className="text-xs text-orange-700 leading-relaxed">{erroVoz}</p>
             </div>
           )}
 
@@ -297,15 +378,21 @@ export function AssistenteWidget() {
               {suporteVoz && (
                 <button
                   onClick={toggleGravacao}
-                  disabled={enviando}
-                  title={gravando ? 'Parar gravação' : 'Falar com a Zoe'}
-                  className={`w-9 h-9 flex items-center justify-center rounded-xl transition shrink-0 disabled:opacity-40 ${
+                  disabled={enviando || aguardando}
+                  title={gravando ? 'Parar gravação' : aguardando ? 'Aguardando permissão...' : 'Falar com a Zoe'}
+                  className={`w-9 h-9 flex items-center justify-center rounded-xl transition shrink-0 disabled:opacity-60 ${
                     gravando
                       ? 'bg-red-500 hover:bg-red-600 animate-pulse text-white'
+                      : aguardando
+                      ? 'bg-yellow-400 text-white cursor-wait'
                       : 'bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300'
                   }`}
                 >
-                  {gravando ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  {aguardando
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : gravando
+                    ? <MicOff className="w-4 h-4" />
+                    : <Mic className="w-4 h-4" />}
                 </button>
               )}
               <textarea

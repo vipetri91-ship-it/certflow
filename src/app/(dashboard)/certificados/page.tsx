@@ -39,7 +39,7 @@ export default async function CertificadosPage({ searchParams }: Props) {
   return (
     <div>
       <Header titulo="Certificados" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 lg:p-6 space-y-4">
         {/* Filtros rápidos */}
         <div className="flex flex-wrap gap-2">
           <Link
@@ -78,7 +78,7 @@ export default async function CertificadosPage({ searchParams }: Props) {
             </Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Cliente</th>

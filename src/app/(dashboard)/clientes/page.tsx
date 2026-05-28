@@ -19,9 +19,11 @@ export default async function ClientesPage({ searchParams }: Props) {
     ...(params.q
       ? {
           OR: [
-            { nome: { contains: params.q, mode: 'insensitive' as const } },
+            { nome:        { contains: params.q, mode: 'insensitive' as const } },
+            { razaoSocial: { contains: params.q, mode: 'insensitive' as const } },
+            { nomeFantasia: { contains: params.q, mode: 'insensitive' as const } },
             { email: { contains: params.q, mode: 'insensitive' as const } },
-            { cpf: { contains: params.q } },
+            { cpf:  { contains: params.q } },
             { cnpj: { contains: params.q } },
           ],
         }
@@ -63,11 +65,13 @@ export default async function ClientesPage({ searchParams }: Props) {
         <ClientesTabela
           clientes={clientes.map((c) => ({
             ...c,
-            cpf: c.cpf ?? undefined,
-            cnpj: c.cnpj ?? undefined,
-            email: c.email ?? undefined,
-            celular: c.celular ?? undefined,
-            parceiro: c.parceiro ?? undefined,
+            cpf:         c.cpf         ?? undefined,
+            cnpj:        c.cnpj        ?? undefined,
+            email:       c.email       ?? undefined,
+            celular:     c.celular     ?? undefined,
+            razaoSocial: c.razaoSocial ?? undefined,
+            nomeFantasia: c.nomeFantasia ?? undefined,
+            parceiro:    c.parceiro    ?? undefined,
           }))}
           total={total}
           pagina={pagina}

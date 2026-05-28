@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Handshake,
   DollarSign, BarChart3, Settings, LogOut,
   Bell, UserCog, ClipboardList, Monitor, ShoppingBag,
-  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt,
+  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt, BellRing, CalendarDays, Newspaper, ShieldCheck, Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -20,6 +20,7 @@ type MenuEntry  = MenuGroup | MenuSingle
 
 const MENU_PADRAO: MenuEntry[] = [
   { tipo: 'item', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { tipo: 'item', label: 'Agenda',    href: '/agenda',    icon: CalendarDays },
 
   {
     tipo: 'grupo', label: 'Cadastros', icon: Users,
@@ -33,13 +34,16 @@ const MENU_PADRAO: MenuEntry[] = [
   {
     tipo: 'grupo', label: 'Certificado Digital', icon: Monitor,
     itens: [
-      { label: 'Nova Venda',    href: '/pedidos/nova-venda',    icon: Plus },
-      { label: 'Monitoramento', href: '/pedidos/monitoramento', icon: Monitor },
-      { label: 'Recibo',        href: '/recibo',                icon: Receipt },
+      { label: 'Nova Venda',     href: '/pedidos/nova-venda',      icon: Plus },
+      { label: 'Monitoramento',  href: '/pedidos/monitoramento',   icon: Monitor },
+      { label: 'Notificações',   href: '/pedidos/notificacoes',    icon: BellRing },
+      { label: 'Recibo',         href: '/recibo',                  icon: Receipt },
+      { label: 'Resp. RFB',      href: '/pedidos/rfb',             icon: Search },
     ],
   },
 
   { tipo: 'item', label: 'Renovações', href: '/renovacoes', icon: RefreshCw },
+  { tipo: 'item', label: 'Notícias',   href: '/noticias',   icon: Newspaper },
 
   {
     tipo: 'grupo', label: 'Financeiro', icon: DollarSign,
@@ -49,6 +53,8 @@ const MENU_PADRAO: MenuEntry[] = [
       { label: 'Relatórios',       href: '/relatorios',                  icon: BarChart3 },
     ],
   },
+
+  { tipo: 'item', label: 'SST',        href: '/sst',        icon: ShieldCheck },
 
   {
     tipo: 'grupo', label: 'Configurações', icon: Settings,
@@ -94,11 +100,15 @@ export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
   const role = session?.user?.role
   const semFinanceiro = ['OPERADOR', 'VISUALIZADOR']
 
+  const semSST = (menu: typeof MENU_PADRAO) => menu.filter(e => !(e.tipo === 'item' && e.label === 'SST'))
+
   const MENU = role === 'FINANCEIRO'
     ? MENU_FINANCEIRO
     : semFinanceiro.includes(role ?? '')
-      ? MENU_PADRAO.filter(e => !(e.tipo === 'grupo' && e.label === 'Financeiro'))
-      : MENU_PADRAO
+      ? semSST(MENU_PADRAO).filter(e => !(e.tipo === 'grupo' && e.label === 'Financeiro'))
+      : role === 'ADMIN'
+        ? MENU_PADRAO
+        : semSST(MENU_PADRAO)
 
   const gruposAbertosInicial = MENU.reduce<Record<string, boolean>>((acc, entry) => {
     if (entry.tipo === 'grupo') {

@@ -1,10 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Sidebar } from './sidebar'
+import { WelcomePopup } from './welcome-popup'
+import { AssistenteWidget } from './assistente-widget'
+import { NotificacaoAgenda } from './notificacao-agenda'
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [menuAberto, setMenuAberto] = useState(false)
+  const { data: session } = useSession()
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -20,12 +25,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Conteúdo principal */}
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        {/* Injeta onAbrirMenu nos filhos via context não é trivial,
-            então passamos via wrapper que clona o children */}
         <MobileMenuProvider onAbrirMenu={() => setMenuAberto(true)}>
           {children}
         </MobileMenuProvider>
       </main>
+
+      {/* Popup de boas-vindas — aparece uma vez por dia */}
+      {session?.user?.name && (
+        <WelcomePopup nomeUsuario={session.user.name} />
+      )}
+
+      {/* Assistente AGR — widget flutuante */}
+      <AssistenteWidget />
+
+      {/* Notificações de reunião do Google Calendar */}
+      <NotificacaoAgenda />
     </div>
   )
 }
