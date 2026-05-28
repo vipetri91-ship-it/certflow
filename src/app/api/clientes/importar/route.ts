@@ -146,7 +146,22 @@ export async function POST(req: NextRequest) {
     novos.push(c)
   }
 
-  // 4. Inserção em lote — chunks de 500 para não estourar parâmetros do Postgres
+  // 4. Modo simulação — não salva nada, só retorna o que aconteceria
+  const simulacao = formData.get('simulacao') === 'true'
+  if (simulacao) {
+    return NextResponse.json({
+      total, simulacao: true,
+      importados: novos.length,
+      pulados,
+      erros,
+      amostra: novos.slice(0, 5).map(c => ({
+        nome: c.nome, tipoPessoa: c.tipoPessoa,
+        cpf: c.cpf, cnpj: c.cnpj, email: c.email, cidade: c.cidade,
+      })),
+    })
+  }
+
+  // 5. Inserção em lote — chunks de 500 para não estourar parâmetros do Postgres
   const CHUNK = 500
   let importados = 0
 
