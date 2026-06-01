@@ -92,12 +92,29 @@ export default function ConteudoPage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Legenda completa</p>
-                    <p className="text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{post.legenda}</p>
+                    <p className="text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: post.legenda
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.+?)\*/g, '<em>$1</em>') }} />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Hashtags</p>
                     <p className="text-xs text-blue-600 dark:text-blue-400">{post.hashtags}</p>
                   </div>
+                  {/* Links Canva */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <a href={process.env.NEXT_PUBLIC_CANVA_FEED ?? 'https://www.canva.com/projects'}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 py-2 text-xs font-medium bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition border border-purple-200">
+                      🖼️ Abrir template Feed
+                    </a>
+                    <a href={process.env.NEXT_PUBLIC_CANVA_STORIES ?? 'https://www.canva.com/projects'}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 py-2 text-xs font-medium bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition border border-purple-200">
+                      📱 Abrir template Stories
+                    </a>
+                  </div>
+
                   {post.status === 'PENDENTE' && (
                     <button onClick={() => aprovar(post.id)}
                       className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition">
