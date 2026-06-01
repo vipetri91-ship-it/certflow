@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Handshake,
   DollarSign, BarChart3, Settings, LogOut,
   Bell, UserCog, ClipboardList, Monitor, ShoppingBag,
-  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt, BellRing, CalendarDays, Newspaper, ShieldCheck, Search,
+  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt, BellRing, CalendarDays, Newspaper, ShieldCheck, Search, Share2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -45,6 +45,7 @@ const MENU_PADRAO: MenuEntry[] = [
 
   { tipo: 'item', label: 'Renovações', href: '/renovacoes', icon: RefreshCw },
   { tipo: 'item', label: 'Notícias',   href: '/noticias',   icon: Newspaper },
+  { tipo: 'item', label: 'Conteúdo',   href: '/conteudo',   icon: Share2 },
 
   {
     tipo: 'grupo', label: 'Financeiro', icon: DollarSign,

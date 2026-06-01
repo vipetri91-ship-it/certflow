@@ -150,6 +150,18 @@ async function migrate() {
       CONSTRAINT "orcamentos_pkey" PRIMARY KEY ("id"),
       CONSTRAINT "orcamentos_geradoPor_fkey" FOREIGN KEY ("geradoPor") REFERENCES "usuarios"("id") ON DELETE SET NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS "posts_social" (
+      "id"        TEXT NOT NULL,
+      "categoria" TEXT NOT NULL,
+      "semana"    INTEGER NOT NULL DEFAULT 1,
+      "diaSemana" TEXT NOT NULL,
+      "headline"  TEXT NOT NULL,
+      "legenda"   TEXT NOT NULL,
+      "hashtags"  TEXT NOT NULL DEFAULT '',
+      "status"    TEXT NOT NULL DEFAULT 'PENDENTE',
+      "criadoEm"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "posts_social_pkey" PRIMARY KEY ("id")
+    )`,
   ]
 
   for (const q of queries) {

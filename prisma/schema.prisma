@@ -546,3 +546,19 @@ model Orcamento {
 
   @@map("orcamentos")
 }
+
+// ─── CONTEÚDO SOCIAL ─────────────────────────────────────────────────────────
+
+model PostSocial {
+  id        String   @id @default(cuid())
+  categoria String
+  semana    Int
+  diaSemana String   // SEGUNDA, QUARTA, SEXTA
+  headline  String
+  legenda   String   @db.Text
+  hashtags  String
+  status    String   @default("PENDENTE") // PENDENTE, APROVADO
+  criadoEm  DateTime @default(now())
+
+  @@map("posts_social")
+}
