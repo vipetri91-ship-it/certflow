@@ -38,6 +38,7 @@ const MENU_PADRAO: MenuEntry[] = [
       { label: 'Monitoramento',  href: '/pedidos/monitoramento',   icon: Monitor },
       { label: 'Notificações',   href: '/pedidos/notificacoes',    icon: BellRing },
       { label: 'Recibo',         href: '/recibo',                  icon: Receipt },
+      { label: 'Orçamento',      href: '/orcamento',               icon: ClipboardList },
       { label: 'Resp. RFB',      href: '/pedidos/rfb',             icon: Search },
     ],
   },
