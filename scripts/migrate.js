@@ -150,6 +150,15 @@ async function migrate() {
       CONSTRAINT "orcamentos_pkey" PRIMARY KEY ("id"),
       CONSTRAINT "orcamentos_geradoPor_fkey" FOREIGN KEY ("geradoPor") REFERENCES "usuarios"("id") ON DELETE SET NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS "sessao_atividade" (
+      "id"            TEXT NOT NULL,
+      "usuarioId"     TEXT NOT NULL,
+      "data"          TIMESTAMP(3) NOT NULL,
+      "minutosAtivos" INTEGER NOT NULL DEFAULT 0,
+      CONSTRAINT "sessao_atividade_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "sessao_atividade_usuarioId_data_key" UNIQUE ("usuarioId", "data"),
+      CONSTRAINT "sessao_atividade_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "usuarios"("id") ON DELETE CASCADE
+    )`,
     `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "whatsappVencimentoAtivo" BOOLEAN NOT NULL DEFAULT true`,
     `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "emailVencimentoAtivo" BOOLEAN NOT NULL DEFAULT true`,
     `CREATE TABLE IF NOT EXISTS "posts_social" (
