@@ -35,7 +35,10 @@ async function executarJob() {
         cliente: { OR: [{ celular: { not: null } }, { telefone: { not: null } }] },
       },
       include: {
-        cliente: { select: { id: true, nome: true, celular: true, telefone: true } },
+        cliente: {
+          select: { id: true, nome: true, celular: true, telefone: true, parceiroId: true },
+          include: { parceiro: { select: { whatsappVencimentoAtivo: true } } },
+        },
         modelo:  { select: { nome: true } },
       },
     })
@@ -43,6 +46,11 @@ async function executarJob() {
     for (const cert of certs) {
       const telefone = cert.cliente.celular ?? cert.cliente.telefone
       if (!telefone) { resultado.pulados++; continue }
+
+      // Parceiro bloqueou WhatsApp para seus clientes
+      if (cert.cliente.parceiro?.whatsappVencimentoAtivo === false) {
+        resultado.pulados++; continue
+      }
 
       // Não reenviar se já enviamos WhatsApp nos últimos 5 dias para este cert
       const jaEnviado = await prisma.historicoContato.findFirst({
@@ -94,7 +102,10 @@ async function executarJob() {
         cliente:        { OR: [{ celular: { not: null } }, { telefone: { not: null } }] },
       },
       include: {
-        cliente: { select: { id: true, nome: true, celular: true, telefone: true } },
+        cliente: {
+          select: { id: true, nome: true, celular: true, telefone: true, parceiroId: true },
+          include: { parceiro: { select: { whatsappVencimentoAtivo: true } } },
+        },
         modelo:  { select: { nome: true } },
       },
     })
@@ -102,6 +113,10 @@ async function executarJob() {
     for (const cert of certs) {
       const telefone = cert.cliente.celular ?? cert.cliente.telefone
       if (!telefone) { resultado.pulados++; continue }
+
+      if (cert.cliente.parceiro?.whatsappVencimentoAtivo === false) {
+        resultado.pulados++; continue
+      }
 
       // Não reenviar se já enviamos no mesmo dia
       const jaEnviado = await prisma.historicoContato.findFirst({

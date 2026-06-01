@@ -218,8 +218,10 @@ model Parceiro {
   diaPagamento         Int?
   loginParceiro        String?    @unique
   senhaParceiro        String?
-  statusPainel         Boolean    @default(false)
-  permissoesPainel     Json?
+  statusPainel             Boolean    @default(false)
+  permissoesPainel         Json?
+  whatsappVencimentoAtivo  Boolean    @default(true)
+  emailVencimentoAtivo     Boolean    @default(true)
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 

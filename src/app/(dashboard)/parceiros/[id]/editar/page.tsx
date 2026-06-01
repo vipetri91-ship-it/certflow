@@ -41,6 +41,7 @@ interface ParceiroData {
   tipoComissao?: string; diaPagamento?: number
   banco?: string; agencia?: string; conta?: string; tipoConta?: string; chavePix?: string
   loginParceiro?: string; statusPainel: boolean; permissoesPainel?: Record<string, boolean>
+  whatsappVencimentoAtivo: boolean; emailVencimentoAtivo: boolean
   temSenha?: boolean; ativo: boolean
   comissoes: Comissao[]
   contatosParceiro: ContatoP[]
@@ -277,8 +278,10 @@ export default function EditarParceiroPage() {
         chavePix:           p.chavePix ?? '',
         loginParceiro:      p.loginParceiro ?? '',
         senhaParceiro:      '',
-        statusPainel:       p.statusPainel,
-        ativo:              p.ativo,
+        statusPainel:            p.statusPainel,
+        whatsappVencimentoAtivo: p.whatsappVencimentoAtivo ?? true,
+        emailVencimentoAtivo:    p.emailVencimentoAtivo    ?? true,
+        ativo:                   p.ativo,
       })
 
       // comissão por modelo
@@ -346,9 +349,11 @@ export default function EditarParceiroPage() {
         tipoConta:           f.tipoConta,
         loginParceiro:       f.loginParceiro,
         ...(f.senhaParceiro  ? { senhaParceiro: f.senhaParceiro } : {}),
-        statusPainel:        f.statusPainel,
-        permissoesPainel:    parceiro?.permissoesPainel ?? {},
-        ativo:               f.ativo,
+        statusPainel:            f.statusPainel,
+        permissoesPainel:        parceiro?.permissoesPainel ?? {},
+        whatsappVencimentoAtivo: f.whatsappVencimentoAtivo,
+        emailVencimentoAtivo:    f.emailVencimentoAtivo,
+        ativo:                   f.ativo,
       }
 
       const comissoesPayload = modelos
@@ -870,6 +875,35 @@ export default function EditarParceiroPage() {
                       <option value="true">Ativo</option>
                     </Sel>
                   </Campo>
+                </div>
+
+                {/* Notificações de vencimento */}
+                <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-sm font-semibold text-amber-800 mb-3">Notificações de vencimento para clientes deste parceiro</p>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">WhatsApp automático</p>
+                        <p className="text-xs text-gray-400">Enviar mensagens de vencimento por WhatsApp</p>
+                      </div>
+                      <button type="button"
+                        onClick={() => set('whatsappVencimentoAtivo', !f.whatsappVencimentoAtivo)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${f.whatsappVencimentoAtivo ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${f.whatsappVencimentoAtivo ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">E-mail automático</p>
+                        <p className="text-xs text-gray-400">Enviar e-mails de vencimento</p>
+                      </div>
+                      <button type="button"
+                        onClick={() => set('emailVencimentoAtivo', !f.emailVencimentoAtivo)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${f.emailVencimentoAtivo ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${f.emailVencimentoAtivo ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </label>
+                  </div>
                 </div>
 
                 <div>

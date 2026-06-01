@@ -41,13 +41,17 @@ export async function POST(req: NextRequest) {
         emailsEnviados: { none: { tipo } },
       },
       include: {
-        cliente: { select: { id: true, nome: true, email: true } },
+        cliente: {
+          select: { id: true, nome: true, email: true, parceiroId: true },
+          include: { parceiro: { select: { emailVencimentoAtivo: true } } },
+        },
         modelo: { select: { nome: true } },
       },
     })
 
     for (const cert of certificados) {
       if (!cert.cliente.email) continue
+      if (cert.cliente.parceiro?.emailVencimentoAtivo === false) continue
       try {
         const { assunto, html } = templateVencimento(
           {
