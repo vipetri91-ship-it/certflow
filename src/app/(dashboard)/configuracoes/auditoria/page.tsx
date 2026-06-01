@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { formatarDataHora } from '@/lib/utils'
 import { ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AuditoriaFiltros } from './filtros'
+import { AuditoriaLinha } from './linha'
 
 const ACAO_COR: Record<string, string> = {
   CREATE: 'bg-green-100 text-green-700',
@@ -99,39 +100,35 @@ export default async function AuditoriaPage({ searchParams }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Data/Hora</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Usuário</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Ação</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Entidade</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">ID</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-36">Data/Hora</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600 w-24">Ação</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Descrição</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-8"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                    <td colSpan={4} className="px-4 py-12 text-center text-gray-400">
                       <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       Nenhum registro encontrado com os filtros selecionados
                     </td>
                   </tr>
                 )}
                 {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatarDataHora(log.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{log.usuario?.nome ?? 'Sistema'}</p>
-                      {log.usuario?.email && <p className="text-xs text-gray-400">{log.usuario.email}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${ACAO_COR[log.acao] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {log.acao}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{log.entidade}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-400 hidden lg:table-cell">
-                      {log.entidadeId ? log.entidadeId.slice(0, 14) + '...' : '—'}
-                    </td>
-                  </tr>
+                  <AuditoriaLinha
+                    key={log.id}
+                    id={log.id}
+                    createdAt={log.createdAt.toISOString()}
+                    acao={log.acao}
+                    entidade={log.entidade}
+                    entidadeId={log.entidadeId ?? null}
+                    dados={log.dados as Record<string, unknown> | null}
+                    usuarioNome={log.usuario?.nome ?? null}
+                    usuarioEmail={log.usuario?.email ?? null}
+                    acaoCor={ACAO_COR[log.acao] ?? 'bg-gray-100 text-gray-600'}
+                    dataHora={formatarDataHora(log.createdAt)}
+                  />
                 ))}
               </tbody>
             </table>
