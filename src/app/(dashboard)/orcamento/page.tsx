@@ -44,7 +44,13 @@ export default function OrcamentoPage() {
 
   const escopoFinal = itens.filter(i => i.certificado).map(i => i.certificado).join(' e ') || '[modelos]'
 
-  function gerarPDF() {
+  async function gerarPDF() {
+    // Salva o registro no banco antes de abrir o PDF
+    await fetch('/api/orcamentos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinatario, itens, formas, total }),
+    }).catch(() => {}) // não bloqueia se falhar
     const linhasTabela = itens.map((item, idx) => `
       <tr style="background:${idx % 2 === 0 ? '#dbeafe' : '#fff'}">
         <td style="padding:2mm 3mm">${item.certificado}</td>

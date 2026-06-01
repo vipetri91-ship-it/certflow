@@ -95,12 +95,30 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     } catch { /* não bloqueia a atualização do pedido */ }
   }
 
+  // Monta diff dos campos alterados
+  const camposAlterados: Record<string, unknown> = { numero: antigo.numero }
+  const mapCampo: Record<string, string> = {
+    status: 'Status', valorFinal: 'Valor Final', valorTotal: 'Valor Total',
+    desconto: 'Desconto', agr: 'AGR', formaPagamento: 'Forma de Pagamento',
+    tipoAtendimento: 'Tipo de Atendimento', voucher: 'Voucher',
+    contabilidade: 'Contabilidade', observacoes: 'Observações',
+    numeroCompra: 'Nº Compra', unidadeAtendimento: 'Unidade',
+  }
+  for (const [k, label] of Object.entries(mapCampo)) {
+    const anterior = (antigo as Record<string, unknown>)[k]
+    const novo = (pedido as Record<string, unknown>)[k]
+    if (anterior !== novo) {
+      camposAlterados[`${label} (antes)`] = anterior ?? '—'
+      camposAlterados[`${label} (depois)`] = novo ?? '—'
+    }
+  }
+
   await registrarAuditoria({
     usuarioId: session.user.id,
     acao: 'UPDATE',
     entidade: 'Pedido',
     entidadeId: id,
-    dados: { statusAnterior: antigo.status, statusNovo: status },
+    dados: camposAlterados,
     ip: req.headers.get('x-forwarded-for') ?? undefined,
   })
 

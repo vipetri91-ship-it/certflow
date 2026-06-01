@@ -105,6 +105,7 @@ model Usuario {
   pedidos              Pedido[]
   historicoContatos    HistoricoContato[]
   parceirosResponsavel Parceiro[]          @relation("ParceiroResponsavel")
+  orcamentos           Orcamento[]
 
   @@map("usuarios")
 }
@@ -529,4 +530,19 @@ model SSTHistorico {
   createdAt DateTime @default(now())
 
   @@map("sst_historico")
+}
+
+// ─── ORÇAMENTOS ───────────────────────────────────────────────────────────────
+
+model Orcamento {
+  id           String   @id @default(cuid())
+  destinatario String
+  itens        Json
+  formas       String[]
+  total        Decimal  @db.Decimal(10, 2)
+  geradoPor    String?
+  usuario      Usuario? @relation(fields: [geradoPor], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@map("orcamentos")
 }

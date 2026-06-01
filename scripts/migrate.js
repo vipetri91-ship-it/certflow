@@ -139,6 +139,17 @@ async function migrate() {
       "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "sst_leads_pkey" PRIMARY KEY ("id")
     )`,
+    `CREATE TABLE IF NOT EXISTS "orcamentos" (
+      "id"           TEXT NOT NULL,
+      "destinatario" TEXT NOT NULL,
+      "itens"        JSONB NOT NULL DEFAULT '[]',
+      "formas"       TEXT[] NOT NULL DEFAULT '{}',
+      "total"        DECIMAL(10,2) NOT NULL DEFAULT 0,
+      "geradoPor"    TEXT,
+      "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "orcamentos_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "orcamentos_geradoPor_fkey" FOREIGN KEY ("geradoPor") REFERENCES "usuarios"("id") ON DELETE SET NULL
+    )`,
   ]
 
   for (const q of queries) {
