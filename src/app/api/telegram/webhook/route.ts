@@ -38,13 +38,28 @@ async function consultarPeriodo(periodo: 'dia' | 'semana' | 'mes') {
 }
 
 async function consultarFinanceiro() {
-  const [aReceber, vencidos] = await Promise.all([
+  const hoje = new Date()
+  const em7  = new Date(Date.now() + 7 * 86_400_000)
+  const [aReceber, receberVencidos, aPagar, pagarVencidos, pagarProximos, contasDetalhes] = await Promise.all([
     prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
-    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { lt: new Date() } } }),
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE' } }),
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
+    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE', dataVencimento: { gte: hoje, lte: em7 } } }),
+    prisma.lancamento.findMany({
+      where: { tipo: 'PAGAR', status: 'PENDENTE' },
+      orderBy: { dataVencimento: 'asc' },
+      take: 5,
+      select: { descricao: true, valor: true, dataVencimento: true },
+    }),
   ])
   return {
-    aReceber: Number(aReceber._sum.valor ?? 0),
-    vencidos:  Number(vencidos._sum.valor ?? 0),
+    aReceber:      Number(aReceber._sum.valor      ?? 0),
+    receberVencidos: Number(receberVencidos._sum.valor ?? 0),
+    aPagar:        Number(aPagar._sum.valor        ?? 0),
+    pagarVencidos: Number(pagarVencidos._sum.valor ?? 0),
+    pagarProximos: Number(pagarProximos._sum.valor ?? 0),
+    contasDetalhes,
   }
 }
 
@@ -59,23 +74,44 @@ async function gerarResposta(pergunta: string): Promise<string> {
     consultarFinanceiro(),
   ])
 
-  const fmt = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+  const fmt  = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+  const fmtD = (d: Date)   => new Date(d).toLocaleDateString('pt-BR')
+
+  const proximasConta = fin.contasDetalhes.map(c =>
+    `  • ${c.descricao} — ${fmt(Number(c.valor))} — vence ${fmtD(c.dataVencimento)}`
+  ).join('\n') || '  Nenhuma conta pendente'
 
   const contexto = `
 Hoje: ${hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
 
-📅 HOJE: ${dia.vendas} vendas | ${fmt(dia.faturamento)} | ${dia.emissoes} emissões
-📆 SEMANA: ${semana.vendas} vendas | ${fmt(semana.faturamento)} | ${semana.emissoes} emissões
-🗓️ MÊS: ${mes.vendas}/300 vendas | ${fmt(mes.faturamento)} | ${mes.emissoes} emissões
-💰 FINANCEIRO: ${fmt(fin.aReceber)} a receber | ${fmt(fin.vencidos)} vencidos
+VENDAS:
+📅 Hoje: ${dia.vendas} vendas | ${fmt(dia.faturamento)} | ${dia.emissoes} emissões
+📆 Semana: ${semana.vendas} vendas | ${fmt(semana.faturamento)} | ${semana.emissoes} emissões
+🗓️ Mês: ${mes.vendas}/300 vendas | ${fmt(mes.faturamento)} | ${mes.emissoes} emissões
+
+CONTAS A RECEBER:
+  Total pendente: ${fmt(fin.aReceber)}
+  Vencidas: ${fmt(fin.receberVencidos)}
+
+CONTAS A PAGAR:
+  Total pendente: ${fmt(fin.aPagar)}
+  Vencidas: ${fmt(fin.pagarVencidos)}
+  Vencem em 7 dias: ${fmt(fin.pagarProximos)}
+  Próximas contas:
+${proximasConta}
 `.trim()
 
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 500,
+    max_tokens: 600,
     system: `Você é o assistente de gestão da V&G Certificação Digital, respondendo via Telegram para o proprietário Vinicius.
 Seja direto, conciso e use emojis com moderação. Use *negrito* para destacar números importantes.
-Dados atuais:\n${contexto}`,
+
+O que você PODE fazer: responder perguntas sobre vendas, faturamento, emissões, contas a receber e contas a pagar usando os dados abaixo.
+O que você NÃO PODE fazer: gerar PDFs, abrir o sistema, criar pedidos ou orçamentos. Para isso, oriente o Vinicius a acessar o CertFlow em https://certflow-nine.vercel.app
+
+Dados atuais:
+${contexto}`,
     messages: [{ role: 'user', content: pergunta }],
   })
 
