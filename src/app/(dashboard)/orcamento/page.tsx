@@ -149,6 +149,7 @@ export default function OrcamentoPage() {
             <div style={{ textAlign: 'right', paddingRight: '10mm' }}>
               <p style={{ fontSize: '17pt', fontWeight: 'bold', color: '#1a3a6b', letterSpacing: '3px', margin: 0 }}>PROPOSTA COMERCIAL</p>
               <p style={{ fontSize: '8pt', color: '#555', margin: '2mm 0 0' }}>Piracaia/SP — Praça Benedito Peçanha Franco, 28, Centro.</p>
+              <p style={{ fontSize: '8pt', color: '#555', margin: '1mm 0 0' }}>Bragança Paulista/SP — Rua Tupi, 153, Sala 8, Taboão.</p>
               <p style={{ fontSize: '8pt', color: '#555', margin: '1mm 0 0' }}>CNPJ: 48.948.496/0001-56</p>
               <p style={{ fontSize: '8pt', color: '#555', margin: '1mm 0 0' }}>(11) 94315-6015 / (11) 93332-3003 — AR VEG vegcertificadora.com.br</p>
             </div>
@@ -209,13 +210,6 @@ export default function OrcamentoPage() {
           <ul style={{ paddingLeft: '10mm', margin: '0 0 5mm', lineHeight: '1.9' }}>
             {formas.map(f => <li key={f}>{f}.</li>)}
           </ul>
-
-          {/* DADOS BANCÁRIOS */}
-          <p style={{ fontWeight: 'bold', margin: '0 0 2mm' }}>Dados Bancários:</p>
-          <p style={{ margin: 0, lineHeight: '1.8' }}>Banco Inter</p>
-          <p style={{ margin: 0, lineHeight: '1.8' }}>Código do banco: 077</p>
-          <p style={{ margin: 0, lineHeight: '1.8' }}>Ag: 0001</p>
-          <p style={{ margin: '0 0 6mm', lineHeight: '1.8' }}>C/c: 27004928-2</p>
 
           {/* ENCERRAMENTO */}
           <p style={{ lineHeight: '1.7', margin: '0 0 12mm' }}>
