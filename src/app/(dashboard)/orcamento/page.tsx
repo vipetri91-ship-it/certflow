@@ -23,7 +23,6 @@ function fmtValor(v: number) {
 
 export default function OrcamentoPage() {
   const [destinatario, setDestinatario] = useState('')
-  const [escopo,       setEscopo]       = useState('')
   const [formas,       setFormas]       = useState<string[]>([...FORMAS])
   const [itens,        setItens]        = useState<Item[]>([
     { certificado: 'e-CPF A3',  midia: 'Token',      validade: '02', quantidade: 1, valorUnit: 0 },
@@ -43,7 +42,7 @@ export default function OrcamentoPage() {
     setFormas(p => p.includes(f) ? p.filter(x => x !== f) : [...p, f])
   }
 
-  const escopoFinal = escopo.trim() || itens.filter(i => i.certificado).map(i => i.certificado).join(' e ')
+  const escopoFinal = itens.filter(i => i.certificado).map(i => i.certificado).join(' e ') || '[modelos]'
 
   function gerarPDF() {
     const linhasTabela = itens.map((item, idx) => `
@@ -138,13 +137,6 @@ export default function OrcamentoPage() {
             <input value={destinatario} onChange={e => setDestinatario(e.target.value)}
               placeholder="Nome do cliente ou empresa..."
               className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-white">Escopo <span className="text-gray-400 font-normal">(opcional)</span></h2>
-            <textarea value={escopo} onChange={e => setEscopo(e.target.value)} rows={2}
-              placeholder="Se vazio, preenche com os certificados da tabela."
-              className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-5 space-y-3">
