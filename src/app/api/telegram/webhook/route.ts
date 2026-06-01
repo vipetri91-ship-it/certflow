@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
 
 // ── Enviar mensagem ───────────────────────────────────────────────────────────
 
@@ -17,135 +18,294 @@ async function enviar(chatId: number, texto: string) {
   })
 }
 
-// ── Dados do banco ────────────────────────────────────────────────────────────
+// ── Ferramentas de busca ──────────────────────────────────────────────────────
 
-async function consultarPeriodo(periodo: 'dia' | 'semana' | 'mes') {
-  const hoje = new Date()
-  const inicio = periodo === 'dia'    ? startOfDay(hoje)
-               : periodo === 'semana' ? startOfWeek(hoje, { weekStartsOn: 0 })
-               : startOfMonth(hoje)
-  const fim    = periodo === 'dia'    ? endOfDay(hoje)
-               : periodo === 'semana' ? endOfWeek(hoje, { weekStartsOn: 0 })
-               : endOfMonth(hoje)
+const TOOLS: Anthropic.Messages.Tool[] = [
+  {
+    name: 'buscar_cliente',
+    description: 'Busca um cliente por nome, CPF ou CNPJ e retorna seus certificados digitais com status e datas de vencimento.',
+    input_schema: { type: 'object' as const, properties: {
+      nome: { type: 'string', description: 'Nome ou parte do nome/razão social' },
+      cpf:  { type: 'string', description: 'CPF só números' },
+      cnpj: { type: 'string', description: 'CNPJ só números' },
+    }},
+  },
+  {
+    name: 'vencimentos',
+    description: 'Lista certificados que vencem em breve ou já venceram. Use para perguntas como "quem vence essa semana", "certificados vencidos", "quem renovar".',
+    input_schema: { type: 'object' as const, properties: {
+      dias: { type: 'number', description: 'Dias à frente para verificar (padrão 30)' },
+      incluirVencidos: { type: 'boolean', description: 'Incluir já vencidos (padrão true)' },
+    }},
+  },
+  {
+    name: 'resumo_financeiro',
+    description: 'Retorna resumo de vendas e financeiro (contas a receber e a pagar) por período.',
+    input_schema: { type: 'object' as const, properties: {
+      periodo: { type: 'string', enum: ['dia', 'semana', 'mes'], description: 'Período desejado' },
+    }},
+  },
+  {
+    name: 'contas_pagar',
+    description: 'Lista as contas a pagar pendentes com detalhes de valor e vencimento.',
+    input_schema: { type: 'object' as const, properties: {
+      limite: { type: 'number', description: 'Quantidade de contas a listar (padrão 10)' },
+    }},
+  },
+  {
+    name: 'buscar_pedido',
+    description: 'Busca pedidos por número, cliente ou status.',
+    input_schema: { type: 'object' as const, properties: {
+      numero:  { type: 'string', description: 'Número do pedido (ex: PED-202601-12345)' },
+      cliente: { type: 'string', description: 'Nome do cliente' },
+      status:  { type: 'string', description: 'Status: GERADO, VERIFICADO, EMITIDO, CANCELADO' },
+    }},
+  },
+]
 
-  const [vendas, fat, emissoes] = await Promise.all([
-    prisma.pedido.count({ where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.count({ where: { emitidoEm: { gte: inicio, lte: fim } } }),
-  ])
+// ── Executar ferramenta ───────────────────────────────────────────────────────
 
-  return { vendas, faturamento: Number(fat._sum.valorFinal ?? 0), emissoes }
+function fmtValor(v: number) { return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }
+function fmtData(d: Date | string) { return new Date(d).toLocaleDateString('pt-BR') }
+function diasRestantes(d: Date | string) { return Math.floor((new Date(d).getTime() - Date.now()) / 86_400_000) }
+function statusCert(dias: number) {
+  if (dias < 0)   return `🔴 VENCIDO há ${Math.abs(dias)} dias`
+  if (dias <= 7)  return `🟠 Vence em ${dias} dias (URGENTE)`
+  if (dias <= 30) return `🟡 Vence em ${dias} dias`
+  return `✅ Vence em ${dias} dias`
 }
 
-async function consultarFinanceiro() {
-  const hoje = new Date()
-  const em7  = new Date(Date.now() + 7 * 86_400_000)
-  const [aReceber, receberVencidos, aPagar, pagarVencidos, pagarProximos, contasDetalhes] = await Promise.all([
-    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
-    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
-    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE' } }),
-    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE', dataVencimento: { lt: hoje } } }),
-    prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR', status: 'PENDENTE', dataVencimento: { gte: hoje, lte: em7 } } }),
-    prisma.lancamento.findMany({
+async function executarFerramenta(nome: string, input: Record<string, unknown>): Promise<string> {
+
+  if (nome === 'buscar_cliente') {
+    const cpfNums  = String(input.cpf  ?? '').replace(/\D/g, '')
+    const cnpjNums = String(input.cnpj ?? '').replace(/\D/g, '')
+    const nomeBusca = input.nome as string | undefined
+
+    const orClauses = [
+      cpfNums   ? { cpf: cpfNums }   : null,
+      cnpjNums  ? { cnpj: cnpjNums } : null,
+      nomeBusca ? { nome:        { contains: nomeBusca, mode: 'insensitive' as const } } : null,
+      nomeBusca ? { razaoSocial: { contains: nomeBusca, mode: 'insensitive' as const } } : null,
+      nomeBusca ? { nomeFantasia: { contains: nomeBusca, mode: 'insensitive' as const } } : null,
+    ].filter(Boolean) as object[]
+
+    if (!orClauses.length) return 'Informe nome, CPF ou CNPJ para buscar.'
+
+    const clientes = await prisma.cliente.findMany({
+      where: { OR: orClauses, ativo: true },
+      include: {
+        certificados: {
+          include: { modelo: { select: { nome: true } } },
+          orderBy: { dataVencimento: 'asc' },
+        },
+        pedidos: { orderBy: { createdAt: 'desc' }, take: 3 },
+      },
+      take: 5,
+    })
+
+    if (!clientes.length) return 'Nenhum cliente encontrado.'
+
+    return clientes.map(c => {
+      const doc = c.cnpj ? `CNPJ: ${c.cnpj}` : c.cpf ? `CPF: ${c.cpf}` : ''
+      const certs = c.certificados.length
+        ? c.certificados.map(cert => {
+            const dias = diasRestantes(cert.dataVencimento)
+            return `  • ${cert.modelo.nome} — vence ${fmtData(cert.dataVencimento)} — ${statusCert(dias)}`
+          }).join('\n')
+        : '  • Sem certificados cadastrados'
+      const ultimoPedido = c.pedidos[0]
+        ? `Último pedido: ${ultimoPedido?.status ?? ''}`
+        : 'Sem pedidos'
+      return `*${c.razaoSocial || c.nome}*\n${doc}\n${c.telefone || c.celular || ''}\n\nCertificados:\n${certs}\n${ultimoPedido}`
+    }).join('\n\n---\n\n')
+  }
+
+  if (nome === 'vencimentos') {
+    const dias = Number(input.dias ?? 30)
+    const incluirVencidos = input.incluirVencidos !== false
+    const hoje = new Date()
+    const emN  = new Date(Date.now() + dias * 86_400_000)
+
+    const certs = await prisma.certificado.findMany({
+      where: {
+        status: 'ATIVO',
+        dataVencimento: incluirVencidos ? { lte: emN } : { gte: hoje, lte: emN },
+      },
+      include: {
+        cliente: { select: { nome: true, razaoSocial: true, celular: true, telefone: true } },
+        modelo:  { select: { nome: true } },
+      },
+      orderBy: { dataVencimento: 'asc' },
+      take: 20,
+    })
+
+    if (!certs.length) return `Nenhum certificado vencendo nos próximos ${dias} dias.`
+
+    const vencidos = certs.filter(c => diasRestantes(c.dataVencimento) < 0)
+    const proximos = certs.filter(c => diasRestantes(c.dataVencimento) >= 0)
+
+    let resposta = ''
+    if (vencidos.length) {
+      resposta += `*🔴 VENCIDOS (${vencidos.length}):*\n`
+      resposta += vencidos.map(c => {
+        const nome = c.cliente.razaoSocial || c.cliente.nome
+        const dias = Math.abs(diasRestantes(c.dataVencimento))
+        return `• ${nome} — ${c.modelo.nome} — venceu há ${dias} dias (${fmtData(c.dataVencimento)})`
+      }).join('\n')
+      resposta += '\n\n'
+    }
+    if (proximos.length) {
+      resposta += `*📅 VENCEM EM ATÉ ${dias} DIAS (${proximos.length}):*\n`
+      resposta += proximos.map(c => {
+        const nome = c.cliente.razaoSocial || c.cliente.nome
+        const d    = diasRestantes(c.dataVencimento)
+        return `• ${nome} — ${c.modelo.nome} — ${d} dias (${fmtData(c.dataVencimento)})`
+      }).join('\n')
+    }
+    return resposta
+  }
+
+  if (nome === 'resumo_financeiro') {
+    const periodo = (input.periodo as string) ?? 'dia'
+    const hoje = new Date()
+    const inicio = periodo === 'dia'    ? startOfDay(hoje)
+                 : periodo === 'semana' ? startOfWeek(hoje, { weekStartsOn: 0 })
+                 : startOfMonth(hoje)
+    const fim    = periodo === 'dia'    ? endOfDay(hoje)
+                 : periodo === 'semana' ? endOfWeek(hoje, { weekStartsOn: 0 })
+                 : endOfMonth(hoje)
+
+    const [vendas, fat, emissoes, aReceber, aPagar] = await Promise.all([
+      prisma.pedido.count({ where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
+      prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
+      prisma.pedido.count({ where: { emitidoEm: { gte: inicio, lte: fim } } }),
+      prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
+      prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR',   status: 'PENDENTE' } }),
+    ])
+
+    const label = periodo === 'dia' ? 'HOJE' : periodo === 'semana' ? 'SEMANA' : 'MÊS'
+    return `*📊 RESUMO — ${label}*\n\nVendas: *${vendas}* | Meta mês: 300\nFaturamento: *${fmtValor(Number(fat._sum.valorFinal ?? 0))}*\nEmissões: ${emissoes}\n\n💰 A receber (total): ${fmtValor(Number(aReceber._sum.valor ?? 0))}\n💸 A pagar (total): ${fmtValor(Number(aPagar._sum.valor ?? 0))}`
+  }
+
+  if (nome === 'contas_pagar') {
+    const limite = Number(input.limite ?? 10)
+    const contas = await prisma.lancamento.findMany({
       where: { tipo: 'PAGAR', status: 'PENDENTE' },
       orderBy: { dataVencimento: 'asc' },
-      take: 5,
-      select: { descricao: true, valor: true, dataVencimento: true },
-    }),
-  ])
-  return {
-    aReceber:      Number(aReceber._sum.valor      ?? 0),
-    receberVencidos: Number(receberVencidos._sum.valor ?? 0),
-    aPagar:        Number(aPagar._sum.valor        ?? 0),
-    pagarVencidos: Number(pagarVencidos._sum.valor ?? 0),
-    pagarProximos: Number(pagarProximos._sum.valor ?? 0),
-    contasDetalhes,
+      take: limite,
+    })
+
+    if (!contas.length) return 'Nenhuma conta a pagar pendente.'
+
+    const hoje = new Date()
+    return `*💸 CONTAS A PAGAR (${contas.length}):*\n\n` + contas.map(c => {
+      const dias = diasRestantes(c.dataVencimento)
+      const icon = dias < 0 ? '🔴' : dias <= 7 ? '🟠' : '🟡'
+      const situacao = dias < 0 ? `vencida há ${Math.abs(dias)}d` : `vence em ${dias}d`
+      return `${icon} ${c.descricao}\n   ${fmtValor(Number(c.valor))} — ${fmtData(c.dataVencimento)} (${situacao})`
+    }).join('\n\n')
   }
+
+  if (nome === 'buscar_pedido') {
+    const where: Record<string, unknown> = { status: { not: 'CANCELADO' } }
+    if (input.numero) where.numero = { contains: String(input.numero), mode: 'insensitive' }
+    if (input.status) where.status = input.status
+    if (input.cliente) where.cliente = { OR: [
+      { nome:        { contains: String(input.cliente), mode: 'insensitive' } },
+      { razaoSocial: { contains: String(input.cliente), mode: 'insensitive' } },
+    ]}
+
+    const pedidos = await prisma.pedido.findMany({
+      where,
+      include: {
+        cliente: { select: { nome: true, razaoSocial: true } },
+        itens: { include: { modelo: { select: { nome: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    })
+
+    if (!pedidos.length) return 'Nenhum pedido encontrado.'
+
+    return pedidos.map(p => {
+      const nomeCli = p.cliente.razaoSocial || p.cliente.nome
+      const modelo  = p.itens[0]?.modelo.nome ?? 'N/A'
+      return `*${p.numero}* — ${nomeCli}\n${modelo} — ${fmtValor(Number(p.valorFinal))} — ${p.status}\n${fmtData(p.createdAt)}`
+    }).join('\n\n')
+  }
+
+  return 'Ferramenta não reconhecida.'
 }
 
-// ── IA ────────────────────────────────────────────────────────────────────────
+// ── IA com ferramentas ────────────────────────────────────────────────────────
 
 async function gerarResposta(pergunta: string): Promise<string> {
-  const hoje = new Date()
-  const [dia, semana, mes, fin] = await Promise.all([
-    consultarPeriodo('dia'),
-    consultarPeriodo('semana'),
-    consultarPeriodo('mes'),
-    consultarFinanceiro(),
-  ])
+  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 
-  const fmt  = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-  const fmtD = (d: Date)   => new Date(d).toLocaleDateString('pt-BR')
+  const messages: Anthropic.Messages.MessageParam[] = [{ role: 'user', content: pergunta }]
 
-  const proximasConta = fin.contasDetalhes.map(c =>
-    `  • ${c.descricao} — ${fmt(Number(c.valor))} — vence ${fmtD(c.dataVencimento)}`
-  ).join('\n') || '  Nenhuma conta pendente'
-
-  const contexto = `
-Hoje: ${hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-
-VENDAS:
-📅 Hoje: ${dia.vendas} vendas | ${fmt(dia.faturamento)} | ${dia.emissoes} emissões
-📆 Semana: ${semana.vendas} vendas | ${fmt(semana.faturamento)} | ${semana.emissoes} emissões
-🗓️ Mês: ${mes.vendas}/300 vendas | ${fmt(mes.faturamento)} | ${mes.emissoes} emissões
-
-CONTAS A RECEBER:
-  Total pendente: ${fmt(fin.aReceber)}
-  Vencidas: ${fmt(fin.receberVencidos)}
-
-CONTAS A PAGAR:
-  Total pendente: ${fmt(fin.aPagar)}
-  Vencidas: ${fmt(fin.pagarVencidos)}
-  Vencem em 7 dias: ${fmt(fin.pagarProximos)}
-  Próximas contas:
-${proximasConta}
-`.trim()
-
-  const msg = await anthropic.messages.create({
+  let response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 600,
+    max_tokens: 1024,
+    tools: TOOLS,
     system: `Você é o assistente de gestão da V&G Certificação Digital, respondendo via Telegram para o proprietário Vinicius.
-Seja direto, conciso e use emojis com moderação. Use *negrito* para destacar números importantes.
-
-O que você PODE fazer: responder perguntas sobre vendas, faturamento, emissões, contas a receber e contas a pagar usando os dados abaixo.
-O que você NÃO PODE fazer: gerar PDFs, abrir o sistema, criar pedidos ou orçamentos. Para isso, oriente o Vinicius a acessar o CertFlow em https://certflow-nine.vercel.app
-
-Dados atuais:
-${contexto}`,
-    messages: [{ role: 'user', content: pergunta }],
+Hoje é ${hoje}.
+Seja direto, conciso e use emojis com moderação. Use *negrito* para destacar números e informações importantes.
+Você tem acesso ao sistema completo via ferramentas — use-as sempre que precisar buscar informações.
+Quando não souber algo, use a ferramenta adequada ao invés de dizer que não tem acesso.
+Limitações reais: não consegue gerar PDFs nem abrir o navegador. Para isso, oriente acessar https://certflow-nine.vercel.app`,
+    messages,
   })
 
-  return msg.content[0].type === 'text' ? msg.content[0].text : 'Não consegui processar.'
+  // Loop de ferramentas
+  while (response.stop_reason === 'tool_use') {
+    const toolUses = response.content.filter(b => b.type === 'tool_use')
+    const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
+
+    for (const tool of toolUses) {
+      if (tool.type !== 'tool_use') continue
+      const resultado = await executarFerramenta(tool.name, tool.input as Record<string, unknown>)
+      toolResults.push({ type: 'tool_result', tool_use_id: tool.id, content: resultado })
+    }
+
+    messages.push({ role: 'assistant', content: response.content })
+    messages.push({ role: 'user', content: toolResults })
+
+    response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      tools: TOOLS,
+      system: `Você é o assistente de gestão da V&G Certificação Digital via Telegram para o proprietário Vinicius. Hoje é ${hoje}. Seja direto e use *negrito* para destacar dados importantes.`,
+      messages,
+    })
+  }
+
+  const texto = response.content.find(b => b.type === 'text')
+  return texto?.type === 'text' ? texto.text : 'Não consegui processar.'
 }
 
-// ── Webhook ──────────────────────────────────────────────────────────────────
+// ── Webhook ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    const body    = await req.json()
     const message = body?.message
     if (!message) return NextResponse.json({ ok: true })
 
     const chatId = message.chat?.id
     const texto  = message.text?.trim() ?? ''
-
     if (!chatId || !texto) return NextResponse.json({ ok: true })
 
-    const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
-
-    // Primeiro acesso — envia o chat ID para configuração
     if (!ADMIN_CHAT_ID) {
-      await enviar(chatId, `🤖 Bot ativo\\! Seu Chat ID é: \`${chatId}\`\n\nAdicione como variável TELEGRAM_ADMIN_CHAT_ID no Vercel\\.`)
+      await enviar(chatId, `🤖 Bot ativo! Seu Chat ID: \`${chatId}\`\nAdicione como TELEGRAM_ADMIN_CHAT_ID no Vercel.`)
       return NextResponse.json({ ok: true })
     }
 
-    // Só responde para o admin
     if (String(chatId) !== String(ADMIN_CHAT_ID)) {
-      await enviar(chatId, '⛔ Acesso não autorizado.')
       return NextResponse.json({ ok: true })
     }
 
-    // Gera e envia resposta
     await enviar(chatId, '⏳ Consultando...')
     const resposta = await gerarResposta(texto)
     await enviar(chatId, resposta)
