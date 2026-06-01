@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { diagnosticar, listarProdutos } from '@/lib/safeweb'
+import { diagnosticar, getToken } from '@/lib/safeweb'
+
+async function testarProdutos(idTipo: number, cnpj: string, baseUrl: string, token: string) {
+  const url = `${baseUrl}/Shared/Product/api/GetListProdutoByAR/${idTipo}/${encodeURIComponent(cnpj)}`
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+  })
+  const raw = await res.text()
+  let data: unknown
+  try { data = JSON.parse(raw) } catch { data = raw.slice(0, 200) }
+  return { status: res.status, ok: res.ok, data }
+}
 
 export async function GET() {
   const session = await auth()
@@ -9,17 +20,26 @@ export async function GET() {
   }
 
   const diagnostico = await diagnosticar()
+  if (!diagnostico.tokenOk) return NextResponse.json({ ...diagnostico })
 
-  if (!diagnostico.tokenOk) {
-    return NextResponse.json({ ...diagnostico, produtos: null })
-  }
+  const token   = await getToken()
+  const baseUrl = diagnostico.baseUrl
+  const cnpjNum = '33638059000169'
+  const cnpjFmt = '33.638.059/0001-69'
 
-  // Testa tipos de emissão 1 a 6 para descobrir quais são válidos para esta AR
-  const resultados: Record<string, unknown> = {}
-  for (let tipo = 1; tipo <= 6; tipo++) {
-    const { ok, produtos, erro } = await listarProdutos(tipo)
-    resultados[`tipo_${tipo}`] = ok ? { ok: true, qtd: produtos?.length, produtos } : { ok: false, erro }
-  }
+  // Testa tipo 3 (videoconferência) com CNPJ numérico e formatado
+  const [r1, r2, r3] = await Promise.all([
+    testarProdutos(3, cnpjNum, baseUrl, token),
+    testarProdutos(3, cnpjFmt, baseUrl, token),
+    testarProdutos(1, cnpjNum, baseUrl, token),
+  ])
 
-  return NextResponse.json({ ...diagnostico, resultados })
+  return NextResponse.json({
+    ...diagnostico,
+    testes: {
+      'tipo3_cnpj_numerico':   r1,
+      'tipo3_cnpj_formatado':  r2,
+      'tipo1_cnpj_numerico':   r3,
+    },
+  })
 }
