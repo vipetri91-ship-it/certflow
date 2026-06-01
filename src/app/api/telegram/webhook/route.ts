@@ -114,10 +114,11 @@ async function executarFerramenta(nome: string, input: Record<string, unknown>):
             return `  • ${cert.modelo.nome} — vence ${fmtData(cert.dataVencimento)} — ${statusCert(dias)}`
           }).join('\n')
         : '  • Sem certificados cadastrados'
-      const ultimoPedido = c.pedidos[0]
-        ? `Último pedido: ${ultimoPedido?.status ?? ''}`
+      const p0 = c.pedidos[0]
+      const infoPedido = p0
+        ? `Último pedido: ${p0.status} — ${fmtData(p0.createdAt)}`
         : 'Sem pedidos'
-      return `*${c.razaoSocial || c.nome}*\n${doc}\n${c.telefone || c.celular || ''}\n\nCertificados:\n${certs}\n${ultimoPedido}`
+      return `*${c.razaoSocial || c.nome}*\n${doc}\n${c.telefone || c.celular || ''}\n\nCertificados:\n${certs}\n${infoPedido}`
     }).join('\n\n---\n\n')
   }
 
@@ -198,7 +199,6 @@ async function executarFerramenta(nome: string, input: Record<string, unknown>):
 
     if (!contas.length) return 'Nenhuma conta a pagar pendente.'
 
-    const hoje = new Date()
     return `*💸 CONTAS A PAGAR (${contas.length}):*\n\n` + contas.map(c => {
       const dias = diasRestantes(c.dataVencimento)
       const icon = dias < 0 ? '🔴' : dias <= 7 ? '🟠' : '🟡'
