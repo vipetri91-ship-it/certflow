@@ -24,27 +24,16 @@ async function consultarDados(periodo: 'dia' | 'semana' | 'mes') {
     prisma.pedido.count({ where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
     prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
     prisma.pedido.count({ where: { emitidoEm: { gte: inicio, lte: fim } } }),
-    prisma.sSTLead.count({ where: { createdAt: { gte: inicio, lte: fim } } }).catch(() => 0),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma as any).sSTLead.count({ where: { createdAt: { gte: inicio, lte: fim } } }).catch(() => 0),
   ])
 
   return {
     vendas,
     faturamento: Number(faturamento._sum.valorFinal ?? 0),
     emissoes,
-    sst,
+    sst: sst as number,
   }
-}
-
-async function consultarAgenda() {
-  const hoje = new Date()
-  const inicio = startOfDay(hoje)
-  const fim    = endOfDay(hoje)
-  const eventos = await prisma.eventoAgenda.findMany({
-    where: { inicio: { gte: inicio, lte: fim } },
-    orderBy: { inicio: 'asc' },
-    take: 10,
-  }).catch(() => [])
-  return eventos
 }
 
 async function consultarFinanceiro() {
