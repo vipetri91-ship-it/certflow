@@ -12,28 +12,49 @@ function gerarNumero(): string {
   return `PED-${ano}${mes}-${rand}`
 }
 
+const schemaCliente = z.object({
+  tipoPessoa: z.enum(['PF', 'PJ']),
+  nome: z.string().min(2),
+  cpf: z.string().optional(),
+  cnpj: z.string().optional(),
+  razaoSocial: z.string().optional(),
+  nomeFantasia: z.string().optional(),
+  responsavel: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  ddd: z.string().optional(),
+  celular: z.string().optional(),
+  dataNascimento: z.string().optional(),
+  pisNis: z.string().optional(),
+  cep: z.string().optional(),
+  logradouro: z.string().optional(),
+  numero: z.string().optional(),
+  complemento: z.string().optional(),
+  bairro: z.string().optional(),
+  cidade: z.string().optional(),
+  estado: z.string().optional(),
+})
+
+const schemaResponsavel = z.object({
+  nome: z.string().min(2),
+  cpf: z.string().optional(),
+  dataNascimento: z.string().optional(),
+  pisNis: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  ddd: z.string().optional(),
+  celular: z.string().optional(),
+  cep: z.string().optional(),
+  logradouro: z.string().optional(),
+  numero: z.string().optional(),
+  complemento: z.string().optional(),
+  bairro: z.string().optional(),
+  cidade: z.string().optional(),
+  estado: z.string().optional(),
+})
+
 const schema = z.object({
   clienteId: z.string().nullable().optional(),
-  clienteDados: z.object({
-    tipoPessoa: z.enum(['PF', 'PJ']),
-    nome: z.string().min(2),
-    cpf: z.string().optional(),
-    cnpj: z.string().optional(),
-    razaoSocial: z.string().optional(),
-    responsavel: z.string().optional(),
-    email: z.string().email().optional(),
-    ddd: z.string().optional(),
-    celular: z.string().optional(),
-    dataNascimento: z.string().optional(),
-    pisNis: z.string().optional(),
-    cep: z.string().optional(),
-    logradouro: z.string().optional(),
-    numero: z.string().optional(),
-    complemento: z.string().optional(),
-    bairro: z.string().optional(),
-    cidade: z.string().optional(),
-    estado: z.string().optional(),
-  }),
+  clienteDados: schemaCliente,
+  responsavelDados: schemaResponsavel.optional(),
   modeloId: z.string(),
   parceiroId: z.string().optional(),
   agr: z.string().optional(),
@@ -64,7 +85,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Dados inválidos', detalhes: parsed.error.flatten() }, { status: 422 })
   }
 
-  const { clienteId, clienteDados, modeloId, valorVenda, valorDeslocamento, atendimentoExterno, desconto, agendamento, ...pedidoDados } = parsed.data
+  const { clienteId, clienteDados, responsavelDados, modeloId, valorVenda, valorDeslocamento, atendimentoExterno, desconto, agendamento, ...pedidoDados } = parsed.data
 
   const valorTotal = valorVenda + (atendimentoExterno ? valorDeslocamento : 0)
   const valorFinal = valorTotal - desconto
@@ -112,6 +133,33 @@ export async function POST(req: NextRequest) {
         data: { ...dadosCliente, cpf: cpf || undefined, cnpj: cnpj || undefined },
       })
       idCliente = novoCliente.id
+    }
+  }
+
+  // 1b. Para PJ: criar/atualizar cliente PF (responsável) separadamente
+  if (clienteDados.tipoPessoa === 'PJ' && responsavelDados?.cpf) {
+    const cpfPF = responsavelDados.cpf
+    const dadosPF = {
+      tipoPessoa: 'PF' as const,
+      nome:          responsavelDados.nome,
+      email:         responsavelDados.email || null,
+      ddd:           responsavelDados.ddd   || null,
+      celular:       responsavelDados.celular || null,
+      dataNascimento: responsavelDados.dataNascimento ? new Date(responsavelDados.dataNascimento) : null,
+      pisNis:        responsavelDados.pisNis    || null,
+      cep:           responsavelDados.cep       || null,
+      logradouro:    responsavelDados.logradouro || null,
+      numero:        responsavelDados.numero     || null,
+      complemento:   responsavelDados.complemento || null,
+      bairro:        responsavelDados.bairro     || null,
+      cidade:        responsavelDados.cidade     || null,
+      estado:        responsavelDados.estado     || null,
+    }
+    const pfExistente = await prisma.cliente.findUnique({ where: { cpf: cpfPF } })
+    if (pfExistente) {
+      await prisma.cliente.update({ where: { cpf: cpfPF }, data: dadosPF })
+    } else {
+      await prisma.cliente.create({ data: { ...dadosPF, cpf: cpfPF } })
     }
   }
 
