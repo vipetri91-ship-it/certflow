@@ -14,12 +14,12 @@ export async function GET() {
     return NextResponse.json({ ...diagnostico, produtos: null })
   }
 
-  // Se autenticou com sucesso, tenta listar produtos para validar acesso completo
-  const { ok, produtos, erro } = await listarProdutos()
+  // Testa tipos de emissão 1 a 6 para descobrir quais são válidos para esta AR
+  const resultados: Record<string, unknown> = {}
+  for (let tipo = 1; tipo <= 6; tipo++) {
+    const { ok, produtos, erro } = await listarProdutos(tipo)
+    resultados[`tipo_${tipo}`] = ok ? { ok: true, qtd: produtos?.length, produtos } : { ok: false, erro }
+  }
 
-  return NextResponse.json({
-    ...diagnostico,
-    produtos: ok ? produtos : null,
-    erroProdutos: ok ? undefined : erro,
-  })
+  return NextResponse.json({ ...diagnostico, resultados })
 }
