@@ -3,16 +3,14 @@ import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
-const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`
-// Chat ID autorizado — só o dono do bot responde
-const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
-
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ── Enviar mensagem ───────────────────────────────────────────────────────────
 
 async function enviar(chatId: number, texto: string) {
-  await fetch(`${TELEGRAM_API}/sendMessage`, {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  if (!token) throw new Error('TELEGRAM_BOT_TOKEN não configurado')
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text: texto, parse_mode: 'Markdown' }),
@@ -97,9 +95,11 @@ export async function POST(req: NextRequest) {
 
     if (!chatId || !texto) return NextResponse.json({ ok: true })
 
+    const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
+
     // Primeiro acesso — envia o chat ID para configuração
     if (!ADMIN_CHAT_ID) {
-      await enviar(chatId, `🤖 Bot ativo! Seu Chat ID é: \`${chatId}\`\n\nAdicione como variável TELEGRAM_ADMIN_CHAT_ID no Vercel.`)
+      await enviar(chatId, `🤖 Bot ativo\\! Seu Chat ID é: \`${chatId}\`\n\nAdicione como variável TELEGRAM_ADMIN_CHAT_ID no Vercel\\.`)
       return NextResponse.json({ ok: true })
     }
 
