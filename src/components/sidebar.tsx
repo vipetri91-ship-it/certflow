@@ -45,7 +45,6 @@ const MENU_PADRAO: MenuEntry[] = [
 
   { tipo: 'item', label: 'Renovações', href: '/renovacoes', icon: RefreshCw },
   { tipo: 'item', label: 'Notícias',   href: '/noticias',   icon: Newspaper },
-  { tipo: 'item', label: 'Conteúdo',   href: '/conteudo',   icon: Share2 },
 
   {
     tipo: 'grupo', label: 'Financeiro', icon: DollarSign,
