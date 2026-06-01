@@ -43,8 +43,16 @@ export async function GET() {
   const mapa: Record<string, number> = {}
   for (const a of atividades) mapa[a.usuarioId] = a._sum.minutosAtivos ?? 0
 
-  const diasUteis = 22
-  const esperadoMin = diasUteis * 8 * 60 // 22 dias × 8h
+  // Conta dias úteis reais do mês (segunda a sexta)
+  let diasUteis = 0
+  const cursor = new Date(inicio)
+  while (cursor <= fim) {
+    const d = cursor.getDay()
+    if (d >= 1 && d <= 5) diasUteis++
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  // 08:00-17:30 = 9h30 bruto - 1h almoço = 8h30 = 510 minutos produtivos por dia
+  const esperadoMin = diasUteis * 510
 
   const linhas = usuarios.map(u => {
     const ativos   = mapa[u.id] ?? 0
