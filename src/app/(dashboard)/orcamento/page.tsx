@@ -24,7 +24,7 @@ function fmtValor(v: number) {
 export default function OrcamentoPage() {
   const [destinatario, setDestinatario] = useState('')
   const [escopo,       setEscopo]       = useState('')
-  const [formas,       setFormas]       = useState<string[]>(['PIX'])
+  const [formas,       setFormas]       = useState<string[]>([...FORMAS])
   const [itens,        setItens]        = useState<Item[]>([
     { certificado: 'e-CPF A3',  midia: 'Token',      validade: '02', quantidade: 1, valorUnit: 0 },
     { certificado: 'e-CNPJ A3', midia: 'Smart Card', validade: '02', quantidade: 1, valorUnit: 0 },
@@ -44,6 +44,77 @@ export default function OrcamentoPage() {
   }
 
   const escopoFinal = escopo.trim() || itens.filter(i => i.certificado).map(i => i.certificado).join(' e ')
+
+  function gerarPDF() {
+    const linhasTabela = itens.map((item, idx) => `
+      <tr style="background:${idx % 2 === 0 ? '#dbeafe' : '#fff'}">
+        <td style="padding:2mm 3mm">${item.certificado}</td>
+        <td style="padding:2mm 3mm">${item.midia}</td>
+        <td style="padding:2mm 3mm">${item.validade}</td>
+        <td style="padding:2mm 3mm">${item.quantidade}</td>
+        <td style="padding:2mm 3mm;text-align:right">R$ ${fmtValor(item.quantidade * item.valorUnit)}</td>
+      </tr>`).join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <style>
+      @page { size: A4; margin: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #222; background: #fff; width: 210mm; }
+    </style></head><body>
+    <div style="width:210mm;min-height:297mm;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 72pt 72pt 0;border-color:transparent #e87722 transparent transparent"></div>
+      <div style="position:absolute;bottom:0;left:0;width:0;height:0;border-style:solid;border-width:72pt 0 0 72pt;border-color:transparent transparent transparent #e87722"></div>
+      <div style="padding:14mm 18mm 20mm 18mm">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5mm;padding-bottom:4mm;border-bottom:1px solid #ccc">
+          <img src="${window.location.origin}/logo-vg.png" style="height:20mm;width:auto">
+          <div style="text-align:right;padding-right:10mm">
+            <p style="font-size:17pt;font-weight:bold;color:#1a3a6b;letter-spacing:3px">PROPOSTA COMERCIAL</p>
+            <p style="font-size:8pt;color:#555;margin-top:2mm">Piracaia/SP — Praça Benedito Peçanha Franco, 28, Centro.</p>
+            <p style="font-size:8pt;color:#555;margin-top:1mm">Bragança Paulista/SP — Rua Tupi, 153, Sala 8, Taboão.</p>
+            <p style="font-size:8pt;color:#555;margin-top:1mm">CNPJ: 48.948.496/0001-56</p>
+            <p style="font-size:8pt;color:#555;margin-top:1mm">(11) 94315-6015 / (11) 93332-3003 — AR VEG vegcertificadora.com.br</p>
+          </div>
+        </div>
+        <p style="text-align:center;font-weight:bold;font-size:12pt;text-decoration:underline;margin:5mm 0 4mm">Proposta de Prestação de Serviços em Certificação Digital</p>
+        <p style="text-align:right;margin-bottom:5mm">Piracaia/SP, ${hoje()}.</p>
+        <p style="margin-bottom:1mm">À</p>
+        <p style="font-weight:bold;font-size:11pt;margin-bottom:5mm">${destinatario || '[Destinatário]'}</p>
+        <p style="text-align:justify;line-height:1.7;margin-bottom:5mm">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Desde já, agradecemos o interesse pelos nossos serviços. Temos o prazer em enviá-lo esta proposta com a garantia e qualidade que a V&G oferece. Ressaltamos que esta tem validade de 30 dias, necessitando de revalidação após o seu vencimento.</p>
+        <p style="font-weight:bold;margin-bottom:3mm">ESCOPO</p>
+        <p style="padding-left:10mm;line-height:1.7;margin-bottom:5mm">Fornecer certificado digital modelo ${escopoFinal}.</p>
+        <p style="font-weight:bold;margin-bottom:3mm">CONDIÇÕES FINANCEIRAS</p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:5mm;font-size:10pt">
+          <thead><tr>
+            <th style="text-align:left;padding:2.5mm 3mm;border-bottom:1.5pt solid #1a3a6b;font-weight:normal;color:#444">Certificado Digital</th>
+            <th style="text-align:left;padding:2.5mm 3mm;border-bottom:1.5pt solid #1a3a6b;font-weight:normal;color:#444">Mídia</th>
+            <th style="text-align:left;padding:2.5mm 3mm;border-bottom:1.5pt solid #1a3a6b;font-weight:normal;color:#444">Validade (Anos)</th>
+            <th style="text-align:left;padding:2.5mm 3mm;border-bottom:1.5pt solid #1a3a6b;font-weight:normal;color:#444">Quantidade</th>
+            <th style="text-align:right;padding:2.5mm 3mm;border-bottom:1.5pt solid #1a3a6b;font-weight:normal;color:#444">Valor Un. (R$)</th>
+          </tr></thead>
+          <tbody>${linhasTabela}
+            <tr>
+              <td colspan="4" style="padding:2.5mm 3mm;font-weight:bold;border-top:1.5pt solid #1a3a6b">Total:</td>
+              <td style="padding:2.5mm 3mm;text-align:right;font-weight:bold;border-top:1.5pt solid #1a3a6b">R$ ${fmtValor(total)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-weight:bold;margin-bottom:3mm">FORMAS DE PAGAMENTO</p>
+        <ul style="padding-left:10mm;margin-bottom:5mm;line-height:1.9">${formas.map(f => `<li>${f}.</li>`).join('')}</ul>
+        <p style="line-height:1.7;margin-bottom:12mm">Desde já, estamos à disposição para esclarecer todas as dúvidas acerca desta proposta.</p>
+        <div style="text-align:center;margin-bottom:10mm">
+          <div style="border-top:1px solid #333;width:55mm;margin:0 auto 3mm"></div>
+          <p style="font-weight:bold">Vinicius Petri</p>
+          <p style="margin-top:1mm">Gestor de Negócios</p>
+          <p style="margin-top:1mm">Vinicius.petri@vegcertificado.com.br</p>
+        </div>
+      </div>
+    </div>
+    <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}</script>
+    </body></html>`
+
+    const win = window.open('', '_blank', 'width=900,height=700')
+    if (win) { win.document.write(html); win.document.close() }
+  }
 
   return (
     <>
@@ -125,7 +196,7 @@ export default function OrcamentoPage() {
             </div>
           </div>
 
-          <button onClick={() => window.print()}
+          <button onClick={gerarPDF}
             className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition">
             <Printer className="w-4 h-4" /> Imprimir / Salvar PDF
           </button>
@@ -224,11 +295,6 @@ export default function OrcamentoPage() {
             <p style={{ margin: '1mm 0 0' }}>Vinicius.petri@vegcertificado.com.br</p>
           </div>
 
-          {/* RODAPÉ */}
-          <div style={{ borderTop: '1px solid #ddd', paddingTop: '3mm', fontSize: '8pt', color: '#777' }}>
-            <p style={{ margin: 0 }}>Piracaia/SP — Praça Benedito Peçanha Franco, 28, Centro. CNPJ: 48.948.496/0001-56</p>
-            <p style={{ margin: '1mm 0 0' }}>(11) 94315-6015 / (11) 93332-3003. AR VEG — vegcertificadora.com.br</p>
-          </div>
         </div>
       </div>
     </>
