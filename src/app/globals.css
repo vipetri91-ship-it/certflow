@@ -15,87 +15,173 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ─── Dark Mode — overrides globais ────────────────────────────────────── */
-
-/* Paleta:
-   bg-main    #0f172a  slate-900
-   bg-card    #1e293b  slate-800
-   bg-input   #334155  slate-700
-   border     #334155  slate-700
-   text-hi    #f1f5f9  slate-100
-   text-mid   #cbd5e1  slate-300
-   text-lo    #94a3b8  slate-400
-   text-mute  #64748b  slate-500
+/* ─── TECH DARK MODE ────────────────────────────────────────────────────── */
+/*
+   Paleta "Deep Navy Tech":
+   bg-main    #0d1117   fundo principal — quase preto azulado
+   bg-card    #161b27   cards — navy profundo
+   bg-card-2  #1c2333   cards elevados
+   bg-input   #1c2333   inputs
+   border     #21293b   bordas sutis
+   border-hi  #2d3a52   bordas em hover/destaque
+   text-hi    #e6edf3   texto principal
+   text-mid   #8b949e   texto secundário
+   text-lo    #484f58   texto mudo
+   accent-or  #e87722   laranja V&G
+   accent-bl  #1a3a6b   navy V&G
+   glow-or    rgba(232,119,34,0.15)  glow laranja
+   glow-bl    rgba(26,58,107,0.3)    glow azul
 */
 
-html.dark body { background-color: #0f172a; color: #f1f5f9; }
+html.dark body {
+  background: linear-gradient(135deg, #0d1117 0%, #0f1520 50%, #0d1117 100%);
+  color: #e6edf3;
+  min-height: 100vh;
+}
 
-/* Backgrounds */
-.dark .bg-white           { background-color: #1e293b; }
-.dark .bg-gray-50         { background-color: #0f172a; }
-.dark .bg-gray-100        { background-color: #334155; }
-.dark .bg-gray-200        { background-color: #334155; }
+/* ── Backgrounds ── */
+.dark .bg-white           { background-color: #161b27; }
+.dark .bg-gray-50         { background-color: #0d1117; }
+.dark .bg-gray-100        { background-color: #1c2333; }
+.dark .bg-gray-200        { background-color: #1c2333; }
 
-/* Textos */
-.dark .text-gray-900      { color: #f1f5f9; }
-.dark .text-gray-800      { color: #e2e8f0; }
-.dark .text-gray-700      { color: #cbd5e1; }
-.dark .text-gray-600      { color: #94a3b8; }
-.dark .text-gray-500      { color: #94a3b8; }
-.dark .text-gray-400      { color: #64748b; }
-.dark .text-gray-300      { color: #475569; }
+/* Dashboard page background */
+.dark .bg-\[\#EEF2FF\]   { background: linear-gradient(135deg, #0d1117 0%, #0f1520 100%); }
 
-/* Bordas */
-.dark .border-gray-100    { border-color: #334155; }
-.dark .border-gray-200    { border-color: #475569; }
-.dark .border-gray-300    { border-color: #475569; }
-.dark .ring-gray-200      { --tw-ring-color: #475569; }
+/* ── Cards tech — efeito glass ── */
+.dark .rounded-2xl.border.border-gray-100,
+.dark .rounded-xl.border.border-gray-100 {
+  background-color: #161b27;
+  border-color: #21293b;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+}
 
-/* Divisores */
-.dark .divide-gray-50  > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
-.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
-.dark .divide-y        > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
+.dark .rounded-2xl.border.border-gray-100:hover,
+.dark .rounded-xl.border.border-gray-100:hover {
+  border-color: #2d3a52;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+}
 
-/* Hover — backgrounds */
-.dark .hover\:bg-gray-50:hover  { background-color: #334155; }
-.dark .hover\:bg-gray-100:hover { background-color: #334155; }
-.dark .hover\:bg-red-50:hover   { background-color: rgba(239,68,68,0.15); }
-.dark .hover\:bg-blue-50:hover  { background-color: rgba(59,130,246,0.15); }
+/* ── Textos ── */
+.dark .text-gray-900      { color: #e6edf3; }
+.dark .text-gray-800      { color: #cdd9e5; }
+.dark .text-gray-700      { color: #8b949e; }
+.dark .text-gray-600      { color: #8b949e; }
+.dark .text-gray-500      { color: #6e7681; }
+.dark .text-gray-400      { color: #484f58; }
+.dark .text-gray-300      { color: #30363d; }
 
-/* Estados ativos / selecionados */
-.dark .bg-blue-50       { background-color: rgba(59,130,246,0.15); }
-.dark .text-blue-700    { color: #93c5fd; }
-.dark .text-blue-600    { color: #60a5fa; }
-.dark .hover\:text-blue-600:hover { color: #60a5fa; }
+/* ── Bordas ── */
+.dark .border-gray-100    { border-color: #21293b; }
+.dark .border-gray-200    { border-color: #21293b; }
+.dark .border-gray-300    { border-color: #2d3a52; }
+.dark .ring-gray-200      { --tw-ring-color: #2d3a52; }
 
-/* Inputs, selects, textareas */
+/* ── Divisores ── */
+.dark .divide-gray-50  > :not([hidden]) ~ :not([hidden]) { border-color: #21293b; }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #21293b; }
+.dark .divide-y        > :not([hidden]) ~ :not([hidden]) { border-color: #21293b; }
+
+/* ── Hover ── */
+.dark .hover\:bg-gray-50:hover  { background-color: rgba(255,255,255,0.04); }
+.dark .hover\:bg-gray-100:hover { background-color: rgba(255,255,255,0.06); }
+.dark .hover\:bg-red-50:hover   { background-color: rgba(239,68,68,0.12); }
+.dark .hover\:bg-blue-50:hover  { background-color: rgba(232,119,34,0.1); }
+
+/* ── Estados ativos ── */
+.dark .bg-blue-50       { background-color: rgba(232,119,34,0.12); }
+.dark .text-blue-700    { color: #f0a040; }
+.dark .text-blue-600    { color: #e87722; }
+.dark .hover\:text-blue-600:hover { color: #e87722; }
+.dark .bg-blue-600      { background-color: #e87722; }
+.dark .hover\:bg-blue-700:hover { background-color: #d06810; }
+
+/* ── Inputs ── */
 .dark input:not([type="radio"]):not([type="checkbox"]):not([type="color"]):not([type="range"]):not([type="file"]) {
-  background-color: #334155;
-  color: #f1f5f9;
-  border-color: #475569;
+  background-color: #1c2333;
+  color: #e6edf3;
+  border-color: #21293b;
+}
+.dark input:not([type="radio"]):not([type="checkbox"]):focus {
+  border-color: #e87722;
+  box-shadow: 0 0 0 3px rgba(232,119,34,0.15);
 }
 .dark select {
-  background-color: #334155;
-  color: #f1f5f9;
-  border-color: #475569;
+  background-color: #1c2333;
+  color: #e6edf3;
+  border-color: #21293b;
 }
 .dark textarea {
-  background-color: #334155;
-  color: #f1f5f9;
-  border-color: #475569;
+  background-color: #1c2333;
+  color: #e6edf3;
+  border-color: #21293b;
 }
 
-/* Placeholder */
-.dark ::placeholder { color: #64748b; }
+/* ── Placeholder ── */
+.dark ::placeholder { color: #484f58; }
 
-/* Dropdowns e modais */
-.dark .shadow-xl    { box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
-.dark .shadow-sm    { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+/* ── Sombras ── */
+.dark .shadow-xl  { box-shadow: 0 20px 60px rgba(0,0,0,0.7); }
+.dark .shadow-sm  { box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+.dark .shadow-2xl { box-shadow: 0 25px 80px rgba(0,0,0,0.8); }
 
-/* Focus rings — mantém o azul */
-.dark .focus\:ring-blue-500:focus { --tw-ring-color: #3b82f6; }
+/* ── Focus ── */
+.dark .focus\:ring-blue-500:focus { --tw-ring-color: #e87722; }
 
-/* Scrollbar */
-.dark ::-webkit-scrollbar-track  { background: #1e293b; }
-.dark ::-webkit-scrollbar-thumb  { background: #475569; border-radius: 4px; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+/* ── Scrollbar tech ── */
+.dark ::-webkit-scrollbar       { width: 6px; }
+.dark ::-webkit-scrollbar-track { background: #0d1117; }
+.dark ::-webkit-scrollbar-thumb { background: #2d3a52; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #e87722; }
+
+/* ── Header tech ── */
+.dark header {
+  background: rgba(13,17,23,0.95) !important;
+  border-bottom-color: #21293b !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ── Sidebar tech ── */
+.dark aside {
+  background: #0d1117 !important;
+  border-right-color: #21293b !important;
+}
+
+/* Item ativo do sidebar — glow laranja */
+.dark .bg-blue-50.dark\:bg-blue-900\/30 {
+  background: linear-gradient(135deg, rgba(232,119,34,0.2), rgba(232,119,34,0.08)) !important;
+  border-left: 2px solid #e87722;
+}
+
+/* ── Tabelas ── */
+.dark .bg-gray-50.dark\:bg-slate-700,
+.dark thead tr {
+  background-color: #1c2333 !important;
+}
+
+/* ── Badges e pills ── */
+.dark .bg-green-100  { background-color: rgba(34,197,94,0.15); }
+.dark .bg-red-100    { background-color: rgba(239,68,68,0.15); }
+.dark .bg-yellow-100 { background-color: rgba(234,179,8,0.15); }
+.dark .bg-blue-100   { background-color: rgba(232,119,34,0.15); }
+.dark .bg-indigo-50  { background-color: rgba(99,102,241,0.12); }
+.dark .bg-purple-50  { background-color: rgba(168,85,247,0.12); }
+.dark .bg-amber-50   { background-color: rgba(245,158,11,0.12); }
+.dark .bg-orange-50  { background-color: rgba(249,115,22,0.12); }
+
+/* ── Modais ── */
+.dark .fixed.inset-0.bg-black\/50 { background: rgba(0,0,0,0.75); }
+
+/* ── Efeito glow nos números grandes ── */
+.dark .text-blue-600,
+.dark .text-blue-700 {
+  text-shadow: 0 0 20px rgba(232,119,34,0.3);
+}
+
+/* ── Animação sutil de entrada ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dark .rounded-2xl { animation: fadeInUp 0.3s ease forwards; }

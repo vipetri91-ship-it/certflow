@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Handshake,
   DollarSign, BarChart3, Settings, LogOut,
   Bell, UserCog, ClipboardList, Monitor, ShoppingBag,
-  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt, BellRing, CalendarDays, Newspaper, ShieldCheck, Search, Share2,
+  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt, BellRing, CalendarDays, Newspaper, ShieldCheck, Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -134,7 +134,7 @@ export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
       <aside
         className={cn(
           'flex flex-col h-screen z-40 transition-all duration-300 shrink-0',
-          'bg-white dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 shadow-sm',
+          'bg-white dark:bg-[#0d1117] border-r border-gray-100 dark:border-[#21293b] shadow-sm dark:shadow-[4px_0_24px_rgba(0,0,0,0.4)]',
           'fixed lg:relative',
           onFechar ? aberta ? 'translate-x-0' : '-translate-x-full' : 'translate-x-0',
           expandido ? 'w-60' : 'w-16'
@@ -175,10 +175,10 @@ export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
                   title={!expandido ? entry.label : undefined}
                   className={cn(
                     'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all',
-                    ativo ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 hover:font-semibold',
+                    ativo ? 'bg-blue-50 dark:bg-gradient-to-r dark:from-orange-500/20 dark:to-transparent text-blue-700 dark:text-orange-400 font-semibold dark:border-l-2 dark:border-orange-500' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-blue-600 dark:hover:text-orange-300 hover:font-semibold',
                     !expandido && 'justify-center px-2'
                   )}>
-                  <entry.icon className={cn('w-4 h-4 shrink-0', ativo ? 'text-blue-600' : 'text-gray-400')} />
+                  <entry.icon className={cn('w-4 h-4 shrink-0', ativo ? 'text-blue-600 dark:text-orange-400' : 'text-gray-400 dark:text-slate-500')} />
                   {expandido && <span>{entry.label}</span>}
                 </Link>
               )
