@@ -151,18 +151,25 @@ export default async function IntegracoesPage() {
                   {integ.descricao}
                 </p>
 
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center justify-between pt-1 gap-2">
                   <p className={`text-xs font-medium ${
                     integ.status === 'ativo' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'
                   }`}>
                     {integ.detalhe}
                   </p>
-                  {integ.link && (
-                    <a href={integ.link} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition shrink-0">
-                      {integ.linkLabel} <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {integ.link && (
+                      <a href={integ.link} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition">
+                        {integ.linkLabel} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {integ.nome === 'Google Calendar' && (
+                      <a href="/api/google" className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                        {integ.status === 'ativo' ? '🔄 Trocar conta' : '🔗 Conectar'}
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             )
