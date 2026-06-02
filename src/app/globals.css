@@ -3,7 +3,7 @@
 /* Tailwind v4 — dark mode por classe .dark */
 @custom-variant dark (&:is(.dark, .dark *));
 
-/* ─── Variáveis de cor ──────────────────────────────────────────────────── */
+/* ─── Light mode ────────────────────────────────────────────────────────── */
 :root {
   --background: #f9fafb;
   --foreground: #111827;
@@ -15,152 +15,151 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ─── TECH DARK MODE — Paleta da referência ────────────────────────────── */
-/*
-   bg-main     #1a1d2e   navy-purple escuro (igual à referência)
-   bg-sidebar  #14172a   sidebar mais escura
-   bg-card     #22263a   card principal
-   bg-card-2   #292d42   card elevado / sub-seção
-   border      rgba(255,255,255,0.07)  borda sutil glass
-   border-hi   rgba(255,255,255,0.14)  borda hover
-   text-hi     #e8ecf1   texto principal
-   text-mid    #8b95a8   texto secundário
-   text-lo     #545c73   texto mudo
-   accent-or   #e87722   laranja V&G
-   accent-cy   #06b6d4   ciano — tech secondary
-   accent-pu   #7c6fce   roxo sutil (como referência)
-*/
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK THEME — cores fiéis à referência CRM Dashboard
+   ────────────────────────────────────────────────────────────────────────
+   bg-body    #1a1d2e   fundo principal
+   bg-card    #252942   cards
+   bg-deep    #1e2040   seções internas dos cards
+   bg-sidebar #161928   sidebar
+   accent-pu  #7c6fcd   roxo principal (sidebar ativo, links)
+   accent-cy  #22d3ee   ciano (valores positivos, gráficos)
+   accent-pk  #e879b5   rosa/magenta (destaques 2)
+   text-hi    #e2e8f0   texto principal
+   text-mid   #8892a4   texto secundário
+   text-lo    #545e78   texto mudo
+   border     rgba(255,255,255,0.06)  borda glass
+═══════════════════════════════════════════════════════════════════════════ */
 
 html.dark body {
   background-color: #1a1d2e;
-  color: #e8ecf1;
+  color: #e2e8f0;
   min-height: 100vh;
 }
 
 /* ── Page backgrounds ── */
-.dark .bg-\[\#EEF2FF\]      { background-color: #1a1d2e !important; }
-.dark .bg-slate-900          { background-color: #14172a !important; }
+.dark .bg-\[\#EEF2FF\]  { background-color: #1a1d2e !important; }
+.dark .bg-slate-900      { background-color: #161928 !important; }
 
-/* ── Cards / surfaces ── */
-.dark .bg-white              { background-color: #22263a !important; }
-.dark .bg-gray-50            { background-color: #1a1d2e !important; }
-.dark .bg-gray-100           { background-color: #292d42 !important; }
-.dark .bg-gray-200           { background-color: #2f3348 !important; }
+/* ── Surfaces ── */
+.dark .bg-white          { background-color: #252942 !important; }
+.dark .bg-gray-50        { background-color: #1a1d2e !important; }
+.dark .bg-gray-100       { background-color: #1e2040 !important; }
+.dark .bg-gray-200       { background-color: #2a2d48 !important; }
+.dark .bg-slate-800      { background-color: #252942 !important; }
+.dark .bg-slate-700      { background-color: #1e2040 !important; }
 
-/* Cards com glass effect */
-.dark .rounded-2xl,
-.dark .rounded-xl {
-  --tw-shadow: 0 4px 20px rgba(0,0,0,0.35);
-}
+/* ── Bordas glass ── */
+.dark .border-gray-100   { border-color: rgba(255,255,255,0.06) !important; }
+.dark .border-gray-200   { border-color: rgba(255,255,255,0.08) !important; }
+.dark .border-gray-300   { border-color: rgba(255,255,255,0.12) !important; }
+.dark .border-slate-700  { border-color: rgba(255,255,255,0.06) !important; }
+.dark .ring-gray-200     { --tw-ring-color: rgba(124,111,205,0.4); }
 
-.dark .border-gray-100       { border-color: rgba(255,255,255,0.07) !important; }
-.dark .border-gray-200       { border-color: rgba(255,255,255,0.10) !important; }
-.dark .border-gray-300       { border-color: rgba(255,255,255,0.14) !important; }
-.dark .border-slate-700      { border-color: rgba(255,255,255,0.08) !important; }
+/* ── Divisores ── */
+.dark .divide-gray-50  > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.05); }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.05); }
+.dark .divide-y        > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.05); }
 
 /* ── Textos ── */
-.dark .text-gray-900         { color: #e8ecf1 !important; }
-.dark .text-gray-800         { color: #cdd4e0 !important; }
-.dark .text-gray-700         { color: #9aa3b6 !important; }
-.dark .text-gray-600         { color: #8b95a8 !important; }
-.dark .text-gray-500         { color: #6b7589 !important; }
-.dark .text-gray-400         { color: #545c73 !important; }
-.dark .text-gray-300         { color: #3d4457 !important; }
+.dark .text-gray-900     { color: #e2e8f0 !important; }
+.dark .text-gray-800     { color: #cdd5e0 !important; }
+.dark .text-gray-700     { color: #8892a4 !important; }
+.dark .text-gray-600     { color: #8892a4 !important; }
+.dark .text-gray-500     { color: #6670839 !important; }
+.dark .text-gray-400     { color: #545e78 !important; }
+.dark .text-gray-300     { color: #3a4258 !important; }
 
-/* ── Accent — azul→laranja V&G ── */
-.dark .text-blue-700         { color: #e87722 !important; }
-.dark .text-blue-600         { color: #f09040 !important; }
-.dark .text-blue-400         { color: #f09040 !important; }
-.dark .bg-blue-50            { background-color: rgba(232,119,34,0.12) !important; }
-.dark .bg-blue-600           { background-color: #e87722 !important; }
-.dark .hover\:bg-blue-700:hover { background-color: #d06810 !important; }
-.dark .hover\:text-blue-600:hover { color: #f09040 !important; }
-.dark .hover\:text-blue-400:hover { color: #f09040 !important; }
+/* ── Accent roxo (como na referência) ── */
+.dark .text-blue-700         { color: #a78bfa !important; }
+.dark .text-blue-600         { color: #7c6fcd !important; }
+.dark .text-blue-400         { color: #a78bfa !important; }
+.dark .bg-blue-50            { background-color: rgba(124,111,205,0.15) !important; }
+.dark .bg-blue-600           { background-color: #7c6fcd !important; }
+.dark .hover\:bg-blue-700:hover { background-color: #6b5fbc !important; }
+.dark .hover\:text-blue-600:hover { color: #a78bfa !important; }
+.dark .hover\:text-blue-400:hover { color: #a78bfa !important; }
+.dark .border-blue-600       { border-color: #7c6fcd !important; }
 
-/* ── Hover sutis ── */
+/* ── Hover ── */
 .dark .hover\:bg-gray-50:hover  { background-color: rgba(255,255,255,0.04) !important; }
 .dark .hover\:bg-gray-100:hover { background-color: rgba(255,255,255,0.06) !important; }
 .dark .hover\:bg-red-50:hover   { background-color: rgba(239,68,68,0.12) !important; }
-.dark .hover\:bg-blue-50:hover  { background-color: rgba(232,119,34,0.1) !important; }
+.dark .hover\:bg-blue-50:hover  { background-color: rgba(124,111,205,0.12) !important; }
 
-/* ── Divisores ── */
-.dark .divide-gray-50  > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06); }
-.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06); }
-.dark .divide-y        > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06); }
+/* ── Status colors (mantém intenção semântica, adapta ao tema) ── */
+.dark .text-green-600    { color: #34d399 !important; }
+.dark .text-green-700    { color: #34d399 !important; }
+.dark .text-red-600      { color: #f87171 !important; }
+.dark .text-red-700      { color: #f87171 !important; }
+.dark .text-orange-500   { color: #fb923c !important; }
+.dark .text-orange-600   { color: #fb923c !important; }
+.dark .bg-green-50       { background-color: rgba(52,211,153,0.08) !important; }
+.dark .bg-green-100      { background-color: rgba(52,211,153,0.12) !important; }
+.dark .bg-red-50         { background-color: rgba(248,113,113,0.08) !important; }
+.dark .bg-red-100        { background-color: rgba(248,113,113,0.12) !important; }
+.dark .bg-yellow-50      { background-color: rgba(251,191,36,0.08) !important; }
+.dark .bg-yellow-100     { background-color: rgba(251,191,36,0.12) !important; }
+.dark .bg-orange-50      { background-color: rgba(251,146,60,0.08) !important; }
+.dark .bg-orange-100     { background-color: rgba(251,146,60,0.12) !important; }
+.dark .bg-purple-50      { background-color: rgba(124,111,205,0.12) !important; }
+.dark .bg-indigo-50      { background-color: rgba(99,102,241,0.10) !important; }
+.dark .bg-amber-50       { background-color: rgba(245,158,11,0.10) !important; }
 
 /* ── Inputs ── */
 .dark input:not([type="radio"]):not([type="checkbox"]):not([type="color"]):not([type="range"]):not([type="file"]) {
-  background-color: #292d42;
-  color: #e8ecf1;
-  border-color: rgba(255,255,255,0.1);
+  background-color: #1e2040;
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.08);
 }
 .dark input:not([type="radio"]):not([type="checkbox"]):focus {
-  border-color: #e87722;
-  box-shadow: 0 0 0 3px rgba(232,119,34,0.2);
+  border-color: #7c6fcd;
+  box-shadow: 0 0 0 3px rgba(124,111,205,0.2);
   outline: none;
 }
 .dark select {
-  background-color: #292d42;
-  color: #e8ecf1;
-  border-color: rgba(255,255,255,0.1);
+  background-color: #1e2040;
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.08);
 }
 .dark textarea {
-  background-color: #292d42;
-  color: #e8ecf1;
-  border-color: rgba(255,255,255,0.1);
+  background-color: #1e2040;
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.08);
 }
-.dark ::placeholder { color: #545c73; }
+.dark ::placeholder { color: #545e78; }
 
-/* ── Sombras profundas ── */
-.dark .shadow-sm  { box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important; }
+/* ── Sombras ── */
+.dark .shadow-sm  { box-shadow: 0 2px 8px rgba(0,0,0,0.35) !important; }
 .dark .shadow-xl  { box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important; }
 .dark .shadow-2xl { box-shadow: 0 25px 80px rgba(0,0,0,0.75) !important; }
 
-/* ── Focus rings ── */
-.dark .focus\:ring-blue-500:focus { --tw-ring-color: #e87722; }
+/* ── Focus ── */
+.dark .focus\:ring-blue-500:focus { --tw-ring-color: #7c6fcd; }
 
-/* ── Header — glass effect ── */
+/* ── Header glass ── */
 .dark header {
-  background: rgba(26,29,46,0.92) !important;
-  border-bottom-color: rgba(255,255,255,0.07) !important;
+  background: rgba(26,29,46,0.95) !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
-/* ── Sidebar — profunda ── */
+/* ── Sidebar ── */
 .dark aside {
-  background: #14172a !important;
-  border-right-color: rgba(255,255,255,0.07) !important;
+  background: #161928 !important;
+  border-right-color: rgba(255,255,255,0.06) !important;
 }
 
-/* ── Badges ── */
-.dark .bg-green-100  { background-color: rgba(34,197,94,0.15) !important; }
-.dark .bg-red-100    { background-color: rgba(239,68,68,0.15) !important; }
-.dark .bg-yellow-100 { background-color: rgba(234,179,8,0.15) !important; }
-.dark .bg-blue-100   { background-color: rgba(232,119,34,0.15) !important; }
-.dark .bg-orange-100 { background-color: rgba(249,115,22,0.15) !important; }
-.dark .bg-purple-50  { background-color: rgba(124,111,206,0.15) !important; }
-.dark .bg-indigo-50  { background-color: rgba(99,102,241,0.12) !important; }
-.dark .bg-amber-50   { background-color: rgba(245,158,11,0.12) !important; }
-.dark .bg-slate-800  { background-color: #22263a !important; }
-
-/* ── Tabelas ── */
-.dark thead tr       { background-color: #1e2235 !important; }
-.dark tbody tr:hover { background-color: rgba(255,255,255,0.03) !important; }
+/* ── Scrollbar ── */
+.dark ::-webkit-scrollbar       { width: 5px; height: 5px; }
+.dark ::-webkit-scrollbar-track { background: #161928; }
+.dark ::-webkit-scrollbar-thumb { background: #2a2d48; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #7c6fcd; }
 
 /* ── Modal overlay ── */
-.dark .bg-black\/50  { background: rgba(0,0,0,0.7) !important; }
+.dark .bg-black\/50 { background: rgba(0,0,0,0.75) !important; }
 
-/* ── Scrollbar tech ── */
-.dark ::-webkit-scrollbar       { width: 5px; height: 5px; }
-.dark ::-webkit-scrollbar-track { background: #14172a; }
-.dark ::-webkit-scrollbar-thumb { background: #2f3348; border-radius: 4px; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #e87722; }
-
-/* ── Sidebar item ativo — gradiente como referência ── */
-.dark a[class*="bg-blue-50"],
-.dark .bg-blue-50.text-blue-700 {
-  background: linear-gradient(90deg, rgba(232,119,34,0.25) 0%, rgba(232,119,34,0.05) 100%) !important;
-  border-left: 2px solid #e87722 !important;
-  border-radius: 0.5rem !important;
-}
+/* ── Tabelas ── */
+.dark thead tr       { background-color: #1e2040 !important; }
+.dark tbody tr:hover { background-color: rgba(255,255,255,0.03) !important; }

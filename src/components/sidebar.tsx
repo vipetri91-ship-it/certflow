@@ -175,10 +175,10 @@ export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
                   title={!expandido ? entry.label : undefined}
                   className={cn(
                     'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all',
-                    ativo ? 'bg-blue-50 dark:bg-gradient-to-r dark:from-orange-500/20 dark:to-transparent text-blue-700 dark:text-orange-400 font-semibold dark:border-l-2 dark:border-orange-500' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-blue-600 dark:hover:text-orange-300 hover:font-semibold',
+                    ativo ? 'bg-blue-50 dark:bg-[rgba(124,111,205,0.2)] text-blue-700 dark:text-[#a78bfa] font-semibold dark:border-l-2 dark:border-[#7c6fcd]' : 'text-gray-600 dark:text-[#8892a4] hover:bg-gray-50 dark:hover:bg-[rgba(255,255,255,0.04)] hover:text-blue-600 dark:hover:text-[#a78bfa] hover:font-semibold',
                     !expandido && 'justify-center px-2'
                   )}>
-                  <entry.icon className={cn('w-4 h-4 shrink-0', ativo ? 'text-blue-600 dark:text-orange-400' : 'text-gray-400 dark:text-slate-500')} />
+                  <entry.icon className={cn('w-4 h-4 shrink-0', ativo ? 'text-blue-600 dark:text-[#a78bfa]' : 'text-gray-400 dark:text-[#545e78]')} />
                   {expandido && <span>{entry.label}</span>}
                 </Link>
               )
