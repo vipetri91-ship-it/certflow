@@ -202,14 +202,6 @@ export default async function DashboardPage({ searchParams }: Props) {
       <MetaCelebracao vendasMes={dados.vendasMes} />
       <Header titulo="Dashboard" />
 
-      {/* Aviso de vencimentos */}
-      {dados.vencendo7 > 0 && (
-        <div className="bg-yellow-50 border-b border-yellow-100 px-5 py-2 flex items-center">
-          <span className="bg-yellow-100 text-yellow-700 text-xs font-semibold px-3 py-1 rounded-full">
-            ⚠ {dados.vencendo7} certificado{dados.vencendo7 !== 1 ? 's' : ''} vencem em 7 dias
-          </span>
-        </div>
-      )}
 
       {/* Conteúdo */}
       <div className="flex-1 overflow-y-auto">
