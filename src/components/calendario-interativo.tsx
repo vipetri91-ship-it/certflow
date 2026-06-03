@@ -412,10 +412,12 @@ export function CalendarioInterativo() {
               center: 'title',
               right: 'dayGridMonth,timeGridWeek,timeGridDay',
             }}
+            firstDay={1}
             slotMinTime="07:00:00"
             slotMaxTime="20:00:00"
             allDaySlot={false}
             nowIndicator
+            expandRows
             height="100%"
             eventTimeFormat={{ hour: '2-digit', minute: '2-digit', meridiem: false }}
             slotLabelFormat={{ hour: '2-digit', minute: '2-digit', meridiem: false }}
