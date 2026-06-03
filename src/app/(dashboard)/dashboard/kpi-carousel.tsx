@@ -72,48 +72,41 @@ export function KpiCarousel({ slides, mediaDiaria, projecaoMensal }: Props) {
       {/* Card carrossel principal */}
       <div
         onClick={() => clicavel && setModalAberto(true)}
-        className={`bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white relative overflow-hidden shadow-lg select-none h-full ${clicavel ? 'cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all' : ''}`}
+        className={`bg-white dark:bg-[#252942] rounded-2xl border border-gray-100 dark:border-[rgba(255,255,255,0.06)] p-4 relative overflow-hidden shadow-sm select-none h-full ${clicavel ? 'cursor-pointer hover:shadow-md transition-all' : ''}`}
       >
-        {/* Decoração */}
-        <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
-        <div className="absolute -right-1 top-10 w-14 h-14 bg-white/5 rounded-full pointer-events-none" />
-
         <div className="relative">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5">
-              <p className="text-blue-100 text-xs font-medium uppercase tracking-wide">{slide.label}</p>
+              <p className="text-gray-400 dark:text-slate-500 text-xs font-medium uppercase tracking-wide">{slide.label}</p>
               {clicavel && (
-                <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full text-white/70 hidden lg:inline">
+                <span className="text-xs bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded-full text-gray-500 dark:text-slate-400 hidden lg:inline">
                   ver detalhes
                 </span>
               )}
             </div>
             <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setIdx(i => (i - 1 + slides.length) % slides.length)} className="p-1 rounded-full hover:bg-white/20 transition">
+              <button onClick={() => setIdx(i => (i - 1 + slides.length) % slides.length)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-slate-400">
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => setIdx(i => (i + 1) % slides.length)} className="p-1 rounded-full hover:bg-white/20 transition">
+              <button onClick={() => setIdx(i => (i + 1) % slides.length)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-slate-400">
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          <p className="text-4xl font-black mb-0.5">{slide.vendas}</p>
-          <p className="text-blue-100 text-xs">vendas no {slide.periodo}</p>
+          <p className="text-4xl font-black mb-0.5 text-gray-900 dark:text-white">{slide.vendas}</p>
+          <p className="text-gray-400 dark:text-slate-500 text-xs">vendas no {slide.periodo}</p>
 
-          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/20">
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-white/10">
             {[
               { label: 'Emissões', valor: String(slide.emissoes) },
               { label: 'Faturamento', valor: fmt(slide.faturamento) },
               { label: 'Média Diária', valor: mediaDiaria.toFixed(1) },
               { label: 'Projeção', valor: `${Math.round(projecaoMensal)}` },
-            ].map((item, i) => (
-              <div key={item.label} className="flex items-center gap-4">
-                {i > 0 && <div className="hidden" />}
-                <div>
-                  <p className="text-white/70 text-xs">{item.label}</p>
-                  <p className="font-bold text-sm">{item.valor}</p>
-                </div>
+            ].map((item) => (
+              <div key={item.label}>
+                <p className="text-gray-400 dark:text-slate-500 text-xs">{item.label}</p>
+                <p className="font-bold text-sm text-gray-800 dark:text-white">{item.valor}</p>
               </div>
             ))}
           </div>
@@ -123,7 +116,7 @@ export function KpiCarousel({ slides, mediaDiaria, projecaoMensal }: Props) {
         <div className="flex gap-1.5 mt-3" onClick={e => e.stopPropagation()}>
           {slides.map((_, i) => (
             <button key={i} onClick={() => setIdx(i)}
-              className={`rounded-full transition-all ${i === idx ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/40'}`}
+              className={`rounded-full transition-all ${i === idx ? 'w-5 h-1.5 bg-blue-500 dark:bg-[#7c6fcd]' : 'w-1.5 h-1.5 bg-gray-200 dark:bg-white/20'}`}
             />
           ))}
         </div>
