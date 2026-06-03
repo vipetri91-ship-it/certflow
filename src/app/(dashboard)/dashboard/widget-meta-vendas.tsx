@@ -1,5 +1,7 @@
 'use client'
 
+import { Target } from 'lucide-react'
+
 const META = 300
 const ARC_LENGTH = Math.PI * 90 // semicircle r=90 ≈ 282.74
 
@@ -27,9 +29,14 @@ export function WidgetMetaVendas({ vendasMes, mesNome }: Props) {
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-5 flex flex-col h-full overflow-hidden">
 
       {/* Header */}
-      <div className="shrink-0 mb-1">
-        <p className="text-gray-400 dark:text-slate-400 text-xs uppercase tracking-wide font-medium">Meta Mensal</p>
-        <p className="text-gray-700 dark:text-white font-bold text-sm">{mesNome}</p>
+      <div className="flex items-center gap-2 shrink-0 mb-1">
+        <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+          <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Meta Mensal</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 capitalize">{mesNome}</p>
+        </div>
       </div>
 
       {/* Gauge SVG */}

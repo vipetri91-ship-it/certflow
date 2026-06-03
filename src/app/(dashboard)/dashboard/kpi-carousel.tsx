@@ -94,7 +94,7 @@ export function KpiCarousel({ slides, mediaDiaria, projecaoMensal }: Props) {
             </div>
           </div>
 
-          <p className="text-4xl font-black mb-0.5 text-gray-900 dark:text-white">{slide.vendas}</p>
+          <p className="text-4xl font-black mb-0.5 text-blue-500 dark:text-blue-400">{slide.vendas}</p>
           <p className="text-gray-400 dark:text-slate-500 text-xs">vendas no {slide.periodo}</p>
 
           <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-white/10">
@@ -106,7 +106,7 @@ export function KpiCarousel({ slides, mediaDiaria, projecaoMensal }: Props) {
             ].map((item) => (
               <div key={item.label}>
                 <p className="text-gray-400 dark:text-slate-500 text-xs">{item.label}</p>
-                <p className="font-bold text-sm text-gray-800 dark:text-white">{item.valor}</p>
+                <p className="font-bold text-sm text-blue-500 dark:text-blue-400">{item.valor}</p>
               </div>
             ))}
           </div>
