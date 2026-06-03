@@ -50,8 +50,8 @@ const MENU_PADRAO: MenuEntry[] = [
     tipo: 'grupo', label: 'Financeiro', icon: DollarSign,
     itens: [
       { label: 'Contas a Receber', href: '/financeiro/contas-a-receber', icon: DollarSign },
-      { label: 'Contas a Pagar',   href: '/financeiro/contas-a-pagar',   icon: BarChart3 },
-      { label: 'Relatórios',       href: '/relatorios',                  icon: BarChart3 },
+      { label: 'Contas a Pagar',      href: '/financeiro/contas-a-pagar',   icon: BarChart3 },
+      { label: 'Prod. Detalhada',    href: '/relatorios',                  icon: BarChart3 },
     ],
   },
 
