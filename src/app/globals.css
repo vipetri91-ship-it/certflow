@@ -5,7 +5,7 @@
 
 /* ─── Light mode ────────────────────────────────────────────────────────── */
 :root {
-  --background: #f9fafb;
+  --background: #eef2ff;
   --foreground: #111827;
 }
 
@@ -13,6 +13,49 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ── GLASSMORPHISM — Light mode ── */
+/* Fundo com gradiente animado para o efeito vidro funcionar */
+html:not(.dark) body {
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0f4ff 30%, #e8f4fd 60%, #ede9fe 100%);
+  min-height: 100vh;
+}
+
+/* Cards de vidro — light */
+html:not(.dark) .rounded-2xl.border,
+html:not(.dark) .rounded-xl.border {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow:
+    0 4px 24px rgba(99, 102, 241, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset !important;
+}
+
+html:not(.dark) .rounded-2xl.border:hover,
+html:not(.dark) .rounded-xl.border:hover {
+  background: rgba(255, 255, 255, 0.78) !important;
+  box-shadow:
+    0 8px 32px rgba(99, 102, 241, 0.12),
+    0 1px 0 rgba(255, 255, 255, 1) inset !important;
+}
+
+/* Sidebar glass — light */
+html:not(.dark) aside {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-right-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Header glass — light */
+html:not(.dark) header {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -32,9 +75,48 @@ body {
 ═══════════════════════════════════════════════════════════════════════════ */
 
 html.dark body {
-  background-color: #1a1d2e;
+  background: radial-gradient(ellipse at 20% 20%, rgba(124,111,205,0.15) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 80%, rgba(34,211,238,0.08) 0%, transparent 50%),
+              #1a1d2e;
   color: #e2e8f0;
   min-height: 100vh;
+}
+
+/* ── GLASSMORPHISM — Dark mode ── */
+.dark .rounded-2xl.border,
+.dark .rounded-xl.border {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset !important;
+}
+
+.dark .rounded-2xl.border:hover,
+.dark .rounded-xl.border:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.1) inset !important;
+}
+
+/* Sidebar glass — dark */
+.dark aside {
+  background: rgba(22, 25, 40, 0.8) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Header glass — dark */
+.dark header {
+  background: rgba(26, 29, 46, 0.8) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 /* ── Page backgrounds ── */
