@@ -53,6 +53,7 @@ export function WidgetAgendaPessoal() {
 
   const [itens, setItens] = useState<Nota[]>([])
   const [adicionando, setAdicionando] = useState(false)
+  const [editandoId, setEditandoId] = useState<string | null>(null)
   const [titulo, setTitulo] = useState('')
   const [data, setData] = useState('')
   const [hora, setHora] = useState('')
@@ -70,18 +71,35 @@ export function WidgetAgendaPessoal() {
   function adicionar(e: React.FormEvent) {
     e.preventDefault()
     if (!titulo.trim()) return
-    const nova: Nota = {
-      id: Date.now().toString(),
-      titulo: titulo.trim(),
-      data,
-      hora,
-      feita: false,
+    if (editandoId) {
+      // Salvar edição
+      persistir(itens.map(n => n.id === editandoId ? { ...n, titulo: titulo.trim(), data, hora } : n))
+      setEditandoId(null)
+    } else {
+      // Criar novo
+      const nova: Nota = { id: Date.now().toString(), titulo: titulo.trim(), data, hora, feita: false }
+      persistir([nova, ...itens])
     }
-    persistir([nova, ...itens])
     setTitulo('')
     setData('')
     setHora('')
     setAdicionando(false)
+  }
+
+  function iniciarEdicao(n: Nota) {
+    setEditandoId(n.id)
+    setTitulo(n.titulo)
+    setData(n.data)
+    setHora(n.hora)
+    setAdicionando(true)
+  }
+
+  function cancelar() {
+    setAdicionando(false)
+    setEditandoId(null)
+    setTitulo('')
+    setData('')
+    setHora('')
   }
 
   function toggleFeita(id: string) {
@@ -118,9 +136,12 @@ export function WidgetAgendaPessoal() {
         </button>
       </div>
 
-      {/* Formulário de adição */}
+      {/* Formulário de adição/edição */}
       {adicionando && (
         <form onSubmit={adicionar} className="px-4 py-2.5 border-b border-gray-50 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 space-y-2 shrink-0">
+          {editandoId && (
+            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">✏️ Editando compromisso</p>
+          )}
           <input
             ref={inputRef}
             value={titulo}
@@ -129,25 +150,17 @@ export function WidgetAgendaPessoal() {
             className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-gray-200"
           />
           <div className="flex gap-2">
-            <input
-              type="date"
-              value={data}
-              onChange={e => setData(e.target.value)}
-              className="flex-1 px-2 py-1.5 text-xs border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-gray-200"
-            />
-            <input
-              type="time"
-              value={hora}
-              onChange={e => setHora(e.target.value)}
-              className="w-24 px-2 py-1.5 text-xs border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-gray-200"
-            />
+            <input type="date" value={data} onChange={e => setData(e.target.value)}
+              className="flex-1 px-2 py-1.5 text-xs border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-gray-200" />
+            <input type="time" value={hora} onChange={e => setHora(e.target.value)}
+              className="w-24 px-2 py-1.5 text-xs border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-700 dark:text-gray-200" />
           </div>
           <div className="flex gap-2">
             <button type="submit"
               className="flex-1 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition">
-              Adicionar
+              {editandoId ? 'Salvar' : 'Adicionar'}
             </button>
-            <button type="button" onClick={() => setAdicionando(false)}
+            <button type="button" onClick={cancelar}
               className="px-3 py-1.5 border border-gray-200 dark:border-slate-600 text-xs text-gray-500 rounded-lg hover:bg-gray-50 transition">
               Cancelar
             </button>
@@ -168,8 +181,8 @@ export function WidgetAgendaPessoal() {
             <button onClick={() => toggleFeita(n.id)}
               className="mt-0.5 w-4 h-4 shrink-0 rounded border-2 border-gray-300 dark:border-slate-500 hover:border-blue-500 transition flex items-center justify-center">
             </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-800 dark:text-gray-200 leading-snug">{n.titulo}</p>
+            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => iniciarEdicao(n)}>
+              <p className="text-sm text-gray-800 dark:text-gray-200 leading-snug hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{n.titulo}</p>
               {(n.data || n.hora) && (
                 <p className={`text-xs flex items-center gap-1 mt-0.5 ${vencida(n.data, n.hora) ? 'text-red-500' : 'text-gray-400 dark:text-slate-500'}`}>
                   <Clock className="w-3 h-3" />
