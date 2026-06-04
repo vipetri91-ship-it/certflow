@@ -1,3 +1,5 @@
+export const preferredRegion = 'gru1' // São Paulo — IP brasileiro para a Safeweb
+
 // Webhook da Safeweb — recebe notificações automáticas sobre o ciclo de vida dos protocolos
 // Configurado via tag "UrlSolicitacao" em cada requisição POST à API Safeweb
 // Para configuração global (todos os protocolos), abrir chamado na AC Safeweb

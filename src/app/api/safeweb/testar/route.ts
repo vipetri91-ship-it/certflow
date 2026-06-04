@@ -1,3 +1,5 @@
+export const preferredRegion = 'gru1' // São Paulo — necessário para IPs brasileiros na API Safeweb
+
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { diagnosticar, getToken } from '@/lib/safeweb'
