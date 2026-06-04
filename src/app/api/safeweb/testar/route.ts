@@ -21,19 +21,30 @@ export async function GET() {
   const baseUrl = diagnostico.baseUrl
   const cnpj    = '33638059000169'
 
-  // Testa tipo 3
-  const url = `${baseUrl}/Shared/Product/api/GetListProdutoByAR/3/${cnpj}`
-  const res = await fetch(url, {
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-  })
-  const raw  = await res.text()
-  let data: unknown
-  try { data = JSON.parse(raw) } catch { data = raw.slice(0, 200) }
+  const codigoAR = diagnostico.codigoAR
+
+  async function get(url: string) {
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+    const raw = await res.text()
+    let data: unknown
+    try { data = JSON.parse(raw) } catch { data = raw.slice(0, 100) }
+    return { url, status: res.status, ok: res.ok, data }
+  }
+
+  // Tenta 4 variações do endpoint
+  const [t1, t2, t3, t4] = await Promise.all([
+    get(`${baseUrl}/Shared/Product/api/GetListProdutoByAR/3/${cnpj}`),
+    get(`${baseUrl}/Shared/Product/api/GetListProdutoByAR/3/${encodeURIComponent(codigoAR)}`),
+    get(`${baseUrl}/Shared/Product/api/GetListProdutoByAR/3/${cnpj}?codigoAR=${encodeURIComponent(codigoAR)}`),
+    get(`${baseUrl}/Shared/Product/api/GetProdutos?codigoAR=${encodeURIComponent(codigoAR)}`),
+  ])
+
+  const sucesso = [t1, t2, t3, t4].find(r => r.ok)
 
   return NextResponse.json({
     ...diagnostico,
     ip_saida_vercel: ipInfo.ip,
-    aviso: 'Se o IP não for brasileiro, a Safeweb pode estar bloqueando. APIs gov.br frequentemente restringem IPs fora do Brasil.',
-    produto_teste: { url, status: res.status, ok: res.ok, data },
+    sucesso: sucesso ?? null,
+    testes: { cnpj: t1, codigoAR: t2, cnpjComCodigoAR: t3, getProdutos: t4 },
   })
 }
