@@ -699,7 +699,7 @@ export function NovaVendaWizard({
                       className="text-blue-600 shrink-0" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{m.nome}</p>
-                      <p className="text-xs text-gray-400">{m.tipoCertificado} · {m.suporte} · {m.validadeMeses} meses</p>
+                      <p className="text-xs text-gray-400">{m.tipoCertificado}{!m.nome.toLowerCase().includes('sem mídia') ? ` · ${m.suporte}` : ''} · {m.validadeMeses} meses</p>
                     </div>
                   </label>
                 ))}
