@@ -116,6 +116,14 @@ export default async function PedidoDetalhePage({ params }: Props) {
                   </Link>
                 </div>
               )}
+              {(pedido as any).safewebProtocolo && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Protocolo Safeweb</span>
+                  <span className="font-mono font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded">
+                    {(pedido as any).safewebProtocolo}
+                  </span>
+                </div>
+              )}
               {pedido.numeroCompra && (
                 <div className="flex justify-between">
                   <span className="text-gray-500">Nº compra Safeweb</span>

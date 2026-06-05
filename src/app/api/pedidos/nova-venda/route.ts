@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { registrarAuditoria } from '@/lib/audit'
+import { adicionarVideoconferencia, integracaoHope, buscarProduto } from '@/lib/safeweb'
 import { z } from 'zod'
 
 function gerarNumero(): string {
@@ -195,7 +196,57 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // 3. Lançamento financeiro automático
+  // 3. Protocolo Safeweb automático (apenas videoconferência)
+  let safewebProtocolo: string | undefined
+  if (pedidoDados.tipoAtendimento === 'videoconferencia') {
+    try {
+      const modeloDb = await prisma.modeloCertificado.findUnique({
+        where: { id: modeloId },
+        select: { tipoPessoa: true, tipoCertificado: true, validadeMeses: true },
+      })
+      const clienteDb = await prisma.cliente.findUnique({
+        where: { id: idCliente! },
+        select: { nome: true, razaoSocial: true, cpf: true, cnpj: true, email: true, celular: true },
+      })
+      const responsavelPf = responsavelDados?.cpf
+        ? await prisma.cliente.findUnique({ where: { cpf: responsavelDados.cpf }, select: { nome: true, cpf: true } })
+        : null
+
+      if (modeloDb && clienteDb) {
+        // Encontra o produto correspondente na Safeweb
+        const prod = await buscarProduto({
+          tipoPessoa:      clienteDados.tipoPessoa,
+          tipoCertificado: modeloDb.tipoCertificado as 'A1' | 'A3',
+          validadeMeses:   modeloDb.validadeMeses,
+          idTipoEmissao:   3, // videoconferência
+        })
+
+        if (prod.ok && prod.idProduto) {
+          const nomeCliente = clienteDb.razaoSocial || clienteDb.nome
+          const resultado = await adicionarVideoconferencia({
+            cpf:       clienteDados.tipoPessoa === 'PF' ? (clienteDb.cpf ?? undefined) : (responsavelPf?.cpf ?? undefined),
+            cnpj:      clienteDados.tipoPessoa === 'PJ' ? (clienteDb.cnpj ?? undefined) : undefined,
+            nome:      clienteDados.tipoPessoa === 'PJ' ? (responsavelPf?.nome ?? nomeCliente) : nomeCliente,
+            email:     clienteDb.email ?? undefined,
+            telefone:  clienteDb.celular ?? undefined,
+            produtoId: String(prod.idProduto),
+          })
+
+          if (resultado.ok && resultado.protocolo) {
+            safewebProtocolo = resultado.protocolo
+            // Salva protocolo no pedido e chama integração HOPE
+            await prisma.pedido.update({
+              where: { id: pedido.id },
+              data: { safewebProtocolo: resultado.protocolo },
+            })
+            await integracaoHope(resultado.protocolo).catch(() => {})
+          }
+        }
+      }
+    } catch { /* Safeweb falhou — não bloqueia a criação do pedido */ }
+  }
+
+  // 4. Lançamento financeiro automático
   const cliente = await prisma.cliente.findUnique({ where: { id: idCliente! }, select: { nome: true } })
 
   await prisma.lancamento.create({
@@ -243,5 +294,9 @@ export async function POST(req: NextRequest) {
     ip: req.headers.get('x-forwarded-for') ?? undefined,
   })
 
-  return NextResponse.json({ id: pedido.id, numero: pedido.numero }, { status: 201 })
+  return NextResponse.json({
+    id: pedido.id,
+    numero: pedido.numero,
+    safewebProtocolo: safewebProtocolo ?? null,
+  }, { status: 201 })
 }

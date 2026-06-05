@@ -203,6 +203,47 @@ export async function listarProdutos(idTipoEmissao = 3): Promise<{
   }
 }
 
+// ── 4b. Buscar produto Safeweb por tipo de pessoa, modelo e validade ─────────
+// Mapeia automaticamente o modelo do CertFlow → idProduto da Safeweb
+
+export interface FiltrosProduto {
+  tipoPessoa: 'PF' | 'PJ'           // PF → e-CPF, PJ → e-CNPJ
+  tipoCertificado: 'A1' | 'A3'      // A1 ou A3
+  validadeMeses: number              // 12 → 1 Ano, 24 → 2 Anos
+  idTipoEmissao?: number             // 3 = videoconferência (padrão)
+}
+
+export async function buscarProduto(filtros: FiltrosProduto): Promise<{
+  ok: boolean; idProduto?: number; nome?: string; erro?: string
+}> {
+  const tipo = filtros.idTipoEmissao ?? 3
+  const { ok, produtos, erro } = await listarProdutos(tipo)
+  if (!ok || !produtos?.length) return { ok: false, erro: erro ?? 'Sem produtos disponíveis' }
+
+  const tipoProduto = filtros.tipoPessoa === 'PF' ? 'e-CPF' : 'e-CNPJ'
+  const modelo      = filtros.tipoCertificado      // 'A1' ou 'A3'
+  const validade    = filtros.validadeMeses <= 12 ? '1 Ano' : '2 Anos'
+
+  const produto = produtos.find((p: Record<string, unknown>) =>
+    String(p.ProdutoTipo).includes(tipoProduto) &&
+    String(p.ProdutoModelo) === modelo &&
+    String(p.ProdutoValidade).includes(validade.split(' ')[0])
+  ) as Record<string, unknown> | undefined
+
+  if (!produto) {
+    // Fallback: só bate tipo pessoa + modelo
+    const fallback = produtos.find((p: Record<string, unknown>) =>
+      String(p.ProdutoTipo).includes(tipoProduto) &&
+      String(p.ProdutoModelo) === modelo
+    ) as Record<string, unknown> | undefined
+
+    if (!fallback) return { ok: false, erro: `Produto não encontrado: ${tipoProduto} ${modelo} ${validade}` }
+    return { ok: true, idProduto: Number(fallback.idProduto), nome: String(fallback.Nome) }
+  }
+
+  return { ok: true, idProduto: Number(produto.idProduto), nome: String(produto.Nome) }
+}
+
 // ── 5. Consultar status de um protocolo ──────────────────────────────────────
 
 export async function consultarProtocolo(protocolo: string): Promise<{

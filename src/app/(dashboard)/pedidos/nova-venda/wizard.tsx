@@ -179,7 +179,7 @@ export function NovaVendaWizard({
   const [buscandoCep,     setBuscandoCep]     = useState(false)
   const [buscandoCepEmp,  setBuscandoCepEmp]  = useState(false)
   const [historico,       setHistorico]       = useState<CertHistorico[]>([])
-  const [pedidoCriado,    setPedidoCriado]    = useState<{ id: string; numero: string } | null>(null)
+  const [pedidoCriado,    setPedidoCriado]    = useState<{ id: string; numero: string; safewebProtocolo?: string | null } | null>(null)
   const [protocolo,       setProtocolo]       = useState('')
   const [salvandoProt,    setSalvandoProt]    = useState(false)
 
@@ -392,7 +392,7 @@ export function NovaVendaWizard({
       })
       const result = await res.json()
       if (!res.ok) { setErroValidacao(result.erro ?? 'Erro ao criar pedido'); return }
-      setPedidoCriado({ id: result.id, numero: result.numero })
+      setPedidoCriado({ id: result.id, numero: result.numero, safewebProtocolo: result.safewebProtocolo })
     } catch { setErroValidacao('Erro de conexão') }
     finally { setLoading(false) }
   }
@@ -410,6 +410,7 @@ export function NovaVendaWizard({
 
   // ─── Tela de sucesso ──────────────────────────────────────────────────────
   if (pedidoCriado) {
+    const protocoloAuto = pedidoCriado.safewebProtocolo
     return (
       <div className="p-4 lg:p-6 max-w-2xl mx-auto">
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-8 text-center space-y-5">
@@ -420,25 +421,45 @@ export function NovaVendaWizard({
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pedido gerado com sucesso!</h2>
             <p className="text-sm text-gray-500 mt-1">Pedido <strong className="font-mono">{pedidoCriado.numero}</strong></p>
           </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 text-left space-y-3">
-            <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Próximos passos:</p>
-            <ol className="text-sm text-blue-700 dark:text-blue-400 space-y-1.5 list-decimal pl-5">
-              <li>Acesse o <strong>Hope Portal Safeweb</strong> para gerar o protocolo</li>
-              <li>Cole o número do protocolo abaixo</li>
-              <li>O atendimento entrará na fila do Monitoramento</li>
-            </ol>
-          </div>
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Número do Protocolo Safeweb (Hope):</p>
-            <div className="flex gap-2">
-              <input value={protocolo} onChange={e => setProtocolo(e.target.value)} placeholder="Ex: 1010564132"
-                className="flex-1 px-3 py-2.5 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <button onClick={salvarProtocolo} disabled={!protocolo.trim() || salvandoProt}
-                className="px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition">
-                {salvandoProt ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
-              </button>
+
+          {protocoloAuto ? (
+            /* Protocolo criado automaticamente */
+            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-5 text-left space-y-2 border border-green-200 dark:border-green-800">
+              <p className="text-sm font-semibold text-green-800 dark:text-green-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> Protocolo Safeweb criado automaticamente
+              </p>
+              <p className="text-2xl font-mono font-bold text-green-700 dark:text-green-400 tracking-wider text-center py-1">
+                {protocoloAuto}
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-500 text-center">
+                Videoconferência agendada e vinculada ao Hope Portal
+              </p>
             </div>
-          </div>
+          ) : (
+            /* Protocolo manual (presencial ou falha na geração automática) */
+            <>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 text-left space-y-3">
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Próximos passos:</p>
+                <ol className="text-sm text-blue-700 dark:text-blue-400 space-y-1.5 list-decimal pl-5">
+                  <li>Acesse o <strong>Hope Portal Safeweb</strong> para gerar o protocolo</li>
+                  <li>Cole o número do protocolo abaixo</li>
+                  <li>O atendimento entrará na fila do Monitoramento</li>
+                </ol>
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Número do Protocolo Safeweb (Hope):</p>
+                <div className="flex gap-2">
+                  <input value={protocolo} onChange={e => setProtocolo(e.target.value)} placeholder="Ex: 1010564132"
+                    className="flex-1 px-3 py-2.5 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button onClick={salvarProtocolo} disabled={!protocolo.trim() || salvandoProt}
+                    className="px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition">
+                    {salvandoProt ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="flex gap-3 pt-2">
             <button onClick={() => router.push('/pedidos/monitoramento')}
               className="flex-1 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
