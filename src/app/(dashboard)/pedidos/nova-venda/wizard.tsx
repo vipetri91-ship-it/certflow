@@ -385,7 +385,7 @@ export function NovaVendaWizard({
           tipoPessoa:    dados.tipoPessoa,
           nome:          isPJ ? dados.razaoSocial || dados.nomeEmpresa : dados.nome,
           // Para PJ: cpf NÃO vai aqui (vai em responsavelDados)
-          cpf:           isPJ ? undefined : dados.cpf.replace(/\D/g,''),
+          cpf:           isPJ ? undefined : dados.cpfResponsavel.replace(/\D/g,''),
           cnpj:          isPJ ? dados.cnpj.replace(/\D/g,'') : undefined,
           razaoSocial:   isPJ ? dados.razaoSocial : undefined,
           nomeFantasia:  isPJ ? dados.fantasia || undefined : undefined,

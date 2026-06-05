@@ -50,6 +50,7 @@ export async function getToken(): Promise<string> {
       'Authorization': `Basic ${encoded}`,
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(10000),
   })
 
   const data = await res.json().catch(() => ({}))
@@ -91,6 +92,7 @@ async function req(
       'Content-Type': 'application/json',
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(12000),
   })
 
   const raw = await res.text()
