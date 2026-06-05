@@ -298,36 +298,46 @@ export function NovaVendaWizard({
     if (!dados.dataNascimento) { setErroValidacao('Data de nascimento obrigatória'); return }
     setLoading(true); setErroValidacao('')
     try {
-      const res = await fetch(`/api/clientes?q=${cpf}&limit=1`)
+      // Consulta RFB via ReceitaWS (ou banco como fallback)
+      const res = await fetch(`/api/cpf/${cpf}?nascimento=${dados.dataNascimento}`)
       const data = await res.json()
-      const c = data.clientes?.[0]
-      if (c?.cpf === cpf) {
-        setDados(d => ({
-          ...d,
-          clienteId:       c.id,
-          validado:        true,
-          nomeResponsavel: c.nome ?? d.nomeResponsavel,
-          nome:            c.nome ?? d.nome,
-          dataNascimento:  c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNascimento,
-          email:           c.email    ?? d.email,
-          ddd:             c.ddd      ?? d.ddd,
-          telefone:        c.celular  ?? d.telefone,
-          pisNis:          c.pisNis   ?? d.pisNis,
-          cep:             c.cep      ? fmtCEP(c.cep) : d.cep,
-          logradouro:      c.logradouro ?? d.logradouro,
-          numero:          c.numero   ?? d.numero,
-          bairro:          c.bairro   ?? d.bairro,
-          municipio:       c.cidade   ?? d.municipio,
-          estado:          c.estado   ?? d.estado,
-        }))
-        fetch(`/api/pedidos?clienteId=${c.id}&limit=5`)
-          .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
-      } else {
-        setDados(d => ({ ...d, validado: true }))
+
+      if (!res.ok) {
+        setErroValidacao(data.erro ?? 'CPF não encontrado na Receita Federal')
+        return
       }
-    } catch { setDados(d => ({ ...d, validado: true })) }
-    finally { setLoading(false) }
-    setStep(2)
+
+      const nomeRfb: string = data.nome ?? ''
+      const clienteDb = data.clienteExistente
+
+      setDados(d => ({
+        ...d,
+        validado:        true,
+        nomeResponsavel: nomeRfb || (clienteDb?.nome ?? d.nomeResponsavel),
+        nome:            nomeRfb || (clienteDb?.nome ?? d.nome),
+        clienteId:       clienteDb?.id ?? d.clienteId,
+        email:           clienteDb?.email    ?? d.email,
+        ddd:             clienteDb?.ddd      ?? d.ddd,
+        telefone:        clienteDb?.celular  ?? d.telefone,
+        pisNis:          clienteDb?.pisNis   ?? d.pisNis,
+        cep:             clienteDb?.cep      ? fmtCEP(clienteDb.cep) : d.cep,
+        logradouro:      clienteDb?.logradouro ?? d.logradouro,
+        numero:          clienteDb?.numero   ?? d.numero,
+        bairro:          clienteDb?.bairro   ?? d.bairro,
+        municipio:       clienteDb?.cidade   ?? d.municipio,
+        estado:          clienteDb?.estado   ?? d.estado,
+      }))
+
+      if (clienteDb?.id) {
+        fetch(`/api/pedidos?clienteId=${clienteDb.id}&limit=5`)
+          .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
+      }
+
+      // Avança automaticamente se encontrou o nome
+      setStep(2)
+    } catch {
+      setErroValidacao('Erro de conexão ao validar CPF')
+    } finally { setLoading(false) }
   }
 
   function semValidacao() {
@@ -590,9 +600,15 @@ export function NovaVendaWizard({
               </div>
             )}
             {dados.validado && dados.tipoPessoa === 'PF' && dados.nomeResponsavel && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-800 dark:text-green-300">
-                <CheckCircle2 className="w-4 h-4 inline mr-1.5" />
-                <strong>{dados.nomeResponsavel}</strong>
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg space-y-1">
+                <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span className="text-sm font-semibold">CPF validado na Receita Federal</span>
+                </div>
+                <p className="text-base font-bold text-green-900 dark:text-green-200 pl-6">{dados.nomeResponsavel}</p>
+                <p className="text-xs text-green-600 dark:text-green-400 pl-6">
+                  {dados.cpfResponsavel} — {dados.dataNascimento ? new Date(dados.dataNascimento + 'T12:00:00').toLocaleDateString('pt-BR') : ''}
+                </p>
               </div>
             )}
 
