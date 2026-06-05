@@ -75,7 +75,7 @@ const AGR_OPTIONS = [
   { value: 'ana.karolina', label: 'Ana Karolina' },
   { value: 'laryssa',      label: 'Laryssa' },
 ]
-const FORMAS_PAGAMENTO = ['Pix', 'Boleto', 'Dinheiro', 'Cartão de Débito', 'Cartão de Crédito', 'Safe2Pay']
+const FORMAS_PAGAMENTO = ['Pix', 'Boleto', 'Dinheiro', 'Cartão de Débito', 'Cartão de Crédito', 'Bonificado']
 const UNIDADES = ['Piracaia', 'Bragança Paulista']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -737,11 +737,13 @@ export function NovaVendaWizard({
               <Campo label="Nome do Responsável" required>
                 <Input value={dados.nome} onChange={e => set('nome', e.target.value)} placeholder="Nome completo" />
               </Campo>
-              <Campo label="E-mail" required>
-                <Input type="email" value={dados.email} onChange={e => set('email', e.target.value)} />
-              </Campo>
-              <div className="flex gap-2 sm:col-span-2">
-                <div className="w-20 shrink-0">
+              <div className="sm:col-span-3 flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <Campo label="E-mail" required>
+                    <Input type="email" value={dados.email} onChange={e => set('email', e.target.value)} />
+                  </Campo>
+                </div>
+                <div className="w-full sm:w-20 shrink-0">
                   <Campo label="DDD">
                     <Input value={dados.ddd} onChange={e => set('ddd', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} />
                   </Campo>
