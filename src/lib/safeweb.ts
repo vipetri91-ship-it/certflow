@@ -87,7 +87,7 @@ async function req(
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': token,
       'Content-Type': 'application/json',
     },
     ...(body ? { body: JSON.stringify(body) } : {}),

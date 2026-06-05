@@ -1,8 +1,8 @@
-export const preferredRegion = 'gru1' // São Paulo — necessário para IPs brasileiros na API Safeweb
+export const preferredRegion = 'gru1'
 
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { diagnosticar, getToken } from '@/lib/safeweb'
+import { diagnosticar, getToken, listarProdutos } from '@/lib/safeweb'
 
 export async function GET() {
   const session = await auth()
@@ -13,38 +13,16 @@ export async function GET() {
   const diagnostico = await diagnosticar()
   if (!diagnostico.tokenOk) return NextResponse.json({ ...diagnostico })
 
-  // Descobre o IP de saída do Vercel
-  const ipInfo = await fetch('https://api.ipify.org?format=json')
-    .then(r => r.json()).catch(() => ({ ip: 'desconhecido' }))
-
-  const token   = await getToken()
-  const baseUrl = diagnostico.baseUrl
-  const cnpj    = '33638059000169'
-
-  const codigoAR = diagnostico.codigoAR
-
-  async function get(url: string) {
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
-    const raw = await res.text()
-    let data: unknown
-    try { data = JSON.parse(raw) } catch { data = raw.slice(0, 100) }
-    return { url, status: res.status, ok: res.ok, data }
+  // Testa listagem de produtos (tipos 1 a 5)
+  const resultados: Record<string, unknown> = {}
+  for (let tipo = 1; tipo <= 5; tipo++) {
+    const r = await listarProdutos(tipo)
+    resultados[`tipo_${tipo}`] = r.ok
+      ? { ok: true, qtd: r.produtos?.length, amostra: r.produtos?.slice(0, 2) }
+      : { ok: false, erro: r.erro }
   }
 
-  // Tenta 4 variações do endpoint
-  const [t1, t2, t3, t4] = await Promise.all([
-    get(`${baseUrl}/Shared/Product/api/GetListProdutoByAR/3/${cnpj}`),
-    get(`${baseUrl}/Shared/Product/api/GetListProdutoByAR/3/${encodeURIComponent(codigoAR)}`),
-    get(`${baseUrl}/Shared/Product/api/GetListProdutoByAR/3/${cnpj}?codigoAR=${encodeURIComponent(codigoAR)}`),
-    get(`${baseUrl}/Shared/Product/api/GetProdutos?codigoAR=${encodeURIComponent(codigoAR)}`),
-  ])
+  const sucesso = Object.values(resultados).find((r: any) => r.ok)
 
-  const sucesso = [t1, t2, t3, t4].find(r => r.ok)
-
-  return NextResponse.json({
-    ...diagnostico,
-    ip_saida_vercel: ipInfo.ip,
-    sucesso: sucesso ?? null,
-    testes: { cnpj: t1, codigoAR: t2, cnpjComCodigoAR: t3, getProdutos: t4 },
-  })
+  return NextResponse.json({ ...diagnostico, sucesso: !!sucesso, resultados })
 }
