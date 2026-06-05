@@ -211,6 +211,7 @@ export function NovaVendaWizard({
       if (!res.ok) { setErroValidacao(data.erro ?? 'CNPJ não encontrado'); return }
 
       const cpfNums = dados.cpfResponsavel.replace(/\D/g,'')
+      let nomeRfb: string | undefined
       if (cpfNums.length === 11 && data.qsa?.length > 0) {
         const cpfUltimos = cpfNums.slice(-8, -2)
         const socios = data.qsa as { nome: string; cpfMascarado: string }[]
@@ -219,18 +220,19 @@ export function NovaVendaWizard({
           setErroValidacao('Código: 27 - O CPF do responsável não corresponde ao responsável na RFB.')
           return
         }
-        set('nomeResponsavel', match.nome)
+        nomeRfb = match.nome
       }
 
       const clienteId = data.clienteExistente?.id ?? ''
 
       setDados(d => ({
         ...d,
-        nomeEmpresa: data.razaoSocial ?? data.nomeFantasia ?? '',
-        razaoSocial: data.razaoSocial ?? '',
-        fantasia:    data.nomeFantasia ?? '',
+        nomeEmpresa:      data.razaoSocial ?? data.nomeFantasia ?? '',
+        razaoSocial:      data.razaoSocial ?? '',
+        fantasia:         data.nomeFantasia ?? '',
+        nomeResponsavel:  nomeRfb ?? data.clienteExistente?.responsavel ?? d.nomeResponsavel,
         clienteId,
-        nome:        data.clienteExistente?.responsavel ?? d.nome,
+        nome:             data.clienteExistente?.responsavel ?? nomeRfb ?? d.nome,
         email:       data.clienteExistente?.email ?? d.email,
         ddd:         data.clienteExistente?.ddd ?? d.ddd,
         telefone:    data.clienteExistente?.celular ?? d.telefone,
