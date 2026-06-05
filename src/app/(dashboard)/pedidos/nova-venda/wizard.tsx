@@ -684,12 +684,18 @@ export function NovaVendaWizard({
               <Campo label="E-mail" required>
                 <Input type="email" value={dados.email} onChange={e => set('email', e.target.value)} />
               </Campo>
-              <Campo label="DDD">
-                <Input value={dados.ddd} onChange={e => set('ddd', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} />
-              </Campo>
-              <Campo label="Telefone">
-                <Input value={dados.telefone} onChange={e => set('telefone', e.target.value.replace(/\D/g,'').slice(0,9))} placeholder="999999999" maxLength={9} />
-              </Campo>
+              <div className="flex gap-2 sm:col-span-2">
+                <div className="w-20 shrink-0">
+                  <Campo label="DDD">
+                    <Input value={dados.ddd} onChange={e => set('ddd', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} />
+                  </Campo>
+                </div>
+                <div className="flex-1">
+                  <Campo label="Telefone">
+                    <Input value={dados.telefone} onChange={e => set('telefone', e.target.value.replace(/\D/g,'').slice(0,9))} placeholder="999999999" maxLength={9} />
+                  </Campo>
+                </div>
+              </div>
               <Campo label="PIS/NIS">
                 <Input value={dados.pisNis} onChange={e => set('pisNis', e.target.value)} placeholder="Opcional" />
               </Campo>
@@ -760,8 +766,14 @@ export function NovaVendaWizard({
                 <Campo label="Responsável Contato"><Input value={dados.respContato} onChange={e => set('respContato', e.target.value)} /></Campo>
               </div>
               <Campo label="E-mail da Empresa"><Input type="email" value={dados.emailEmpresa} onChange={e => set('emailEmpresa', e.target.value)} /></Campo>
-              <Campo label="DDD"><Input value={dados.dddEmpresa} onChange={e => set('dddEmpresa', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} /></Campo>
-              <Campo label="Telefone"><Input value={dados.telEmpresa} onChange={e => set('telEmpresa', e.target.value.replace(/\D/g,'').slice(0,9))} maxLength={9} /></Campo>
+              <div className="flex gap-2 sm:col-span-2">
+                <div className="w-20 shrink-0">
+                  <Campo label="DDD"><Input value={dados.dddEmpresa} onChange={e => set('dddEmpresa', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} /></Campo>
+                </div>
+                <div className="flex-1">
+                  <Campo label="Telefone"><Input value={dados.telEmpresa} onChange={e => set('telEmpresa', e.target.value.replace(/\D/g,'').slice(0,9))} maxLength={9} /></Campo>
+                </div>
+              </div>
               <Campo label="Inscrição Estadual"><Input value={dados.ie} onChange={e => set('ie', e.target.value)} placeholder="Opcional" /></Campo>
             </div>
           </div>
