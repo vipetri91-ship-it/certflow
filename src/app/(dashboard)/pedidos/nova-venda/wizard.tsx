@@ -985,7 +985,7 @@ export function NovaVendaWizard({
               className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
               <ChevronLeft className="w-4 h-4" /> Anterior
             </button>
-            <button onClick={finalizar} disabled={loading || dados.valorVenda <= 0}
+            <button onClick={finalizar} disabled={loading}
               className="flex items-center gap-2 px-8 py-2.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 disabled:opacity-50 transition">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               {loading ? 'Gerando...' : 'Finalizar Pedido'}

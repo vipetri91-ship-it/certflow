@@ -66,7 +66,7 @@ const schema = z.object({
   voucher: z.string().optional(),
   atendimentoExterno: z.boolean().default(false),
   valorDeslocamento: z.number().default(0),
-  valorVenda: z.number().positive(),
+  valorVenda: z.number().min(0),
   desconto: z.number().default(0),
   observacoes: z.string().optional(),
   agendamento: z.object({
@@ -237,7 +237,7 @@ export async function POST(req: NextRequest) {
             // Salva protocolo no pedido e chama integração HOPE
             await prisma.pedido.update({
               where: { id: pedido.id },
-              data: { safewebProtocolo: resultado.protocolo },
+              data: { safewebProtocolo: resultado.protocolo } as any,
             })
             await integracaoHope(resultado.protocolo).catch(() => {})
           }
