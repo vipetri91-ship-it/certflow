@@ -292,6 +292,44 @@ export function NovaVendaWizard({
     } catch {}
   }
 
+  async function validarPF() {
+    const cpf = dados.cpfResponsavel.replace(/\D/g,'')
+    if (cpf.length !== 11) { setErroValidacao('CPF inválido'); return }
+    if (!dados.dataNascimento) { setErroValidacao('Data de nascimento obrigatória'); return }
+    setLoading(true); setErroValidacao('')
+    try {
+      const res = await fetch(`/api/clientes?q=${cpf}&limit=1`)
+      const data = await res.json()
+      const c = data.clientes?.[0]
+      if (c?.cpf === cpf) {
+        setDados(d => ({
+          ...d,
+          clienteId:       c.id,
+          validado:        true,
+          nomeResponsavel: c.nome ?? d.nomeResponsavel,
+          nome:            c.nome ?? d.nome,
+          dataNascimento:  c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNascimento,
+          email:           c.email    ?? d.email,
+          ddd:             c.ddd      ?? d.ddd,
+          telefone:        c.celular  ?? d.telefone,
+          pisNis:          c.pisNis   ?? d.pisNis,
+          cep:             c.cep      ? fmtCEP(c.cep) : d.cep,
+          logradouro:      c.logradouro ?? d.logradouro,
+          numero:          c.numero   ?? d.numero,
+          bairro:          c.bairro   ?? d.bairro,
+          municipio:       c.cidade   ?? d.municipio,
+          estado:          c.estado   ?? d.estado,
+        }))
+        fetch(`/api/pedidos?clienteId=${c.id}&limit=5`)
+          .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
+      } else {
+        setDados(d => ({ ...d, validado: true }))
+      }
+    } catch { setDados(d => ({ ...d, validado: true })) }
+    finally { setLoading(false) }
+    setStep(2)
+  }
+
   function semValidacao() {
     setErroValidacao('')
     setDados(d => ({ ...d, nomeEmpresa: d.tipoPessoa === 'PJ' ? 'Sem validação' : '', validado: true }))
@@ -559,7 +597,7 @@ export function NovaVendaWizard({
             )}
 
             <div className="flex flex-wrap gap-2">
-              <button onClick={dados.tipoPessoa === 'PJ' ? validarCNPJ : () => { set('validado', true); setStep(2) }}
+              <button onClick={dados.tipoPessoa === 'PJ' ? validarCNPJ : validarPF}
                 disabled={loading}
                 className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 transition">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
