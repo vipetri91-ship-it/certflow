@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle2, Loader2, ChevronRight, ChevronLeft, User, Building2,
-  AlertTriangle, Search, Award, CreditCard, Calendar, History, Paperclip,
+  AlertTriangle, Search, Award, CreditCard, Calendar, History, Paperclip, Globe,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -660,7 +660,7 @@ export function NovaVendaWizard({
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button onClick={dados.tipoPessoa === 'PJ' ? validarCNPJ : validarPF}
                 disabled={loading}
                 className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 transition">
@@ -670,6 +670,12 @@ export function NovaVendaWizard({
               <button onClick={semValidacao}
                 className="px-5 py-2.5 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition">
                 Sem Validação
+              </button>
+              <span className="text-gray-300 dark:text-slate-600 hidden sm:block">|</span>
+              <button onClick={() => router.push('/pedidos/nova-venda/online')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 text-sm font-medium rounded-lg hover:bg-purple-100 transition">
+                <Globe className="w-4 h-4" />
+                Emissão Online
               </button>
             </div>
           </div>

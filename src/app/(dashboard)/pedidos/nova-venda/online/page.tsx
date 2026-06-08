@@ -1,18 +1,18 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { Header } from '@/components/header'
-import { NovaVendaWizard } from './wizard'
+import { EmissaoOnlineFluxo } from '../emissao-online'
 import { redirect } from 'next/navigation'
 import { deriveAgr } from '@/lib/utils'
 
-export default async function NovaVendaPage() {
+export default async function EmissaoOnlinePage() {
   const session = await auth()
   if (!session) redirect('/login')
 
   const [modelos, parceiros] = await Promise.all([
     prisma.modeloCertificado.findMany({
       where: { ativo: true },
-      orderBy: [{ tipoPessoa: 'asc' }, { tipoCertificado: 'asc' }, { suporte: 'asc' }],
+      orderBy: [{ tipoPessoa: 'asc' }, { tipoCertificado: 'asc' }, { validadeMeses: 'asc' }],
     }),
     prisma.parceiro.findMany({
       where: { ativo: true },
@@ -25,8 +25,8 @@ export default async function NovaVendaPage() {
 
   return (
     <div>
-      <Header titulo="Nova Venda" />
-      <NovaVendaWizard
+      <Header titulo="Emissão Online" />
+      <EmissaoOnlineFluxo
         defaultAgr={defaultAgr}
         modelos={modelos.map(m => ({
           id:              m.id,
