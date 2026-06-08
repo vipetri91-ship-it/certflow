@@ -101,15 +101,76 @@ async function req(
   return { ok: res.ok, status: res.status, data, raw }
 }
 
+// ── Lookup de códigos IBGE (Município/UF) ────────────────────────────────────
+// Exigido pela Safeweb em ClienteNotaFiscal.CidadeCodigo / UFCodigo.
+// Usa a API pública do IBGE e mantém cache em memória (códigos não mudam).
+
+const _ibgeCache = new Map<string, { codigoMunicipio: string; codigoUF: string } | null>()
+
+function normalizarTexto(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
+async function buscarCodigosIbge(cidade: string, uf: string): Promise<{ codigoMunicipio: string; codigoUF: string } | null> {
+  const chave = `${uf.toUpperCase()}|${normalizarTexto(cidade)}`
+  if (_ibgeCache.has(chave)) return _ibgeCache.get(chave)!
+
+  try {
+    const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.toUpperCase()}/municipios`, {
+      signal: AbortSignal.timeout(8000),
+    })
+    const lista = await res.json() as Array<{
+      id: number
+      nome: string
+      microrregiao?: { mesorregiao?: { UF?: { id: number } } }
+    }>
+    const municipio = lista.find(m => normalizarTexto(m.nome) === normalizarTexto(cidade))
+    const resultado = municipio
+      ? { codigoMunicipio: String(municipio.id), codigoUF: String(municipio.microrregiao?.mesorregiao?.UF?.id ?? '') }
+      : null
+    _ibgeCache.set(chave, resultado)
+    return resultado
+  } catch {
+    _ibgeCache.set(chave, null)
+    return null
+  }
+}
+
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
+export interface EnderecoSafeweb {
+  cep:          string
+  logradouro:   string
+  numero:       string
+  complemento?: string
+  bairro:       string
+  cidade:       string
+  estado:       string   // sigla da UF
+}
+
+export interface ResponsavelSafeweb {
+  nome:            string
+  cpf:             string
+  dataNascimento?: string   // YYYY-MM-DD
+  email?:          string
+  ddd?:            string
+  telefone?:       string
+  endereco?:       EnderecoSafeweb
+}
+
 export interface SolicitacaoVideoconferencia {
-  cpf?:      string   // CPF do titular (PF)
-  cnpj?:     string   // CNPJ da empresa (PJ)
-  nome:      string   // Nome completo / Razão Social
-  email?:    string
-  telefone?: string
-  produtoId: string   // Código do produto Safeweb (ver listarProdutos)
+  cpf?:            string   // CPF do titular (PF)
+  cnpj?:           string   // CNPJ da empresa (PJ)
+  nome:            string   // Nome completo (PF) — usado como Sacado/RazaoSocial se não houver outro
+  razaoSocial?:    string   // Razão social (PJ)
+  nomeFantasia?:   string   // Nome fantasia (PJ)
+  email?:          string
+  ddd?:            string
+  telefone?:       string
+  dataNascimento?: string   // YYYY-MM-DD (obrigatório para PF)
+  endereco?:       EnderecoSafeweb
+  responsavel?:    ResponsavelSafeweb   // Titular/responsável — obrigatório para PJ
+  produtoId:       string   // Código do produto Safeweb (ver listarProdutos)
 }
 
 export interface ResultadoProtocolo {
@@ -119,30 +180,170 @@ export interface ResultadoProtocolo {
   raw?:       Record<string, unknown>
 }
 
-// ── 1. Adicionar Solicitação — Videoconferência ───────────────────────────────
+// ── 0. Consulta Prévia — checagem de elegibilidade na RFB (CPF/CNPJ) ─────────
+// Mesmo checkpoint que a Safeweb usa antes de permitir a emissão: detecta
+// CPF/CNPJ CANCELADO, INAPTO, SUSPENSO, divergência de data de nascimento etc.
+
+export async function realizarConsultaPrevia(params: {
+  documento:        string  // CPF ou CNPJ, somente números
+  documentoTipo:    '1' | '2'
+  dtNascimento:     string  // formato YYYY-MM-DD
+  cpfResponsavel?:  string  // obrigatório quando documentoTipo === '2' (CNPJ)
+}): Promise<{ ok: boolean; codigo?: number; mensagem?: string; erro?: string }> {
+  try {
+    const payload: Record<string, unknown> = params.documentoTipo === '1'
+      ? {
+          CPF:           params.documento,
+          DocumentoTipo: '1',
+          DtNascimento:  params.dtNascimento,
+        }
+      : {
+          CNPJ:          params.documento,
+          CPF:           params.cpfResponsavel ?? '',
+          DocumentoTipo: '2',
+          DtNascimento:  params.dtNascimento,
+        }
+
+    const { ok, data } = await req('POST', '/Shared/ConsultaPrevia/api/RealizarConsultaPrevia', payload)
+    if (!ok) return { ok: false, erro: String(data.Mensagem ?? data.mensagem ?? data.message ?? 'Erro ao realizar consulta prévia') }
+
+    const codigo   = Number(data.Codigo ?? data.codigo ?? -1)
+    const mensagem = String(data.Mensagem ?? data.mensagem ?? '')
+    return { ok: true, codigo, mensagem }
+  } catch (err) {
+    return { ok: false, erro: String(err) }
+  }
+}
+
+// ── 1. Adicionar Solicitação — Videoconferência (Add/3) ou Presencial (Add/1) ─
+
+// Monta o objeto Endereco no formato exigido pela Safeweb (com códigos IBGE)
+async function montarEndereco(end?: EnderecoSafeweb) {
+  if (!end) return undefined
+  const ibge = await buscarCodigosIbge(end.cidade, end.estado)
+  return {
+    Logradouro:          end.logradouro,
+    Numero:              end.numero,
+    Complemento:         end.complemento || '',
+    Bairro:              end.bairro,
+    UF:                  end.estado,
+    Cidade:              end.cidade,
+    CodigoIbgeMunicipio: ibge?.codigoMunicipio ?? '',
+    CodigoIbgeUF:        ibge?.codigoUF ?? '',
+    CEP:                 (end.cep ?? '').replace(/\D/g, ''),
+  }
+}
+
+// Monta o objeto ClienteNotaFiscal — obrigatório no Add/1 e Add/3 (dados de faturamento)
+async function montarClienteNotaFiscal(nome: string, documento: string, end: EnderecoSafeweb | undefined, email?: string) {
+  if (!end) return undefined
+  const ibge = await buscarCodigosIbge(end.cidade, end.estado)
+  return {
+    Sacado:           nome,
+    Documento:        documento.replace(/\D/g, ''),
+    Endereco:         end.logradouro,
+    Numero:           end.numero,
+    Complemento:      end.complemento || null,
+    Bairro:           end.bairro,
+    CEP:              (end.cep ?? '').replace(/\D/g, ''),
+    Cidade:           end.cidade,
+    CidadeCodigo:     ibge?.codigoMunicipio ?? '',
+    UF:               end.estado,
+    UFCodigo:         ibge?.codigoUF ?? '',
+    Pais:             'Brasil',
+    PaisCodigoAlpha3: 'BRA',
+    Email1:           email || '',
+    Email2:           '',
+    IE:               '',
+  }
+}
+
+function montarContato(ddd?: string, telefone?: string, email?: string) {
+  return {
+    DDD:      ddd ?? '',
+    Telefone: telefone ?? '',
+    Email:    email ?? '',
+  }
+}
 
 export async function adicionarVideoconferencia(
   params: SolicitacaoVideoconferencia,
+  idTipoEmissao: 1 | 3 | 5 = 3,  // 1 = Presencial · 3 = Videoconferência · 5 = Emissão Online
+  protocoloOrigem?: string,        // Add/5 apenas: protocolo do cert A3 PF retornado por EmitirCertificadoOnline
 ): Promise<ResultadoProtocolo> {
-  const { codigoAR } = cfg()
+  const { codigoAR, cnpjAR } = cfg()
   const webhookUrl = process.env.SAFEWEB_WEBHOOK_URL
     ?? `${process.env.NEXTAUTH_URL}/api/safeweb/webhook`
 
   try {
-    const { ok, data } = await req('POST', '/Shared/Partner/api/Add/3', {
-      cpf:            params.cpf,
-      cnpj:           params.cnpj,
-      nome:           params.nome,
-      email:          params.email,
-      telefone:       params.telefone,
-      produtoId:      params.produtoId,
-      codigoAR,
-      urlNotificacao: webhookUrl,
-    })
+    let payload: Record<string, unknown>
 
-    if (!ok) return { ok: false, erro: String(data.mensagem ?? data.message ?? 'Erro ao criar protocolo'), raw: data }
+    if (params.cnpj) {
+      // ── Pessoa Jurídica ──────────────────────────────────────────────────
+      const resp = params.responsavel
+      payload = {
+        CnpjAR:            cnpjAR,
+        CodigoParceiro:    codigoAR,
+        idProduto:         Number(params.produtoId),
+        RazaoSocial:       params.razaoSocial ?? params.nome,
+        NomeFantasia:      params.nomeFantasia ?? '',
+        CNPJ:              params.cnpj.replace(/\D/g, ''),
+        Contato:           montarContato(params.ddd, params.telefone, params.email),
+        PaisTelefone:      { CodigoAlpha2: 'BR' },
+        Endereco:          await montarEndereco(params.endereco),
+        Titular: resp ? {
+          Nome:            resp.nome,
+          CPF:             resp.cpf.replace(/\D/g, ''),
+          DataNascimento:  resp.dataNascimento ?? '',
+          Contato:         montarContato(resp.ddd, resp.telefone, resp.email),
+          PaisTelefone:    { CodigoAlpha2: 'BR' },
+          Endereco:        await montarEndereco(resp.endereco ?? params.endereco),
+        } : undefined,
+        ClienteNotaFiscal: await montarClienteNotaFiscal(
+          params.razaoSocial ?? params.nome,
+          params.cnpj,
+          params.endereco,
+          params.email,
+        ),
+        UrlSolicitacao:    webhookUrl,
+      }
+    } else {
+      // ── Pessoa Física ────────────────────────────────────────────────────
+      payload = {
+        CnpjAR:            cnpjAR,
+        CodigoParceiro:    codigoAR,
+        idProduto:         Number(params.produtoId),
+        Nome:              params.nome,
+        CPF:               (params.cpf ?? '').replace(/\D/g, ''),
+        DataNascimento:    params.dataNascimento ?? '',
+        Contato:           montarContato(params.ddd, params.telefone, params.email),
+        PaisTelefone:      { CodigoAlpha2: 'BR' },
+        Endereco:          await montarEndereco(params.endereco),
+        ClienteNotaFiscal: await montarClienteNotaFiscal(
+          params.nome,
+          params.cpf ?? '',
+          params.endereco,
+          params.email,
+        ),
+        UrlSolicitacao:    webhookUrl,
+      }
+    }
 
-    const protocolo = String(data.protocolo ?? data.numeroProtocolo ?? data.id ?? '')
+    // Add/5 (Emissão Online): inclui o protocolo do cert A3 PF de origem quando disponível
+    if (idTipoEmissao === 5 && protocoloOrigem) {
+      payload.Protocolo = protocoloOrigem
+    }
+
+    const { ok, data } = await req('POST', `/Shared/Partner/api/Add/${idTipoEmissao}`, payload)
+
+    if (!ok) return { ok: false, erro: String(data.Message ?? data.mensagem ?? data.message ?? 'Erro ao criar protocolo'), raw: data }
+
+    // Safeweb pode retornar o protocolo em diferentes campos (PascalCase ou camelCase)
+    const protocolo = String(
+      data.Protocolo ?? data.protocolo ??
+      data.NumeroProtocolo ?? data.numeroProtocolo ??
+      data.Id ?? data.id ?? data ?? ''
+    )
     return { ok: true, protocolo, raw: data }
   } catch (err) {
     return { ok: false, erro: String(err) }
@@ -152,16 +353,30 @@ export async function adicionarVideoconferencia(
 // ── 2. Integração HOPE — Primeira Emissão ────────────────────────────────────
 // Passo obrigatório após adicionarVideoconferencia — torna o protocolo visível no HOPE
 
-export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; erro?: string }> {
-  const { attendancePlaceId } = cfg()
+export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; erro?: string; url?: string }> {
+  const { baseUrl, attendancePlaceId } = cfg()
   try {
-    const { ok, data } = await req('POST', '/Hope/Shared/api/integration/solicitation', {
-      protocol:            Number(protocolo),
-      attendancePlaceId,
-      aciRemocalCandidate: false,
+    // A API do Hope exige o prefixo "Bearer " no token — diferente da API Partner,
+    // que aceita o token sem prefixo (por isso não usamos o helper genérico req()).
+    const token = await getToken()
+    const res = await fetch(`${baseUrl}/Hope/Shared/api/integration/solicitation`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        protocol:             String(protocolo),
+        attendancePlaceId,
+        aciRemovalCandidate:  false,
+      }),
+      signal: AbortSignal.timeout(12000),
     })
-    if (!ok) return { ok: false, erro: String(data.mensagem ?? data.message ?? 'Erro ao vincular ao HOPE') }
-    return { ok: true }
+    const raw = await res.text()
+    let data: Record<string, unknown> = {}
+    try { data = JSON.parse(raw) } catch { data = { _raw: raw } }
+    if (!res.ok) return { ok: false, erro: String(data.mensagem ?? data.message ?? `Erro ao vincular ao HOPE (HTTP ${res.status})`) }
+    return { ok: true, url: typeof data.url === 'string' ? data.url : undefined }
   } catch (err) {
     return { ok: false, erro: String(err) }
   }
@@ -262,7 +477,48 @@ export async function consultarProtocolo(protocolo: string): Promise<{
   }
 }
 
-// ── 6. Diagnóstico — valida configuração e autenticação ──────────────────────
+// ── 6. Emissão Online — validar cert A3 PF existente (GET EmitirCertificadoOnline) ────────────
+
+export async function validarCertificadoOnline(
+  numeroSerie: string,
+  idProduto: string,
+): Promise<{ ok: boolean; protocolo?: string; dados?: Record<string, unknown>; erro?: string }> {
+  const { cnpjAR } = cfg()
+  try {
+    const { ok, data } = await req(
+      'GET',
+      `/Shared/Partner/api/EmitirCertificadoOnline/${encodeURIComponent(numeroSerie)}/${encodeURIComponent(idProduto)}/${cnpjAR}`,
+    )
+    if (!ok) return { ok: false, erro: String(data.Message ?? data.mensagem ?? 'Certificado inválido ou não encontrado') }
+    const protocolo = String(data.Protocolo ?? data.protocolo ?? '')
+    return { ok: true, protocolo: protocolo || undefined, dados: data }
+  } catch (err) {
+    return { ok: false, erro: String(err) }
+  }
+}
+
+// ── 7. Emissão Online — liberar protocolo após confirmação de pagamento ───────
+
+export async function liberarEmissaoOnline(
+  protocolo: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  const { cnpjAR } = cfg()
+  try {
+    const { ok, data } = await req('POST', '/Shared/Partner/api/UpdateLiberacao', {
+      Protocolo: protocolo,
+      CNPJ:      cnpjAR,
+    })
+    // A Safeweb retorna um boolean diretamente (true = sucesso, false = falhou)
+    if (!ok || (data as unknown) === false) {
+      return { ok: false, erro: 'Liberação recusada pela Safeweb' }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, erro: String(err) }
+  }
+}
+
+// ── 8. Diagnóstico — valida configuração e autenticação ──────────────────────
 
 export async function diagnosticar(): Promise<{
   configurado: boolean

@@ -2,7 +2,7 @@ import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, User, Building2, CheckCircle2, Clock, XCircle, FileCheck } from 'lucide-react'
+import { ArrowLeft, User, Building2, CheckCircle2, Clock, XCircle, FileCheck, Paperclip } from 'lucide-react'
 import { formatarData, formatarMoeda, formatarCPF, formatarCNPJ } from '@/lib/utils'
 import { PedidoAcoes } from './acoes'
 
@@ -122,6 +122,15 @@ export default async function PedidoDetalhePage({ params }: Props) {
                   <span className="font-mono font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded">
                     {(pedido as any).safewebProtocolo}
                   </span>
+                </div>
+              )}
+              {(pedido as any).hopeUrlDocumentos && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Documentação</span>
+                  <a href={(pedido as any).hopeUrlDocumentos} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-teal-700 font-medium hover:underline">
+                    <Paperclip className="w-3.5 h-3.5" /> Anexar documentação
+                  </a>
                 </div>
               )}
               {pedido.numeroCompra && (

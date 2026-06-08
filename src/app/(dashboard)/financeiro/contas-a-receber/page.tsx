@@ -9,7 +9,7 @@ import { formatarMoeda, formatarData } from '@/lib/utils'
 import { STATUS_BADGE } from '@/lib/financeiro-config'
 import { FiltroStatus } from '@/components/filtro-status'
 import { FiltroAgr } from '@/components/filtro-agr'
-import { BaixaButton } from '@/components/financeiro-baixa-button'
+import { BaixaButton, CancelarButton } from '@/components/financeiro-baixa-button'
 import { InterCobrancaButton } from '@/components/inter-cobranca-button'
 
 interface Props {
@@ -242,7 +242,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
 
                       {/* Ação */}
                       <td className="px-3 py-3">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {(c.status === 'PENDENTE' || c.status === 'VENCIDO') && (
                             <BaixaButton id={c.id} />
                           )}
@@ -253,6 +253,9 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                               linhaDigitavel={c.boleto}
                               pixCopiaECola={c.pixCopiaECola}
                             />
+                          )}
+                          {(c.status === 'PENDENTE' || c.status === 'VENCIDO') && (
+                            <CancelarButton id={c.id} />
                           )}
                           {c.status === 'PAGO' && c.comprovante && (
                             <a href={c.comprovante} target="_blank" rel="noopener noreferrer"

@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { formatarData, formatarMoeda, formatarCPF, formatarCNPJ } from '@/lib/utils'
+import { Video, MapPin, Globe } from 'lucide-react'
+import { formatarData, formatarHora, formatarMoeda, formatarCPF, formatarCNPJ } from '@/lib/utils'
 import { MonitoramentoAcoes } from './acoes'
 
 interface SearchParams {
@@ -193,8 +194,23 @@ export default async function MonitoramentoPage({ searchParams }: Props) {
                       </td>
                       <td className="px-4 py-3 text-right font-semibold hidden sm:table-cell">{formatarMoeda(Number(p.valorFinal))}</td>
                       <td className="px-4 py-3 hidden lg:table-cell">
-                        {p.numeroCompra ? (
-                          <span className="font-mono text-xs text-gray-800">{p.numeroCompra}</span>
+                        {(p.safewebProtocolo ?? p.numeroCompra) ? (
+                          <span className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-800">
+                            {p.tipoAtendimento === 'videoconferencia' ? (
+                              <Video className="w-3.5 h-3.5 text-blue-500 shrink-0" aria-label="Videoconferência">
+                                <title>Videoconferência</title>
+                              </Video>
+                            ) : p.tipoAtendimento === 'presencial' ? (
+                              <MapPin className="w-3.5 h-3.5 text-green-600 shrink-0" aria-label="Presencial">
+                                <title>Presencial</title>
+                              </MapPin>
+                            ) : p.tipoAtendimento === 'emissao-online' ? (
+                              <Globe className="w-3.5 h-3.5 text-purple-600 shrink-0" aria-label="Emissão Online">
+                                <title>Emissão Online</title>
+                              </Globe>
+                            ) : null}
+                            {p.safewebProtocolo ?? p.numeroCompra}
+                          </span>
                         ) : (
                           <MonitoramentoAcoes pedidoId={p.id} tipo="protocolo" />
                         )}
@@ -203,7 +219,8 @@ export default async function MonitoramentoPage({ searchParams }: Props) {
                         <span className="text-gray-700 capitalize">{p.agr ?? '—'}</span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap hidden xl:table-cell">
-                        {formatarData(p.createdAt)}
+                        <div>{formatarData(p.createdAt)}</div>
+                        <div className="text-gray-400">{formatarHora(p.createdAt)}</div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COR[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -211,7 +228,7 @@ export default async function MonitoramentoPage({ searchParams }: Props) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <MonitoramentoAcoes pedidoId={p.id} statusAtual={p.status} tipo="status" />
+                        <MonitoramentoAcoes pedidoId={p.id} statusAtual={p.status} tipo="status" tipoAtendimento={p.tipoAtendimento} />
                       </td>
                     </tr>
                   )

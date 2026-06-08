@@ -7,12 +7,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// O servidor (Vercel) roda em UTC — converte para o horário de Brasília antes de formatar
+function paraHorarioBrasilia(data: Date | string): Date {
+  const d = new Date(data)
+  return new Date(d.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+}
+
 export function formatarData(data: Date | string): string {
-  return format(new Date(data), 'dd/MM/yyyy', { locale: ptBR })
+  return format(paraHorarioBrasilia(data), 'dd/MM/yyyy', { locale: ptBR })
 }
 
 export function formatarDataHora(data: Date | string): string {
-  return format(new Date(data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+  return format(paraHorarioBrasilia(data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+}
+
+export function formatarHora(data: Date | string): string {
+  return format(paraHorarioBrasilia(data), 'HH:mm', { locale: ptBR })
 }
 
 export function formatarMoeda(valor: number | string): string {
@@ -50,4 +60,12 @@ export function gerarNumeroPedido(): string {
 
 export function tempoRelativo(data: Date | string): string {
   return formatDistanceToNow(new Date(data), { addSuffix: true, locale: ptBR })
+}
+
+export function deriveAgr(email: string): string {
+  const prefix = email.split('@')[0].toLowerCase()
+  if (prefix.includes('arlen'))    return 'arlen'
+  if (prefix.includes('ana'))      return 'ana.karolina'
+  if (prefix.includes('laryssa'))  return 'laryssa'
+  return 'vinicius'
 }

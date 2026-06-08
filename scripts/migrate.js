@@ -160,6 +160,9 @@ async function migrate() {
       CONSTRAINT "sessao_atividade_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "usuarios"("id") ON DELETE CASCADE
     )`,
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "safewebProtocolo" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "hopeUrlDocumentos" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "popupNotificacaoVisto" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "safewebSerieA3" TEXT`,
     `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "whatsappVencimentoAtivo" BOOLEAN NOT NULL DEFAULT true`,
     `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "emailVencimentoAtivo" BOOLEAN NOT NULL DEFAULT true`,
     `CREATE TABLE IF NOT EXISTS "posts_social" (

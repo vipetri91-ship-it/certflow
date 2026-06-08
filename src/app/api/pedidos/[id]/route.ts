@@ -15,6 +15,7 @@ const schemaUpdate = z.object({
   boletoVencimento: z.string().optional(),
   observacoes: z.string().optional(),
   formaPagamento: z.string().optional(),
+  popupNotificacaoVisto: z.boolean().optional(),
 })
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle, X, Loader2 } from 'lucide-react'
+import { CheckCircle, X, Loader2, Ban } from 'lucide-react'
 
 const FORMAS = ['Pix', 'Boleto', 'Dinheiro', 'Cartão de Débito', 'Cartão de Crédito', 'Safe2Pay']
 
@@ -64,7 +64,68 @@ export function BaixaButton({ id }: BaixaButtonProps) {
         onClick={() => setAberto(false)}
         disabled={loading}
         className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-600 transition"
-        title="Cancelar"
+        title="Fechar"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+// ── Botão Cancelar lançamento ─────────────────────────────────────────────────
+
+interface CancelarButtonProps { id: string }
+
+export function CancelarButton({ id }: CancelarButtonProps) {
+  const router  = useRouter()
+  const [confirmar, setConfirmar] = useState(false)
+  const [loading,   setLoading]   = useState(false)
+
+  async function executar() {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/financeiro/lancamentos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELADO' }),
+      })
+      if (res.ok) {
+        router.refresh()
+        setConfirmar(false)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!confirmar) {
+    return (
+      <button
+        onClick={() => setConfirmar(true)}
+        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition"
+      >
+        <Ban className="w-3.5 h-3.5" />
+        Cancelar
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 rounded-xl p-2 shadow-lg">
+      <span className="text-xs text-red-700 dark:text-red-400 font-medium whitespace-nowrap">Cancelar lançamento?</span>
+      <button
+        onClick={executar}
+        disabled={loading}
+        className="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition"
+        title="Confirmar cancelamento"
+      >
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+      </button>
+      <button
+        onClick={() => setConfirmar(false)}
+        disabled={loading}
+        className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-600 transition"
+        title="Não cancelar"
       >
         <X className="w-3.5 h-3.5" />
       </button>

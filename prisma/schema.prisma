@@ -350,6 +350,9 @@ model Pedido {
   unidadeAtendimento   String?      // cidade / unidade do AGR
   safewebStatus        String?      // último evento recebido via webhook Safeweb
   safewebProtocolo     String?      // número do protocolo gerado na Safeweb
+  hopeUrlDocumentos    String?      // link do Hope Portal para anexar documentação ao dossiê
+  popupNotificacaoVisto Boolean     @default(false) // marca se o AGR já viu/fechou o popup automático de "Certificado Emitido"
+  safewebSerieA3       String?                     // número de série do certificado A3 PF usado na emissão online
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

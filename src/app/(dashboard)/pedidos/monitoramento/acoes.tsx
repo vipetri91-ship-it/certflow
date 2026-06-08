@@ -2,16 +2,17 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, FileCheck, Loader2 } from 'lucide-react'
+import { CheckCircle2, FileCheck, Loader2, Send, Unlock } from 'lucide-react'
 import { PopupCertificadoEmitido } from '@/components/popup-certificado-emitido'
 
 interface Props {
   pedidoId: string
   tipo: 'status' | 'protocolo'
   statusAtual?: string
+  tipoAtendimento?: string | null
 }
 
-export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual }: Props) {
+export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendimento }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [protocolo, setProtocolo] = useState('')
@@ -31,6 +32,15 @@ export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual }: Props) {
     if (proximo === 'EMITIDO') {
       setMostrarPopup(true)
     } else {
+      router.refresh()
+    }
+  }
+
+  async function liberarEmissaoOnline() {
+    setLoading(true)
+    const res = await fetch(`/api/pedidos/${pedidoId}/liberar-emissao-online`, { method: 'POST' })
+    setLoading(false)
+    if (res.ok) {
       router.refresh()
     }
   }
@@ -74,8 +84,39 @@ export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual }: Props) {
   }
 
   // tipo = 'status'
-  if (statusAtual === 'EMITIDO' || statusAtual === 'CANCELADO') {
+  if (statusAtual === 'CANCELADO') {
     return <span className="text-xs text-gray-300">—</span>
+  }
+
+  if (statusAtual === 'EMITIDO') {
+    return (
+      <>
+        <button onClick={() => setMostrarPopup(true)}
+          title="Enviar notificação de certificado emitido"
+          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-700">
+          <Send className="w-3 h-3" />
+          Notificar
+        </button>
+        {mostrarPopup && (
+          <PopupCertificadoEmitido
+            pedidoId={pedidoId}
+            onFechar={() => setMostrarPopup(false)}
+          />
+        )}
+      </>
+    )
+  }
+
+  // Emissão Online: substitui "Finalizar" pelo botão "Liberar" (chama UpdateLiberacao na Safeweb)
+  if (tipoAtendimento === 'emissao-online' && (statusAtual === 'GERADO' || statusAtual === 'VERIFICADO')) {
+    return (
+      <button onClick={liberarEmissaoOnline} disabled={loading}
+        title="Confirmar pagamento e liberar emissão na Safeweb"
+        className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition disabled:opacity-50 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800">
+        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlock className="w-3 h-3" />}
+        Liberar
+      </button>
+    )
   }
 
   return (

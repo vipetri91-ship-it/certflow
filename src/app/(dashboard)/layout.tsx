@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import SessionProvider from '@/components/session-provider'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { InatividadeWatcher } from '@/components/inatividade-watcher'
+import { NotificacaoEmissaoWatcher } from '@/components/notificacao-emissao-watcher'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -12,6 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <SessionProvider session={session}>
       <DashboardShell>{children}</DashboardShell>
       <InatividadeWatcher />
+      <NotificacaoEmissaoWatcher />
     </SessionProvider>
   )
 }

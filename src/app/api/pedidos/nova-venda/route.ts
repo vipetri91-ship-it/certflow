@@ -1,8 +1,12 @@
+// Roda em São Paulo para reduzir latência com a API Safeweb (servidores BR)
+export const preferredRegion = 'gru1'
+export const maxDuration = 60
+
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { registrarAuditoria } from '@/lib/audit'
-import { adicionarVideoconferencia, integracaoHope, buscarProduto } from '@/lib/safeweb'
+import { adicionarVideoconferencia, integracaoHope, buscarProduto, validarCertificadoOnline, type EnderecoSafeweb } from '@/lib/safeweb'
 import { z } from 'zod'
 
 function gerarNumero(): string {
@@ -61,6 +65,7 @@ const schema = z.object({
   agr: z.string().optional(),
   formaPagamento: z.string().optional(),
   tipoAtendimento: z.string().optional(),
+  safewebSerieA3: z.string().optional(),
   unidadeAtendimento: z.string().optional(),
   contabilidade: z.string().optional(),
   voucher: z.string().optional(),
@@ -111,6 +116,8 @@ export async function POST(req: NextRequest) {
     bairro: clienteDados.bairro || undefined,
     cidade: clienteDados.cidade || undefined,
     estado: clienteDados.estado || undefined,
+    ...(clienteDados.cpf  ? { cpf:  clienteDados.cpf  } : {}),
+    ...(clienteDados.cnpj ? { cnpj: clienteDados.cnpj } : {}),
   }
 
   if (idCliente) {
@@ -196,10 +203,15 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // 3. Protocolo Safeweb automático (apenas videoconferência) — máx 15s
+  // 3. Protocolo Safeweb automático (videoconferência, presencial ou emissão online) — máx 40s
   let safewebProtocolo: string | undefined
-  if (pedidoDados.tipoAtendimento === 'videoconferencia') {
-    const limite = new Promise<void>(resolve => setTimeout(resolve, 15000))
+  let hopeUrlDocumentos: string | undefined
+  const ehVideoconferencia = pedidoDados.tipoAtendimento === 'videoconferencia'
+  const ehPresencial       = pedidoDados.tipoAtendimento === 'presencial'
+  const ehEmissaoOnline    = pedidoDados.tipoAtendimento === 'emissao-online'
+  if (ehVideoconferencia || ehPresencial || ehEmissaoOnline) {
+    const idTipoEmissao = ehPresencial ? 1 : ehEmissaoOnline ? 5 : 3
+    const limite = new Promise<void>(resolve => setTimeout(resolve, 40000))
     const tarefa = (async () => {
       const modeloDb = await prisma.modeloCertificado.findUnique({
         where: { id: modeloId },
@@ -207,39 +219,155 @@ export async function POST(req: NextRequest) {
       })
       const clienteDb = await prisma.cliente.findUnique({
         where: { id: idCliente! },
-        select: { nome: true, razaoSocial: true, cpf: true, cnpj: true, email: true, celular: true },
+        select: {
+          nome: true, razaoSocial: true, nomeFantasia: true, cpf: true, cnpj: true,
+          email: true, celular: true, ddd: true, dataNascimento: true,
+          cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, estado: true,
+        },
       })
       const responsavelPf = responsavelDados?.cpf
-        ? await prisma.cliente.findUnique({ where: { cpf: responsavelDados.cpf }, select: { nome: true, cpf: true } })
+        ? await prisma.cliente.findUnique({
+            where: { cpf: responsavelDados.cpf },
+            select: {
+              nome: true, cpf: true, email: true, celular: true, ddd: true, dataNascimento: true,
+              cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, estado: true,
+            },
+          })
         : null
 
-      if (!modeloDb || !clienteDb) return
+      if (!modeloDb || !clienteDb) {
+        console.error('[Safeweb] modeloDb ou clienteDb não encontrado', { modeloId, idCliente })
+        return
+      }
 
       const prod = await buscarProduto({
         tipoPessoa:      clienteDados.tipoPessoa,
         tipoCertificado: modeloDb.tipoCertificado as 'A1' | 'A3',
         validadeMeses:   modeloDb.validadeMeses,
-        idTipoEmissao:   3,
+        idTipoEmissao,
       })
-      if (!prod.ok || !prod.idProduto) return
+      if (!prod.ok || !prod.idProduto) {
+        console.error('[Safeweb] produto não encontrado', prod.erro)
+        return
+      }
+
+      // Usa os dados do request como fonte primária (mais recentes que o banco)
+      const cpfPF = clienteDados.tipoPessoa === 'PF'
+        ? (clienteDados.cpf || clienteDb.cpf || undefined)
+        : (responsavelDados?.cpf || responsavelPf?.cpf || undefined)
+
+      const dataYMD = (s?: string | null) => {
+        if (!s) return undefined
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
+        const d = new Date(s)
+        return Number.isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10)
+      }
+
+      // Monta o endereço a partir do request, com fallback para o cadastro do banco
+      function montarEnderecoCompleto(
+        dados: { cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; estado?: string },
+        db: { cep: string | null; logradouro: string | null; numero: string | null; complemento: string | null; bairro: string | null; cidade: string | null; estado: string | null },
+      ): EnderecoSafeweb | undefined {
+        const end: EnderecoSafeweb = {
+          cep:         dados.cep || db.cep || '',
+          logradouro:  dados.logradouro || db.logradouro || '',
+          numero:      dados.numero || db.numero || '',
+          complemento: dados.complemento || db.complemento || '',
+          bairro:      dados.bairro || db.bairro || '',
+          cidade:      dados.cidade || db.cidade || '',
+          estado:      dados.estado || db.estado || '',
+        }
+        const completo = end.cep && end.logradouro && end.numero && end.bairro && end.cidade && end.estado
+        return completo ? end : undefined
+      }
+
+      const enderecoCliente = montarEnderecoCompleto(clienteDados, clienteDb)
+      const dddCliente           = clienteDados.ddd || clienteDb.ddd || undefined
+      const dataNascimentoCliente = clienteDados.dataNascimento || dataYMD(clienteDb.dataNascimento?.toISOString())
 
       const nomeCliente = clienteDb.razaoSocial || clienteDb.nome
+      const ehPJ = clienteDados.tipoPessoa === 'PJ'
+
+      // Para PJ, monta o objeto "responsavel" (Titular) — obrigatório pela Safeweb
+      const responsavel = ehPJ && responsavelPf
+        ? {
+            nome:           responsavelPf.nome,
+            cpf:            responsavelPf.cpf ?? cpfPF ?? '',
+            dataNascimento: responsavelDados?.dataNascimento || dataYMD(responsavelPf.dataNascimento?.toISOString()),
+            email:          responsavelDados?.email || responsavelPf.email || undefined,
+            ddd:            responsavelDados?.ddd || responsavelPf.ddd || undefined,
+            telefone:       responsavelDados?.celular || responsavelPf.celular || undefined,
+            endereco:       montarEnderecoCompleto(responsavelDados ?? {}, responsavelPf) ?? enderecoCliente,
+          }
+        : undefined
+
+      // Emissão Online: valida o cert A3 PF para obter o protocolo de origem
+      let protocoloOrigem: string | undefined
+      if (ehEmissaoOnline && pedidoDados.safewebSerieA3) {
+        try {
+          const validacao = await validarCertificadoOnline(pedidoDados.safewebSerieA3, String(prod.idProduto))
+          if (validacao.ok && validacao.protocolo) {
+            protocoloOrigem = validacao.protocolo
+            console.log('[Safeweb] cert A3 PF validado, protocoloOrigem:', protocoloOrigem)
+          } else {
+            console.warn('[Safeweb] validação cert A3 PF falhou (seguindo sem protocoloOrigem):', validacao.erro)
+          }
+        } catch (err) {
+          console.warn('[Safeweb] exceção validarCertificadoOnline (seguindo sem protocoloOrigem):', err)
+        }
+      }
+
       const resultado = await adicionarVideoconferencia({
-        cpf:       clienteDados.tipoPessoa === 'PF' ? (clienteDb.cpf ?? undefined) : (responsavelPf?.cpf ?? undefined),
-        cnpj:      clienteDados.tipoPessoa === 'PJ' ? (clienteDb.cnpj ?? undefined) : undefined,
-        nome:      clienteDados.tipoPessoa === 'PJ' ? (responsavelPf?.nome ?? nomeCliente) : nomeCliente,
-        email:     clienteDb.email ?? undefined,
-        telefone:  clienteDb.celular ?? undefined,
-        produtoId: String(prod.idProduto),
-      })
-      if (!resultado.ok || !resultado.protocolo) return
+        cpf:            ehPJ ? undefined : cpfPF,
+        cnpj:           ehPJ ? (clienteDados.cnpj || clienteDb.cnpj || undefined) : undefined,
+        nome:           ehPJ ? (responsavelPf?.nome ?? nomeCliente) : nomeCliente,
+        razaoSocial:    clienteDb.razaoSocial ?? undefined,
+        nomeFantasia:   clienteDb.nomeFantasia ?? undefined,
+        email:          clienteDb.email ?? undefined,
+        ddd:            dddCliente,
+        telefone:       clienteDb.celular ?? undefined,
+        dataNascimento: ehPJ ? undefined : dataNascimentoCliente,
+        endereco:       enderecoCliente,
+        responsavel,
+        produtoId:      String(prod.idProduto),
+      }, idTipoEmissao, protocoloOrigem)
+      console.log('[Safeweb] resultado adicionarVideoconferencia', resultado)
+      if (!resultado.ok || !resultado.protocolo) {
+        console.error('[Safeweb] falha ao criar protocolo', resultado.erro, resultado.raw)
+        return
+      }
 
       safewebProtocolo = resultado.protocolo
-      await prisma.pedido.update({
-        where: { id: pedido.id },
-        data: { safewebProtocolo: resultado.protocolo } as any,
-      })
-      await integracaoHope(resultado.protocolo).catch(() => {})
+      const updateData: Record<string, unknown> = {
+        safewebProtocolo: resultado.protocolo,
+        numeroCompra: resultado.protocolo,
+      }
+      if (ehEmissaoOnline && pedidoDados.safewebSerieA3) {
+        updateData.safewebSerieA3 = pedidoDados.safewebSerieA3
+      }
+      await prisma.pedido.update({ where: { id: pedido.id }, data: updateData as any })
+
+      // Integração HOPE — exclusiva do fluxo de videoconferência (gera o link
+      // de upload de documentos); no presencial o cliente leva os documentos à AR
+      if (ehVideoconferencia) {
+        try {
+          const hope = await integracaoHope(resultado.protocolo)
+          if (!hope.ok) {
+            console.error('[Safeweb] falha integracaoHope', hope.erro)
+          } else {
+            console.log('[Safeweb] integracaoHope vinculado com sucesso', resultado.protocolo)
+            if (hope.url) {
+              hopeUrlDocumentos = hope.url
+              await prisma.pedido.update({
+                where: { id: pedido.id },
+                data: { hopeUrlDocumentos: hope.url } as any,
+              })
+            }
+          }
+        } catch (err) {
+          console.error('[Safeweb] exceção integracaoHope', err)
+        }
+      }
     })()
 
     await Promise.race([tarefa, limite]).catch(() => {})
@@ -297,5 +425,6 @@ export async function POST(req: NextRequest) {
     id: pedido.id,
     numero: pedido.numero,
     safewebProtocolo: safewebProtocolo ?? null,
+    hopeUrlDocumentos: hopeUrlDocumentos ?? null,
   }, { status: 201 })
 }

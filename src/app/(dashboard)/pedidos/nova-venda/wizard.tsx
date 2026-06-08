@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle2, Loader2, ChevronRight, ChevronLeft, User, Building2,
-  AlertTriangle, Search, Award, CreditCard, Calendar, History,
+  AlertTriangle, Search, Award, CreditCard, Calendar, History, Paperclip,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ export function NovaVendaWizard({
   const [buscandoCep,     setBuscandoCep]     = useState(false)
   const [buscandoCepEmp,  setBuscandoCepEmp]  = useState(false)
   const [historico,       setHistorico]       = useState<CertHistorico[]>([])
-  const [pedidoCriado,    setPedidoCriado]    = useState<{ id: string; numero: string; safewebProtocolo?: string | null } | null>(null)
+  const [pedidoCriado,    setPedidoCriado]    = useState<{ id: string; numero: string; safewebProtocolo?: string | null; hopeUrlDocumentos?: string | null } | null>(null)
   const [protocolo,       setProtocolo]       = useState('')
   const [salvandoProt,    setSalvandoProt]    = useState(false)
 
@@ -201,6 +201,30 @@ export function NovaVendaWizard({
   }
 
   // ── Step 1: Validar CNPJ/CPF ──────────────────────────────────────────────
+
+  // Checagem oficial da Safeweb (mesmo checkpoint usado antes da emissão): detecta
+  // CPF/CNPJ CANCELADO, INAPTO, SUSPENSO, divergência de data de nascimento etc.
+  // Em caso de erro de comunicação retorna null e não bloqueia o fluxo.
+  async function consultarPrevia(
+    documento: string,
+    documentoTipo: '1' | '2',
+    dtNascimento: string,
+    cpfResponsavel?: string,
+  ): Promise<{ liberado: boolean; codigo?: number; mensagem?: string } | null> {
+    try {
+      const res = await fetch('/api/safeweb/consulta-previa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documento, documentoTipo, dtNascimento, cpfResponsavel }),
+      })
+      const data = await res.json()
+      if (!res.ok) return null
+      return { liberado: data.liberado, codigo: data.codigo, mensagem: data.mensagem }
+    } catch {
+      return null
+    }
+  }
+
   async function validarCNPJ() {
     const cnpj = dados.cnpj.replace(/\D/g,'')
     if (cnpj.length !== 14) { setErroValidacao('CNPJ deve ter 14 dígitos'); return }
@@ -221,6 +245,15 @@ export function NovaVendaWizard({
           return
         }
         nomeRfb = match.nome
+      }
+
+      // Checagem oficial da Safeweb: bloqueia se o CNPJ/responsável não estiver liberado para emissão
+      if (cpfNums.length === 11 && dados.dataNascimento) {
+        const previa = await consultarPrevia(cnpj, '2', dados.dataNascimento, cpfNums)
+        if (previa && !previa.liberado) {
+          setErroValidacao(`Código ${previa.codigo} - ${previa.mensagem}`)
+          return
+        }
       }
 
       const clienteId = data.clienteExistente?.id ?? ''
@@ -304,6 +337,13 @@ export function NovaVendaWizard({
 
       if (!res.ok) {
         setErroValidacao(data.erro ?? 'CPF não encontrado na Receita Federal')
+        return
+      }
+
+      // Checagem oficial da Safeweb: bloqueia se o CPF não estiver liberado para emissão
+      const previa = await consultarPrevia(cpf, '1', dados.dataNascimento)
+      if (previa && !previa.liberado) {
+        setErroValidacao(`Código ${previa.codigo} - ${previa.mensagem}`)
         return
       }
 
@@ -442,7 +482,7 @@ export function NovaVendaWizard({
       })
       const result = await res.json()
       if (!res.ok) { setErroValidacao(result.erro ?? 'Erro ao criar pedido'); return }
-      setPedidoCriado({ id: result.id, numero: result.numero, safewebProtocolo: result.safewebProtocolo })
+      setPedidoCriado({ id: result.id, numero: result.numero, safewebProtocolo: result.safewebProtocolo, hopeUrlDocumentos: result.hopeUrlDocumentos })
     } catch { setErroValidacao('Erro de conexão') }
     finally { setLoading(false) }
   }
@@ -482,8 +522,16 @@ export function NovaVendaWizard({
                 {protocoloAuto}
               </p>
               <p className="text-xs text-green-600 dark:text-green-500 text-center">
-                Videoconferência agendada e vinculada ao Hope Portal
+                {dados.tipoAtendimento === 'presencial'
+                  ? 'Atendimento presencial — oriente o cliente a levar os documentos originais até a AR'
+                  : 'Videoconferência agendada e vinculada ao Hope Portal'}
               </p>
+              {pedidoCriado.hopeUrlDocumentos && (
+                <a href={pedidoCriado.hopeUrlDocumentos} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition">
+                  <Paperclip className="w-4 h-4" /> Anexar documentação
+                </a>
+              )}
             </div>
           ) : (
             /* Protocolo manual (presencial ou falha na geração automática) */
