@@ -66,7 +66,7 @@ const INITIAL = (defaultAgr: string): WizardDados => ({
   atendimentoExterno: false, valorDeslocamento: 0,
   agr: defaultAgr, agendar: true,
   dataAgendamento: new Date().toISOString().split('T')[0], horaAgendamento: '09:00',
-  duracaoAgendamento: 20, observacoesFinanceiro: '', observacoesAgendamento: '',
+  duracaoAgendamento: 60, observacoesFinanceiro: '', observacoesAgendamento: '',
 })
 
 const AGR_OPTIONS = [
@@ -210,7 +210,7 @@ export function NovaVendaWizard({
     documentoTipo: '1' | '2',
     dtNascimento: string,
     cpfResponsavel?: string,
-  ): Promise<{ liberado: boolean; codigo?: number; mensagem?: string } | null> {
+  ): Promise<{ liberado: boolean; codigo?: number; mensagem?: string; nome?: string | null } | null> {
     try {
       const res = await fetch('/api/safeweb/consulta-previa', {
         method: 'POST',
@@ -219,7 +219,7 @@ export function NovaVendaWizard({
       })
       const data = await res.json()
       if (!res.ok) return null
-      return { liberado: data.liberado, codigo: data.codigo, mensagem: data.mensagem }
+      return { liberado: data.liberado, codigo: data.codigo, mensagem: data.mensagem, nome: data.nome ?? null }
     } catch {
       return null
     }
@@ -258,17 +258,20 @@ export function NovaVendaWizard({
 
       const clienteId = data.clienteExistente?.id ?? ''
 
+      const cli = data.clienteExistente
       setDados(d => ({
         ...d,
         nomeEmpresa:      data.razaoSocial ?? data.nomeFantasia ?? '',
         razaoSocial:      data.razaoSocial ?? '',
         fantasia:         data.nomeFantasia ?? '',
-        nomeResponsavel:  nomeRfb ?? data.clienteExistente?.responsavel ?? d.nomeResponsavel,
+        nomeResponsavel:  nomeRfb ?? cli?.responsavel ?? d.nomeResponsavel,
         clienteId,
-        nome:             data.clienteExistente?.responsavel ?? nomeRfb ?? d.nome,
-        email:       data.clienteExistente?.email ?? d.email,
-        ddd:         data.clienteExistente?.ddd ?? d.ddd,
-        telefone:    data.clienteExistente?.celular ?? d.telefone,
+        nome:             cli?.responsavel ?? nomeRfb ?? d.nome,
+        cpfResponsavel:   cli?.cpf ? cli.cpf.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : d.cpfResponsavel,
+        dataNascimento:   cli?.dataNascimento ? cli.dataNascimento.split('T')[0] : d.dataNascimento,
+        email:       cli?.email ?? d.email,
+        ddd:         cli?.ddd ?? d.ddd,
+        telefone:    cli?.celular ?? d.telefone,
         cepEmpresa:  data.cep ? fmtCEP(data.cep) : d.cepEmpresa,
         logradouroEmpresa: data.logradouro ?? d.logradouroEmpresa,
         numeroEmpresa:     data.numero ?? d.numeroEmpresa,
@@ -287,6 +290,61 @@ export function NovaVendaWizard({
       }
     } catch { setErroValidacao('Erro de conexão') }
     finally { setLoading(false) }
+  }
+
+  async function autoPreencherPorCNPJ(valorCampo: string) {
+    const cnpj = valorCampo.replace(/\D/g,'')
+    if (cnpj.length !== 14) return
+    try {
+      const fmt = fmtCNPJ(cnpj)
+      const [d1, d2] = await Promise.all([
+        fetch(`/api/clientes?q=${cnpj}&limit=5`).then(r => r.json()),
+        fetch(`/api/clientes?q=${encodeURIComponent(fmt)}&limit=5`).then(r => r.json()),
+      ])
+      // Junta os resultados e procura o que tem CNPJ igual (normalizado)
+      const todos: Record<string, unknown>[] = [...(d1.clientes ?? []), ...(d2.clientes ?? [])]
+      const c = todos.find((x: Record<string, unknown>) => (x.cnpj as string)?.replace(/\D/g,'') === cnpj)
+      if (!c) return
+
+      // Para PJ: cpf fica no registro do responsável (PF separado), não no registro da empresa
+      let cpfFill = (c.cpf as string | null) ?? null
+      let nascFill = (c.dataNascimento as string | null) ?? null
+
+      if (!cpfFill && c.responsavel) {
+        // Busca o cliente PF cujo nome bate com o responsável
+        const primeiroNome = (c.responsavel as string).trim().split(' ')[0]
+        const dr = await fetch(`/api/clientes?q=${encodeURIComponent(primeiroNome)}&tipo=PF&limit=10`).then(r => r.json())
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pf = (dr.clientes ?? []).find((x: any) =>
+          x.tipoPessoa === 'PF' && x.nome?.toLowerCase().includes(primeiroNome.toLowerCase())
+        )
+        if (pf?.cpf) { cpfFill = pf.cpf; nascFill = pf.dataNascimento ?? nascFill }
+      }
+
+      setDados(d => ({
+        ...d,
+        clienteId:        c.id as string,
+        nomeEmpresa:      (c.nome as string) ?? d.nomeEmpresa,
+        razaoSocial:      (c.nome as string) ?? d.razaoSocial,
+        fantasia:         (c.nomeFantasia as string) ?? d.fantasia,
+        nomeResponsavel:  (c.responsavel as string) ?? d.nomeResponsavel,
+        nome:             (c.responsavel as string) ?? d.nome,
+        cpfResponsavel:   cpfFill ? cpfFill.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : d.cpfResponsavel,
+        dataNascimento:   nascFill ? nascFill.split('T')[0] : d.dataNascimento,
+        email:            (c.email as string) ?? d.email,
+        ddd:              (c.ddd as string) ?? d.ddd,
+        telefone:         (c.celular as string) ?? d.telefone,
+        emailEmpresa:     (c.email as string) ?? d.emailEmpresa,
+        dddEmpresa:       (c.ddd as string) ?? d.dddEmpresa,
+        telEmpresa:       (c.celular as string) ?? d.telEmpresa,
+        cepEmpresa:       (c.cep as string) ? fmtCEP(c.cep as string) : d.cepEmpresa,
+        logradouroEmpresa: (c.logradouro as string) ?? d.logradouroEmpresa,
+        numeroEmpresa:    (c.numero as string) ?? d.numeroEmpresa,
+        bairroEmpresa:    (c.bairro as string) ?? d.bairroEmpresa,
+        municipioEmpresa: (c.cidade as string) ?? d.municipioEmpresa,
+        estadoEmpresa:    (c.estado as string) ?? d.estadoEmpresa,
+      }))
+    } catch {}
   }
 
   async function buscarClientePorCPF() {
@@ -347,7 +405,8 @@ export function NovaVendaWizard({
         return
       }
 
-      const nomeRfb: string = data.nome ?? ''
+      // Nome: ReceitaWS (primário) → Safeweb ConsultaPrevia → banco
+      const nomeRfb: string = data.nome ?? previa?.nome ?? ''
       const clienteDb = data.clienteExistente
 
       setDados(d => ({
@@ -372,9 +431,6 @@ export function NovaVendaWizard({
         fetch(`/api/pedidos?clienteId=${clienteDb.id}&limit=5`)
           .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
       }
-
-      // Avança automaticamente se encontrou o nome
-      setStep(2)
     } catch {
       setErroValidacao('Erro de conexão ao validar CPF')
     } finally { setLoading(false) }
@@ -619,6 +675,7 @@ export function NovaVendaWizard({
                 <Campo label="CNPJ" required>
                   <Input value={dados.cnpj}
                     onChange={e => { set('cnpj', fmtCNPJ(e.target.value)); set('validado', false) }}
+                    onBlur={e => autoPreencherPorCNPJ(e.target.value)}
                     placeholder="00.000.000/0000-00" maxLength={18} />
                 </Campo>
               )}
@@ -803,8 +860,8 @@ export function NovaVendaWizard({
                   </Campo>
                 </div>
                 <div className="flex-1">
-                  <Campo label="Telefone">
-                    <Input value={dados.telefone} onChange={e => set('telefone', e.target.value.replace(/\D/g,'').slice(0,9))} placeholder="999999999" maxLength={9} />
+                  <Campo label="Telefone" required>
+                    <Input value={dados.telefone} onChange={e => set('telefone', e.target.value.replace(/\D/g,'').slice(0,9))} placeholder="999999999" maxLength={9} required />
                   </Campo>
                 </div>
               </div>
@@ -847,7 +904,7 @@ export function NovaVendaWizard({
               className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
               <ChevronLeft className="w-4 h-4" /> Anterior
             </button>
-            <button onClick={nextStep} disabled={!dados.nome || !dados.email}
+            <button onClick={nextStep} disabled={!dados.nome || !dados.email || !dados.telefone}
               className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
               Próximo <ChevronRight className="w-4 h-4" />
             </button>
@@ -877,13 +934,13 @@ export function NovaVendaWizard({
               <div className="sm:col-span-2">
                 <Campo label="Responsável Contato"><Input value={dados.respContato} onChange={e => set('respContato', e.target.value)} /></Campo>
               </div>
-              <Campo label="E-mail da Empresa"><Input type="email" value={dados.emailEmpresa} onChange={e => set('emailEmpresa', e.target.value)} /></Campo>
+              <Campo label="E-mail da Empresa" required><Input type="email" value={dados.emailEmpresa} onChange={e => set('emailEmpresa', e.target.value)} required /></Campo>
               <div className="flex gap-2 sm:col-span-2">
                 <div className="w-20 shrink-0">
                   <Campo label="DDD"><Input value={dados.dddEmpresa} onChange={e => set('dddEmpresa', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} /></Campo>
                 </div>
                 <div className="flex-1">
-                  <Campo label="Telefone"><Input value={dados.telEmpresa} onChange={e => set('telEmpresa', e.target.value.replace(/\D/g,'').slice(0,9))} maxLength={9} /></Campo>
+                  <Campo label="Telefone" required><Input value={dados.telEmpresa} onChange={e => set('telEmpresa', e.target.value.replace(/\D/g,'').slice(0,9))} maxLength={9} required /></Campo>
                 </div>
               </div>
               <Campo label="Inscrição Estadual"><Input value={dados.ie} onChange={e => set('ie', e.target.value)} placeholder="Opcional" /></Campo>
@@ -914,7 +971,7 @@ export function NovaVendaWizard({
               className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
               <ChevronLeft className="w-4 h-4" /> Anterior
             </button>
-            <button onClick={nextStep} disabled={!dados.cnpj || !dados.razaoSocial}
+            <button onClick={nextStep} disabled={!dados.cnpj || !dados.razaoSocial || !dados.emailEmpresa || !dados.telEmpresa}
               className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
               Próximo <ChevronRight className="w-4 h-4" />
             </button>
@@ -931,9 +988,6 @@ export function NovaVendaWizard({
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Forma de Pagamento Principal</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Campo label="Contabilidade / Parceiro">
-                <Input value={dados.contabilidade} onChange={e => set('contabilidade', e.target.value)} placeholder="Nome do escritório..." />
-              </Campo>
               <Campo label="Parceiro indicador">
                 <Sel value={dados.parceiroId} onChange={e => set('parceiroId', e.target.value)}>
                   <option value="">Nenhum</option>

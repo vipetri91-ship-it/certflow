@@ -40,5 +40,6 @@ export async function POST(req: NextRequest) {
     liberado: resultado.codigo === 0,
     codigo:   resultado.codigo,
     mensagem: resultado.mensagem,
+    nome:     resultado.nome || null,
   })
 }

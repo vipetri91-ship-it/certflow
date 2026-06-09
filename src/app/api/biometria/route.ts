@@ -4,12 +4,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getToken } from '@/lib/safeweb'
 
-function getCfg() {
+function baseUrl() {
   const homolog = process.env.SAFEWEB_HOMOLOGACAO === 'true'
-  return {
-    baseUrl: homolog
-      ? (process.env.SAFEWEB_BASE_URL_HOMOLOG ?? 'https://h-pss.safewebpss.com.br/Service/Microservice')
-      : (process.env.SAFEWEB_BASE_URL ?? 'https://pss.safewebpss.com.br/Service/Microservice'),
+  return homolog
+    ? (process.env.SAFEWEB_BASE_URL_HOMOLOG ?? 'https://h-pss.safewebpss.com.br/Service/Microservice')
+    : (process.env.SAFEWEB_BASE_URL          ?? 'https://pss.safewebpss.com.br/Service/Microservice')
+}
+
+async function safeFetch(url: string, init: RequestInit): Promise<{ ok: boolean; status: number; data: unknown }> {
+  try {
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(12000) })
+    const raw = await res.text()
+    let data: unknown
+    try { data = JSON.parse(raw) } catch { data = raw }
+    return { ok: res.ok, status: res.status, data }
+  } catch (e) {
+    return { ok: false, status: 0, data: { mensagem: String(e) } }
   }
 }
 
@@ -27,30 +37,53 @@ export async function POST(req: NextRequest) {
 
   try {
     const token = await getToken()
-    const { baseUrl } = getCfg()
+    const base  = baseUrl()
 
-    // TODO: substituir pelo endpoint correto quando confirmado
-    const endpoint = `${baseUrl}/Shared/PSBio/api/ConsultarBiometria/${cpfLimpo}`
+    const [rValidate, rLocal, rGlobal] = await Promise.allSettled([
+      // GET ValidateBiometry — token sem prefixo (igual outros endpoints Partner)
+      safeFetch(`${base}/Shared/Partner/api/ValidateBiometry/${cpfLimpo}`, {
+        method: 'GET',
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+      }),
+      // POST PSBio Local — docs mostram "Cpf" (maiúsculo) na tabela de atributos
+      safeFetch(`${base}/Shared/Partner/api/psbio/consulta/biometria/local`, {
+        method: 'POST',
+        headers: { 'Authorization': `bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Cpf: cpfLimpo }),
+      }),
+      // POST PSBio Global
+      safeFetch(`${base}/Shared/Partner/api/psbio/consulta/biometria/global`, {
+        method: 'POST',
+        headers: { 'Authorization': `bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Cpf: cpfLimpo }),
+      }),
+    ])
 
-    const res = await fetch(endpoint, {
-      method: 'GET',
-      headers: { Authorization: token, 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(15000),
+    const vRes = rValidate.status === 'fulfilled' ? rValidate.value : { ok: false, status: 0, data: null }
+    const lRes = rLocal.status   === 'fulfilled' ? rLocal.value   : { ok: false, status: 0, data: null }
+    const gRes = rGlobal.status  === 'fulfilled' ? rGlobal.value  : { ok: false, status: 0, data: null }
+
+    // ValidateBiometry retorna boolean puro (true/false)
+    const validacao = vRes.ok ? vRes.data === true : null
+
+    // PSBio retorna { "encontrado": true/false }
+    const ld = lRes.data as Record<string, unknown> | null
+    const gd = gRes.data as Record<string, unknown> | null
+
+    return NextResponse.json({
+      validacao,
+      local:  lRes.ok ? Boolean(ld?.encontrado) : null,
+      global: gRes.ok ? Boolean(gd?.encontrado) : null,
+      erros: {
+        validacao: vRes.ok ? null : String((vRes.data as Record<string, unknown>)?.message ?? (vRes.data as Record<string, unknown>)?.mensagem ?? 'Erro na consulta'),
+        local:     lRes.ok ? null : String(ld?.mensagem ?? ld?.message ?? JSON.stringify(lRes.data) ?? 'Erro na consulta'),
+        global:    gRes.ok ? null : String(gd?.mensagem ?? gd?.message ?? JSON.stringify(gRes.data) ?? 'Erro na consulta'),
+      },
+      _debug: {
+        localStatus: lRes.status, localRaw: lRes.data,
+        globalStatus: gRes.status, globalRaw: gRes.data,
+      },
     })
-
-    const raw = await res.text()
-    let data: Record<string, unknown> = {}
-    try { data = JSON.parse(raw) } catch { data = { _raw: raw } }
-
-    if (!res.ok) {
-      return NextResponse.json({ erro: data.Message ?? data.mensagem ?? `Erro ${res.status}` }, { status: 502 })
-    }
-
-    // Normaliza resposta Safeweb — pode vir em vários formatos
-    const local  = Boolean(data.LocalRegistrado  ?? data.localRegistrado  ?? data.local  ?? false)
-    const global = Boolean(data.GlobalRegistrado ?? data.globalRegistrado ?? data.global ?? false)
-
-    return NextResponse.json({ local, global, raw: data })
   } catch (err) {
     return NextResponse.json({ erro: String(err) }, { status: 500 })
   }

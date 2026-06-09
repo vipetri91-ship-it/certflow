@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
     const tarefa = (async () => {
       const modeloDb = await prisma.modeloCertificado.findUnique({
         where: { id: modeloId },
-        select: { tipoPessoa: true, tipoCertificado: true, validadeMeses: true },
+        select: { tipoPessoa: true, tipoCertificado: true, validadeMeses: true, suporte: true, codigoSafeweb: true },
       })
       const clienteDb = await prisma.cliente.findUnique({
         where: { id: idCliente! },
@@ -245,11 +245,13 @@ export async function POST(req: NextRequest) {
         tipoCertificado: modeloDb.tipoCertificado as 'A1' | 'A3',
         validadeMeses:   modeloDb.validadeMeses,
         idTipoEmissao,
+        suporte:         modeloDb.suporte ?? undefined,
       })
       if (!prod.ok || !prod.idProduto) {
-        console.error('[Safeweb] produto não encontrado', prod.erro)
+        console.error('[Safeweb] produto não encontrado', { erro: prod.erro, tipoCertificado: modeloDb.tipoCertificado, suporte: modeloDb.suporte, validadeMeses: modeloDb.validadeMeses, idTipoEmissao })
         return
       }
+      const idTipoEmissaoEfetivo = (prod.idTipoEmissaoUsado ?? idTipoEmissao) as 1 | 3 | 5
 
       // Usa os dados do request como fonte primária (mais recentes que o banco)
       const cpfPF = clienteDados.tipoPessoa === 'PF'
@@ -330,7 +332,7 @@ export async function POST(req: NextRequest) {
         endereco:       enderecoCliente,
         responsavel,
         produtoId:      String(prod.idProduto),
-      }, idTipoEmissao, protocoloOrigem)
+      }, idTipoEmissaoEfetivo, protocoloOrigem)
       console.log('[Safeweb] resultado adicionarVideoconferencia', resultado)
       if (!resultado.ok || !resultado.protocolo) {
         console.error('[Safeweb] falha ao criar protocolo', resultado.erro, resultado.raw)
@@ -395,7 +397,7 @@ export async function POST(req: NextRequest) {
   if (agendamento && pedidoDados.agr) {
     try {
       const modelo = await prisma.modeloCertificado.findUnique({ where: { id: modeloId }, select: { nome: true } })
-      const inicio = new Date(`${agendamento.data}T${agendamento.hora}:00`)
+      const inicio = new Date(`${agendamento.data}T${agendamento.hora}:00-03:00`)
       await fetch(`${process.env.NEXTAUTH_URL}/api/agenda`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': req.headers.get('cookie') ?? '' },

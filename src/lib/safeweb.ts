@@ -189,7 +189,7 @@ export async function realizarConsultaPrevia(params: {
   documentoTipo:    '1' | '2'
   dtNascimento:     string  // formato YYYY-MM-DD
   cpfResponsavel?:  string  // obrigatório quando documentoTipo === '2' (CNPJ)
-}): Promise<{ ok: boolean; codigo?: number; mensagem?: string; erro?: string }> {
+}): Promise<{ ok: boolean; codigo?: number; mensagem?: string; nome?: string; erro?: string; _rawData?: Record<string, unknown> }> {
   try {
     const payload: Record<string, unknown> = params.documentoTipo === '1'
       ? {
@@ -209,7 +209,9 @@ export async function realizarConsultaPrevia(params: {
 
     const codigo   = Number(data.Codigo ?? data.codigo ?? -1)
     const mensagem = String(data.Mensagem ?? data.mensagem ?? '')
-    return { ok: true, codigo, mensagem }
+    // Quando codigo === 0 (liberado), Safeweb retorna o nome completo no campo Mensagem
+    const nome     = codigo === 0 ? mensagem : ''
+    return { ok: true, codigo, mensagem, nome }
   } catch (err) {
     return { ok: false, erro: String(err) }
   }
@@ -428,37 +430,67 @@ export interface FiltrosProduto {
   tipoCertificado: 'A1' | 'A3'      // A1 ou A3
   validadeMeses: number              // 12 → 1 Ano, 24 → 2 Anos
   idTipoEmissao?: number             // 3 = videoconferência (padrão)
+  suporte?: string                   // NUVEM, TOKEN, CARTAO, ARQUIVO
 }
 
-export async function buscarProduto(filtros: FiltrosProduto): Promise<{
-  ok: boolean; idProduto?: number; nome?: string; erro?: string
-}> {
-  const tipo = filtros.idTipoEmissao ?? 3
-  const { ok, produtos, erro } = await listarProdutos(tipo)
-  if (!ok || !produtos?.length) return { ok: false, erro: erro ?? 'Sem produtos disponíveis' }
-
-  const tipoProduto = filtros.tipoPessoa === 'PF' ? 'e-CPF' : 'e-CNPJ'
-  const modelo      = filtros.tipoCertificado      // 'A1' ou 'A3'
-  const validade    = filtros.validadeMeses <= 12 ? '1 Ano' : '2 Anos'
+function encontrarNosprodutos(
+  produtos: Record<string, unknown>[],
+  tipoProduto: string,
+  modelo: string,
+  validade: string,
+  ehNuvem: boolean,
+): Record<string, unknown> | undefined {
+  const modeloMatch = (p: Record<string, unknown>) => {
+    const m = String(p.ProdutoModelo)
+    // Para NUVEM, aceita variantes como 'A3N', 'A3 Nuvem', 'A3 HSM', etc.
+    return ehNuvem ? (m === modelo || m.startsWith(modelo)) : m === modelo
+  }
 
   const produto = produtos.find((p: Record<string, unknown>) =>
     String(p.ProdutoTipo).includes(tipoProduto) &&
-    String(p.ProdutoModelo) === modelo &&
+    modeloMatch(p) &&
     String(p.ProdutoValidade).includes(validade.split(' ')[0])
   ) as Record<string, unknown> | undefined
 
-  if (!produto) {
-    // Fallback: só bate tipo pessoa + modelo
-    const fallback = produtos.find((p: Record<string, unknown>) =>
-      String(p.ProdutoTipo).includes(tipoProduto) &&
-      String(p.ProdutoModelo) === modelo
-    ) as Record<string, unknown> | undefined
+  if (produto) return produto
 
-    if (!fallback) return { ok: false, erro: `Produto não encontrado: ${tipoProduto} ${modelo} ${validade}` }
-    return { ok: true, idProduto: Number(fallback.idProduto), nome: String(fallback.Nome) }
+  // Fallback: ignora validade
+  return produtos.find((p: Record<string, unknown>) =>
+    String(p.ProdutoTipo).includes(tipoProduto) &&
+    modeloMatch(p)
+  ) as Record<string, unknown> | undefined
+}
+
+export async function buscarProduto(filtros: FiltrosProduto): Promise<{
+  ok: boolean; idProduto?: number; nome?: string; idTipoEmissaoUsado?: number; erro?: string
+}> {
+  const tipoPrimario = filtros.idTipoEmissao ?? 3
+  const ehNuvem      = filtros.suporte === 'NUVEM'
+  const tipoProduto  = filtros.tipoPessoa === 'PF' ? 'e-CPF' : 'e-CNPJ'
+  const modelo       = filtros.tipoCertificado
+  const validade     = filtros.validadeMeses <= 12 ? '1 Ano' : '2 Anos'
+
+  // Ordem de tentativa: tipo principal primeiro; para NUVEM, testa 5 e 3 como fallback
+  const tiposParaTentar = ehNuvem
+    ? [...new Set([tipoPrimario, 5, 3, 1])]
+    : [tipoPrimario]
+
+  for (const tipo of tiposParaTentar) {
+    const { ok, produtos, erro } = await listarProdutos(tipo)
+    if (!ok || !produtos?.length) {
+      if (tipo === tiposParaTentar[tiposParaTentar.length - 1]) {
+        return { ok: false, erro: erro ?? 'Sem produtos disponíveis' }
+      }
+      continue
+    }
+
+    const encontrado = encontrarNosprodutos(produtos, tipoProduto, modelo, validade, ehNuvem)
+    if (encontrado) {
+      return { ok: true, idProduto: Number(encontrado.idProduto), nome: String(encontrado.Nome), idTipoEmissaoUsado: tipo }
+    }
   }
 
-  return { ok: true, idProduto: Number(produto.idProduto), nome: String(produto.Nome) }
+  return { ok: false, erro: `Produto não encontrado: ${tipoProduto} ${modelo} ${validade}` }
 }
 
 // ── 5. Consultar status de um protocolo ──────────────────────────────────────
