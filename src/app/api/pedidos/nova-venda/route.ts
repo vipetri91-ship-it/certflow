@@ -319,7 +319,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const resultado = await adicionarVideoconferencia({
+      const addParams = {
         cpf:            ehPJ ? undefined : cpfPF,
         cnpj:           ehPJ ? (clienteDados.cnpj || clienteDb.cnpj || undefined) : undefined,
         nome:           ehPJ ? (responsavelPf?.nome ?? nomeCliente) : nomeCliente,
@@ -332,10 +332,12 @@ export async function POST(req: NextRequest) {
         endereco:       enderecoCliente,
         responsavel,
         produtoId:      String(prod.idProduto),
-      }, idTipoEmissaoEfetivo, protocoloOrigem)
-      console.log('[Safeweb] resultado adicionarVideoconferencia', resultado)
+      }
+      console.log('[Safeweb] adicionarVideoconferencia params:', JSON.stringify({ ...addParams, idTipoEmissaoEfetivo }))
+      const resultado = await adicionarVideoconferencia(addParams, idTipoEmissaoEfetivo, protocoloOrigem)
+      console.log('[Safeweb] resultado adicionarVideoconferencia', JSON.stringify(resultado))
       if (!resultado.ok || !resultado.protocolo) {
-        console.error('[Safeweb] falha ao criar protocolo', resultado.erro, resultado.raw)
+        console.error('[Safeweb] falha ao criar protocolo', resultado.erro, JSON.stringify(resultado.raw))
         return
       }
 
