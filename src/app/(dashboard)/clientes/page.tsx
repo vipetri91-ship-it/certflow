@@ -1,5 +1,6 @@
 import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import { ClientesTabela } from './tabela'
 import Link from 'next/link'
 import { UserPlus, Upload } from 'lucide-react'
@@ -10,6 +11,8 @@ interface Props {
 
 export default async function ClientesPage({ searchParams }: Props) {
   const params = await searchParams
+  const session = await auth()
+  const isAdmin = session?.user?.role === 'ADMIN'
   const pagina = Number(params.page ?? 1)
   const porPagina = 20
   const skip = (pagina - 1) * porPagina
@@ -73,6 +76,7 @@ export default async function ClientesPage({ searchParams }: Props) {
         </div>
 
         <ClientesTabela
+          isAdmin={isAdmin}
           clientes={clientes.map((c) => ({
             ...c,
             cpf:         c.cpf         ?? undefined,

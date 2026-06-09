@@ -8,6 +8,8 @@ import {
   Filter,
   Edit,
   Eye,
+  Trash2,
+  Loader2,
   ChevronLeft,
   ChevronRight,
   Building2,
@@ -35,9 +37,10 @@ interface Props {
   total: number
   pagina: number
   porPagina: number
+  isAdmin?: boolean
 }
 
-export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
+export function ClientesTabela({ clientes, total, pagina, porPagina, isAdmin }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -45,6 +48,7 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
   const [tipo,  setTipo]  = useState(searchParams.get('tipo')  ?? '')
   const [grupo, setGrupo] = useState(searchParams.get('grupo') ?? '')
   const [, startTransition] = useTransition()
+  const [excluindo, setExcluindo] = useState<string | null>(null)
 
   function navegar(novoParams: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -54,6 +58,24 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
     })
     params.set('page', '1')
     startTransition(() => router.push(`${pathname}?${params.toString()}`))
+  }
+
+  async function excluirCliente(id: string, nome: string) {
+    if (!confirm(`Excluir o cliente "${nome}"?\n\nEsta ação não pode ser desfeita.`)) return
+    setExcluindo(id)
+    try {
+      const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.refresh()
+      } else {
+        const data = await res.json()
+        alert(data.erro ?? 'Erro ao excluir cliente')
+      }
+    } catch {
+      alert('Erro de conexão. Tente novamente.')
+    } finally {
+      setExcluindo(null)
+    }
   }
 
   function aplicarBusca(e: React.FormEvent<HTMLFormElement>) {
@@ -215,6 +237,19 @@ export function ClientesTabela({ clientes, total, pagina, porPagina }: Props) {
                       >
                         <Edit className="w-4 h-4" />
                       </Link>
+                      {isAdmin && (
+                        <button
+                          onClick={() => excluirCliente(cliente.id, cliente.razaoSocial || cliente.nome)}
+                          disabled={excluindo === cliente.id}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                          title="Excluir cliente"
+                        >
+                          {excluindo === cliente.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

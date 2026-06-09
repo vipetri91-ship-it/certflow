@@ -1,11 +1,13 @@
 import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Edit, Award, RefreshCw, Building2, User, Phone, Mail, MapPin } from 'lucide-react'
 import { formatarData, formatarMoeda, formatarCPF, formatarCNPJ, formatarTelefone, diasParaVencimento } from '@/lib/utils'
 import { RenovarButton } from './renovar-button'
 import { CadastrarCertificado } from './cadastrar-certificado'
+import { DeletarClienteButton } from './deletar-button'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -13,6 +15,8 @@ interface Props {
 
 export default async function ClienteDetalhePage({ params }: Props) {
   const { id } = await params
+  const session = await auth()
+  const isAdmin = session?.user?.role === 'ADMIN'
 
   const modelos = await prisma.modeloCertificado.findMany({
     where: { ativo: true },
@@ -66,6 +70,9 @@ export default async function ClienteDetalhePage({ params }: Props) {
               </div>
             </div>
             <div className="flex gap-2 shrink-0">
+              {isAdmin && (
+                <DeletarClienteButton clienteId={id} nomeCliente={cliente.nome} />
+              )}
               <Link
                 href={`/clientes/${id}/editar`}
                 className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"

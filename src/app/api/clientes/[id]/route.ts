@@ -94,8 +94,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
+  if (session.user.role !== 'ADMIN') return NextResponse.json({ erro: 'Apenas administradores podem excluir clientes' }, { status: 403 })
 
   const { id } = await ctx.params
+
+  const cliente = await prisma.cliente.findUnique({ where: { id } })
+  if (!cliente) return NextResponse.json({ erro: 'Não encontrado' }, { status: 404 })
 
   await prisma.cliente.update({ where: { id }, data: { ativo: false } })
 
