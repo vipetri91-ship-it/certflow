@@ -72,7 +72,7 @@ export default function LimparTestesPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-4">
       <div>
-        <h1 className="text-lg font-bold text-gray-900">Limpar Pedidos de Teste — 08/06/2026</h1>
+        <h1 className="text-lg font-bold text-gray-900">Limpar Pedidos de Teste — 09/06/2026</h1>
         <p className="text-sm text-gray-500 mt-1">Selecione os pedidos a excluir permanentemente.</p>
       </div>
 
