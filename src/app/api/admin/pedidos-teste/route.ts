@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-const HOJE_INICIO = new Date('2026-06-09T03:00:00Z')  // 00:00 BRT
-const AMANHA      = new Date('2026-06-10T03:00:00Z')
+const HOJE_INICIO = new Date('2026-06-05T03:00:00Z')  // 00:00 BRT
+const AMANHA      = new Date('2026-06-06T03:00:00Z')
 
 // GET — lista pedidos de hoje
 export async function GET() {
