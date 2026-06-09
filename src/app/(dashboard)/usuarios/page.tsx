@@ -25,7 +25,7 @@ const ROLE_COR: Record<string, string> = {
 function Iniciais({ nome }: { nome: string }) {
   const ini = nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   const cores = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500']
-  const cor = cores[nome.charCodeAt(0) % cores.length]
+  const cor = cores[nome.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % cores.length]
   return (
     <div className={`w-9 h-9 rounded-full ${cor} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
       {ini}
