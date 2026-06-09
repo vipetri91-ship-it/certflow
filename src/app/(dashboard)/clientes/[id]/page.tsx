@@ -8,6 +8,7 @@ import { formatarData, formatarMoeda, formatarCPF, formatarCNPJ, formatarTelefon
 import { RenovarButton } from './renovar-button'
 import { CadastrarCertificado } from './cadastrar-certificado'
 import { DeletarClienteButton } from './deletar-button'
+import { DeletarCertificadoButton } from './deletar-certificado-button'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -150,6 +151,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                     <th className="text-left px-4 py-3 font-medium text-gray-600">AGR</th>
                     <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
                     <th className="text-center px-4 py-3 font-medium text-gray-600">Renovação</th>
+                    {isAdmin && <th className="w-8 px-2 py-3"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -205,6 +207,11 @@ export default async function ClienteDetalhePage({ params }: Props) {
                             <span className="text-xs text-blue-500">✓ Renovado</span>
                           ) : null}
                         </td>
+                        {isAdmin && (
+                          <td className="px-2 py-3 text-center">
+                            <DeletarCertificadoButton certId={cert.id} modelo={cert.modelo.nome} />
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
