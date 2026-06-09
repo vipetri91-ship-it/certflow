@@ -101,41 +101,6 @@ async function req(
   return { ok: res.ok, status: res.status, data, raw }
 }
 
-// ── Lookup de códigos IBGE (Município/UF) ────────────────────────────────────
-// Exigido pela Safeweb em ClienteNotaFiscal.CidadeCodigo / UFCodigo.
-// Usa a API pública do IBGE e mantém cache em memória (códigos não mudam).
-
-const _ibgeCache = new Map<string, { codigoMunicipio: string; codigoUF: string } | null>()
-
-function normalizarTexto(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
-
-async function buscarCodigosIbge(cidade: string, uf: string): Promise<{ codigoMunicipio: string; codigoUF: string } | null> {
-  const chave = `${uf.toUpperCase()}|${normalizarTexto(cidade)}`
-  if (_ibgeCache.has(chave)) return _ibgeCache.get(chave)!
-
-  try {
-    const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.toUpperCase()}/municipios`, {
-      signal: AbortSignal.timeout(8000),
-    })
-    const lista = await res.json() as Array<{
-      id: number
-      nome: string
-      microrregiao?: { mesorregiao?: { UF?: { id: number } } }
-    }>
-    const municipio = lista.find(m => normalizarTexto(m.nome) === normalizarTexto(cidade))
-    const resultado = municipio
-      ? { codigoMunicipio: String(municipio.id), codigoUF: String(municipio.microrregiao?.mesorregiao?.UF?.id ?? '') }
-      : null
-    _ibgeCache.set(chave, resultado)
-    return resultado
-  } catch {
-    _ibgeCache.set(chave, null)
-    return null
-  }
-}
-
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 export interface EnderecoSafeweb {
@@ -219,74 +184,26 @@ export async function realizarConsultaPrevia(params: {
 
 // ── 1. Adicionar Solicitação — Videoconferência (Add/3) ou Presencial (Add/1) ─
 
-// Monta o objeto Endereco no formato exigido pela Safeweb (com códigos IBGE)
-async function montarEndereco(end?: EnderecoSafeweb) {
-  if (!end) return undefined
-  const ibge = await buscarCodigosIbge(end.cidade, end.estado)
-  return {
-    Logradouro:          end.logradouro,
-    Numero:              end.numero,
-    Complemento:         end.complemento || '',
-    Bairro:              end.bairro,
-    UF:                  end.estado,
-    Cidade:              end.cidade,
-    CodigoIbgeMunicipio: ibge?.codigoMunicipio ?? '',
-    CodigoIbgeUF:        ibge?.codigoUF ?? '',
-    CEP:                 (end.cep ?? '').replace(/\D/g, ''),
-  }
-}
-
-// Monta o objeto ClienteNotaFiscal — obrigatório no Add/1 e Add/3 (dados de faturamento)
-async function montarClienteNotaFiscal(nome: string, documento: string, end: EnderecoSafeweb | undefined, email?: string) {
-  if (!end) return undefined
-  const ibge = await buscarCodigosIbge(end.cidade, end.estado)
-  return {
-    Sacado:           nome,
-    Documento:        documento.replace(/\D/g, ''),
-    Endereco:         end.logradouro,
-    Numero:           end.numero,
-    Complemento:      end.complemento || null,
-    Bairro:           end.bairro,
-    CEP:              (end.cep ?? '').replace(/\D/g, ''),
-    Cidade:           end.cidade,
-    CidadeCodigo:     ibge?.codigoMunicipio ?? '',
-    UF:               end.estado,
-    UFCodigo:         ibge?.codigoUF ?? '',
-    Pais:             'Brasil',
-    PaisCodigoAlpha3: 'BRA',
-    Email1:           email || '',
-    Email2:           '',
-    IE:               '',
-  }
-}
-
-function montarContato(ddd?: string, telefone?: string, email?: string) {
-  return {
-    DDD:      ddd ?? '',
-    Telefone: telefone ?? '',
-    Email:    email ?? '',
-  }
-}
-
 export async function adicionarVideoconferencia(
   params: SolicitacaoVideoconferencia,
   idTipoEmissao: 1 | 3 | 5 = 3,  // 1 = Presencial · 3 = Videoconferência · 5 = Emissão Online
   protocoloOrigem?: string,        // Add/5 apenas: protocolo do cert A3 PF
 ): Promise<ResultadoProtocolo> {
-  const { codigoAR } = cfg()
+  const { codigoAR, cnpjAR } = cfg()
   const webhookUrl = process.env.SAFEWEB_WEBHOOK_URL
     ?? `${process.env.NEXTAUTH_URL}/api/safeweb/webhook`
 
   try {
     const payload: Record<string, unknown> = {
-      cpf:            params.cpf ? params.cpf.replace(/\D/g, '') : undefined,
-      cnpj:           params.cnpj ? params.cnpj.replace(/\D/g, '') : undefined,
-      nome:           params.razaoSocial ?? params.nome,
-      email:          params.email,
-      telefone:       params.telefone,
-      produtoId:      params.produtoId,
-      codigoAR,
-      urlNotificacao: webhookUrl,
+      CodigoParceiro:  codigoAR,                                           // UUID do integrador/parceiro
+      CnpjAR:          cnpjAR,                                             // CNPJ da AR
+      cpf:             params.cpf  ? params.cpf.replace(/\D/g, '')  : undefined,
+      cnpj:            params.cnpj ? params.cnpj.replace(/\D/g, '') : undefined,
+      nome:            params.nome,
+      email:           params.email,
+      telefone:        params.telefone,
+      produtoId:       params.produtoId,
+      urlNotificacao:  webhookUrl,
     }
 
     if (idTipoEmissao === 5 && protocoloOrigem) {
@@ -301,7 +218,7 @@ export async function adicionarVideoconferencia(
     const protocolo = String(
       data.Protocolo ?? data.protocolo ??
       data.NumeroProtocolo ?? data.numeroProtocolo ??
-      data.Id ?? data.id ?? data ?? ''
+      data.Id ?? data.id ?? ''
     )
     return { ok: true, protocolo, raw: data }
   } catch (err) {
