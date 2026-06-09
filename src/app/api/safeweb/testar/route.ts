@@ -59,18 +59,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ...diagnostico, resultados })
   }
 
-  // Modo produto: testa buscarProduto para PF A3 24 meses
+  // Modo produto: testa buscarProduto e mostra catálogo completo
   if (modo === 'produto') {
-    const tipoPessoa = (url.searchParams.get('tipoPessoa') ?? 'PF') as 'PF' | 'PJ'
+    const tipoPessoa      = (url.searchParams.get('tipoPessoa') ?? 'PF') as 'PF' | 'PJ'
     const tipoCertificado = (url.searchParams.get('tipoCertificado') ?? 'A3') as 'A1' | 'A3'
-    const validadeMeses = Number(url.searchParams.get('validadeMeses') ?? '24')
+    const validadeMeses   = Number(url.searchParams.get('validadeMeses') ?? '12')
+    const suporte         = url.searchParams.get('suporte') ?? undefined
 
-    const prod = await buscarProduto({ tipoPessoa, tipoCertificado, validadeMeses, idTipoEmissao: 3 })
-    const todosProdutos = await listarProdutos(3)
+    const prod = await buscarProduto({ tipoPessoa, tipoCertificado, validadeMeses, idTipoEmissao: 3, suporte })
+    const [t1, t3, t5] = await Promise.all([listarProdutos(1), listarProdutos(3), listarProdutos(5)])
     return NextResponse.json({
-      busca: { tipoPessoa, tipoCertificado, validadeMeses },
+      busca: { tipoPessoa, tipoCertificado, validadeMeses, suporte },
       resultado: prod,
-      todosProdutosTipo3: todosProdutos.produtos,
+      catalogoTipo1_presencial: t1.produtos?.map(p => ({ tipo: p.ProdutoTipo, modelo: p.ProdutoModelo, validade: p.ProdutoValidade, id: p.idProduto })),
+      catalogoTipo3_videoconf:  t3.produtos?.map(p => ({ tipo: p.ProdutoTipo, modelo: p.ProdutoModelo, validade: p.ProdutoValidade, id: p.idProduto })),
+      catalogoTipo5_online:     t5.produtos?.map(p => ({ tipo: p.ProdutoTipo, modelo: p.ProdutoModelo, validade: p.ProdutoValidade, id: p.idProduto })),
     })
   }
 

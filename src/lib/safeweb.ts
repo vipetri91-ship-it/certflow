@@ -470,13 +470,17 @@ export async function buscarProduto(filtros: FiltrosProduto): Promise<{
   const modelo       = filtros.tipoCertificado
   const validade     = filtros.validadeMeses <= 12 ? '1 Ano' : '2 Anos'
 
-  // Ordem de tentativa: tipo principal primeiro; para NUVEM, testa 5 e 3 como fallback
+  // Para NUVEM testa todos os tipos; para outros só o tipo solicitado
   const tiposParaTentar = ehNuvem
     ? [...new Set([tipoPrimario, 5, 3, 1])]
     : [tipoPrimario]
 
   for (const tipo of tiposParaTentar) {
     const { ok, produtos, erro } = await listarProdutos(tipo)
+    console.log(`[buscarProduto] tipo=${tipo} ok=${ok} qtd=${produtos?.length ?? 0} erro=${erro ?? 'none'}`)
+    if (produtos?.length) {
+      console.log(`[buscarProduto] tipo=${tipo} modelos disponíveis:`, produtos.map(p => `${p.ProdutoTipo}|${p.ProdutoModelo}|${p.ProdutoValidade}`))
+    }
     if (!ok || !produtos?.length) {
       if (tipo === tiposParaTentar[tiposParaTentar.length - 1]) {
         return { ok: false, erro: erro ?? 'Sem produtos disponíveis' }
@@ -486,11 +490,12 @@ export async function buscarProduto(filtros: FiltrosProduto): Promise<{
 
     const encontrado = encontrarNosprodutos(produtos, tipoProduto, modelo, validade, ehNuvem)
     if (encontrado) {
+      console.log(`[buscarProduto] ENCONTRADO tipo=${tipo}:`, encontrado)
       return { ok: true, idProduto: Number(encontrado.idProduto), nome: String(encontrado.Nome), idTipoEmissaoUsado: tipo }
     }
   }
 
-  return { ok: false, erro: `Produto não encontrado: ${tipoProduto} ${modelo} ${validade}` }
+  return { ok: false, erro: `Produto não encontrado: ${tipoProduto} ${modelo} ${validade} — verifique os logs [buscarProduto]` }
 }
 
 // ── 5. Consultar status de um protocolo ──────────────────────────────────────
