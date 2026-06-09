@@ -40,7 +40,7 @@ export default async function UsuariosPage() {
 
   const usuarios = await prisma.usuario.findMany({
     select: {
-      id: true, nome: true, email: true, role: true,
+      id: true, nome: true, username: true, email: true, role: true,
       ativo: true, createdAt: true, unidade: true,
       whatsapp: true, nomeAgrDs: true, comissao: true,
     },
@@ -116,7 +116,7 @@ export default async function UsuariosPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-xs hidden md:table-cell font-mono">
-                      {u.nomeAgrDs || u.email.split('@')[0]}
+                      {u.username || u.email?.split('@')[0] || '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COR[u.role]}`}>

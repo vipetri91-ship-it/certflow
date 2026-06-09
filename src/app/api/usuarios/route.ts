@@ -7,10 +7,11 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
 const schemaUsuario = z.object({
-  nome: z.string().min(2),
-  email: z.string().email(),
-  senha: z.string().min(8),
-  role: z.enum(['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR']),
+  nome:     z.string().min(2),
+  username: z.string().min(3).regex(/^[a-z0-9._-]+$/, 'Somente letras minúsculas, números, ponto, traço ou underscore'),
+  email:    z.string().email().optional(),
+  senha:    z.string().min(8),
+  role:     z.enum(['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR']),
 })
 
 export async function GET(req: NextRequest) {
@@ -51,9 +52,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Dados inválidos', detalhes: parsed.error.flatten() }, { status: 422 })
   }
 
-  const existe = await prisma.usuario.findUnique({ where: { email: parsed.data.email } })
-  if (existe) {
-    return NextResponse.json({ erro: 'E-mail já cadastrado' }, { status: 409 })
+  const existeUsername = await prisma.usuario.findUnique({ where: { username: parsed.data.username } })
+  if (existeUsername) return NextResponse.json({ erro: 'Username já cadastrado' }, { status: 409 })
+
+  if (parsed.data.email) {
+    const existeEmail = await prisma.usuario.findUnique({ where: { email: parsed.data.email } })
+    if (existeEmail) return NextResponse.json({ erro: 'E-mail já cadastrado' }, { status: 409 })
   }
 
   const senhaHash = await bcrypt.hash(parsed.data.senha, 12)

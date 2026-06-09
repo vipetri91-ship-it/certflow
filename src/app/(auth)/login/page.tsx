@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Lock, User } from 'lucide-react'
 import { GeistSans } from 'geist/font/sans'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email,       setEmail]       = useState('')
+  const [username,    setUsername]    = useState('')
   const [senha,       setSenha]       = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [carregando,  setCarregando]  = useState(false)
@@ -18,10 +18,10 @@ export default function LoginPage() {
     e.preventDefault()
     setErro('')
     setCarregando(true)
-    const res = await signIn('credentials', { email, password: senha, redirect: false })
+    const res = await signIn('credentials', { username, password: senha, redirect: false })
     setCarregando(false)
     if (res?.error) {
-      setErro('E-mail ou senha inválidos. Verifique suas credenciais.')
+      setErro('Usuário ou senha inválidos. Verifique suas credenciais.')
     } else {
       router.push('/dashboard')
       router.refresh()
@@ -127,21 +127,21 @@ export default function LoginPage() {
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* E-mail */}
+            {/* Usuário */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                Login (e-mail)
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Usuário
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
                   required
-                  autoComplete="email"
-                  placeholder="seu@email.com.br"
+                  autoComplete="username"
+                  placeholder="seu.usuario"
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
                 />
               </div>

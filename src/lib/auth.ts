@@ -23,11 +23,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     CredentialsProvider({
       name: 'credentials',
       credentials: {
-        email: { label: 'E-mail', type: 'email' },
+        username: { label: 'Usuário', type: 'text' },
         password: { label: 'Senha', type: 'password' },
       },
       async authorize(credentials, request) {
-        if (!credentials?.email || !credentials?.password) return null
+        if (!credentials?.username || !credentials?.password) return null
 
         // Rate limiting por IP (anti brute-force)
         const ip = (request as Request & { headers?: { get?: (k: string) => string | null } })
@@ -39,7 +39,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const usuario = await prisma.usuario.findUnique({
-          where: { email: credentials.email as string },
+          where: { username: credentials.username as string },
         })
 
         if (!usuario || !usuario.ativo) {

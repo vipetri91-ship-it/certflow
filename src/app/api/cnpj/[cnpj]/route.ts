@@ -24,7 +24,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ cnpj: stri
     // Verifica se o cliente já existe no CertFlow
     const clienteExistente = await prisma.cliente.findUnique({
       where: { cnpj: nums },
-      select: { id: true, nome: true, email: true, celular: true, ddd: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, estado: true, responsavel: true, pisNis: true },
+      select: { id: true, nome: true, cpf: true, dataNascimento: true, email: true, celular: true, ddd: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, estado: true, responsavel: true, pisNis: true },
     })
 
     // Formata telefone: BrasilAPI devolve "1132341234" → "(11) 3234-1234" ou "(11) 93234-1234"

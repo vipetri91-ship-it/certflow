@@ -87,18 +87,18 @@ enum TipoEmailAutomatico {
 model Usuario {
   id         String   @id @default(cuid())
   nome       String
-  email      String   @unique
+  username   String?  @unique
+  email      String?  @unique
   senha      String
   role       Role     @default(OPERADOR)
   ativo      Boolean  @default(true)
   avatar     String?
-  // Novos campos
   whatsapp   String?
-  nomeAgrDs  String?   // Nome do AGR no Digisac
-  unidade    String?   // Cidade/unidade (Piracaia, Bragança...)
-  comissao   Decimal?  @db.Decimal(5, 2) // % comissão
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  nomeAgrDs  String?
+  unidade    String?
+  comissao   Decimal? @db.Decimal(5, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   sessoes              Sessao[]
   auditoria            AuditLog[]

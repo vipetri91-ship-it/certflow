@@ -43,7 +43,7 @@ export default function EditarUsuarioPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const [form, setForm] = useState({
-    nome: '', email: '', senha: '', role: 'OPERADOR',
+    nome: '', username: '', email: '', senha: '', role: 'OPERADOR',
     whatsapp: '', nomeAgrDs: '', unidade: '', comissao: '', ativo: true,
   })
 
@@ -53,6 +53,7 @@ export default function EditarUsuarioPage() {
       .then(data => {
         setForm({
           nome: data.nome ?? '',
+          username: data.username ?? '',
           email: data.email ?? '',
           senha: '',
           role: data.role ?? 'OPERADOR',
@@ -75,8 +76,9 @@ export default function EditarUsuarioPage() {
     setSalvando(true); setErro('')
 
     const payload: Record<string, unknown> = {
-      nome: form.nome, email: form.email, role: form.role,
-      ativo: form.ativo,
+      nome: form.nome, username: form.username || undefined,
+      email: form.email || null,
+      role: form.role, ativo: form.ativo,
       whatsapp: form.whatsapp || undefined,
       nomeAgrDs: form.nomeAgrDs || undefined,
       unidade: form.unidade || undefined,
@@ -129,8 +131,11 @@ export default function EditarUsuarioPage() {
               <Campo label="Nome completo">
                 <Input value={form.nome} onChange={e => set('nome', e.target.value)} required />
               </Campo>
-              <Campo label="E-mail (login)">
-                <Input type="email" value={form.email} onChange={e => set('email', e.target.value)} required />
+              <Campo label="Username (login)">
+                <Input value={form.username} onChange={e => set('username', e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))} placeholder="ex: vinicius.petri" />
+              </Campo>
+              <Campo label="E-mail (contato, opcional)">
+                <Input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@vegcertificado.com.br" />
               </Campo>
               <Campo label="Nova senha (deixe em branco para manter)">
                 <div className="relative">

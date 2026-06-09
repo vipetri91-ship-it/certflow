@@ -40,7 +40,7 @@ export default function NovoUsuarioPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false)
 
   const [form, setForm] = useState({
-    nome: '', email: '', senha: '', role: 'OPERADOR',
+    nome: '', username: '', email: '', senha: '', role: 'OPERADOR',
     whatsapp: '', nomeAgrDs: '', unidade: '', comissao: '',
     ativo: true,
   })
@@ -56,7 +56,8 @@ export default function NovoUsuarioPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nome: form.nome, email: form.email, senha: form.senha,
+          nome: form.nome, username: form.username, senha: form.senha,
+          email: form.email || undefined,
           role: form.role, whatsapp: form.whatsapp || undefined,
           nomeAgrDs: form.nomeAgrDs || undefined,
           unidade: form.unidade || undefined,
@@ -83,8 +84,11 @@ export default function NovoUsuarioPage() {
               <Campo label="Nome completo" required>
                 <Input value={form.nome} onChange={e => set('nome', e.target.value)} required placeholder="Nome do funcionário" />
               </Campo>
-              <Campo label="E-mail (usado para login)" required>
-                <Input type="email" value={form.email} onChange={e => set('email', e.target.value)} required placeholder="email@vegcertificado.com.br" />
+              <Campo label="Username (usado para login)" required>
+                <Input value={form.username} onChange={e => set('username', e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))} required placeholder="ex: vinicius.petri" />
+              </Campo>
+              <Campo label="E-mail (contato, opcional)">
+                <Input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@vegcertificado.com.br" />
               </Campo>
               <Campo label="Senha" required>
                 <div className="relative">
