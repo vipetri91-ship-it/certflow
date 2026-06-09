@@ -271,76 +271,33 @@ function montarContato(ddd?: string, telefone?: string, email?: string) {
 export async function adicionarVideoconferencia(
   params: SolicitacaoVideoconferencia,
   idTipoEmissao: 1 | 3 | 5 = 3,  // 1 = Presencial · 3 = Videoconferência · 5 = Emissão Online
-  protocoloOrigem?: string,        // Add/5 apenas: protocolo do cert A3 PF retornado por EmitirCertificadoOnline
+  protocoloOrigem?: string,        // Add/5 apenas: protocolo do cert A3 PF
 ): Promise<ResultadoProtocolo> {
-  const { codigoAR, cnpjAR } = cfg()
+  const { codigoAR } = cfg()
   const webhookUrl = process.env.SAFEWEB_WEBHOOK_URL
     ?? `${process.env.NEXTAUTH_URL}/api/safeweb/webhook`
 
   try {
-    let payload: Record<string, unknown>
-
-    if (params.cnpj) {
-      // ── Pessoa Jurídica ──────────────────────────────────────────────────
-      const resp = params.responsavel
-      payload = {
-        CnpjAR:            cnpjAR,
-        CodigoParceiro:    codigoAR,
-        idProduto:         Number(params.produtoId),
-        RazaoSocial:       params.razaoSocial ?? params.nome,
-        NomeFantasia:      params.nomeFantasia ?? '',
-        CNPJ:              params.cnpj.replace(/\D/g, ''),
-        Contato:           montarContato(params.ddd, params.telefone, params.email),
-        PaisTelefone:      { CodigoAlpha2: 'BR' },
-        Endereco:          await montarEndereco(params.endereco),
-        Titular: resp ? {
-          Nome:            resp.nome,
-          CPF:             resp.cpf.replace(/\D/g, ''),
-          DataNascimento:  resp.dataNascimento ?? '',
-          Contato:         montarContato(resp.ddd, resp.telefone, resp.email),
-          PaisTelefone:    { CodigoAlpha2: 'BR' },
-          Endereco:        await montarEndereco(resp.endereco ?? params.endereco),
-        } : undefined,
-        ClienteNotaFiscal: await montarClienteNotaFiscal(
-          params.razaoSocial ?? params.nome,
-          params.cnpj,
-          params.endereco,
-          params.email,
-        ),
-        UrlSolicitacao:    webhookUrl,
-      }
-    } else {
-      // ── Pessoa Física ────────────────────────────────────────────────────
-      payload = {
-        CnpjAR:            cnpjAR,
-        CodigoParceiro:    codigoAR,
-        idProduto:         Number(params.produtoId),
-        Nome:              params.nome,
-        CPF:               (params.cpf ?? '').replace(/\D/g, ''),
-        DataNascimento:    params.dataNascimento ?? '',
-        Contato:           montarContato(params.ddd, params.telefone, params.email),
-        PaisTelefone:      { CodigoAlpha2: 'BR' },
-        Endereco:          await montarEndereco(params.endereco),
-        ClienteNotaFiscal: await montarClienteNotaFiscal(
-          params.nome,
-          params.cpf ?? '',
-          params.endereco,
-          params.email,
-        ),
-        UrlSolicitacao:    webhookUrl,
-      }
+    const payload: Record<string, unknown> = {
+      cpf:            params.cpf ? params.cpf.replace(/\D/g, '') : undefined,
+      cnpj:           params.cnpj ? params.cnpj.replace(/\D/g, '') : undefined,
+      nome:           params.razaoSocial ?? params.nome,
+      email:          params.email,
+      telefone:       params.telefone,
+      produtoId:      params.produtoId,
+      codigoAR,
+      urlNotificacao: webhookUrl,
     }
 
-    // Add/5 (Emissão Online): inclui o protocolo do cert A3 PF de origem quando disponível
     if (idTipoEmissao === 5 && protocoloOrigem) {
-      payload.Protocolo = protocoloOrigem
+      payload.protocolo = protocoloOrigem
     }
 
     const { ok, data } = await req('POST', `/Shared/Partner/api/Add/${idTipoEmissao}`, payload)
+    console.log('[adicionarVideoconferencia] resposta Safeweb Add/', idTipoEmissao, JSON.stringify(data))
 
     if (!ok) return { ok: false, erro: String(data.Message ?? data.mensagem ?? data.message ?? 'Erro ao criar protocolo'), raw: data }
 
-    // Safeweb pode retornar o protocolo em diferentes campos (PascalCase ou camelCase)
     const protocolo = String(
       data.Protocolo ?? data.protocolo ??
       data.NumeroProtocolo ?? data.numeroProtocolo ??
