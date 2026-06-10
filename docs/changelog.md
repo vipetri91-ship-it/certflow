@@ -73,6 +73,22 @@ Registro de alterações no CertFlow, conforme Regra 5 da
   prévio e levantamento detalhado aprovado pelo Vinicius antes da execução.
 - **Autor**: Vinicius Petri (via Claude Code)
 
+### Auditoria Geral do Sistema (10/06/2026)
+- **Arquivos**: `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (novo)
+- **Motivo**: Regra 9 (auditoria contínua) — mapear funcionalidades,
+  documentação faltante, bugs potenciais, código duplicado, riscos de
+  regressão e de LGPD, pontos de vazamento de dados entre clientes,
+  integrações e arquivos críticos do sistema.
+- **Impacto**: nenhum no código (somente leitura/documentação). Identifica
+  10 recomendações priorizadas para trabalhos futuros, incluindo 2 itens
+  críticos de segurança (endpoint `/api/test-db` vazando `DATABASE_URL` em
+  erro e endpoint `/api/cnpj/[cnpj]` sem autenticação expondo CPF de
+  sócios).
+- **Risco**: nenhum — nenhuma alteração de código realizada.
+- **Pendência**: nenhuma das recomendações foi implementada; aguardando
+  autorização do Vinicius para priorizar (Regra 2).
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### baa268b / 75d5614 — evento de lembrete na agenda
 - **Arquivos**: `src/app/api/admin/criar-evento-temp/route.ts` (criado e
   removido após o uso)
