@@ -73,6 +73,33 @@ Registro de alterações no CertFlow, conforme Regra 5 da
   prévio e levantamento detalhado aprovado pelo Vinicius antes da execução.
 - **Autor**: Vinicius Petri (via Claude Code)
 
+### Correção crítica — remoção do bypass por chave fixa em /api/admin/diagnostico-protocolo (10/06/2026)
+- **Arquivos**: `src/app/api/admin/diagnostico-protocolo/route.ts`,
+  `docs/AUDITORIA_GERAL_DO_SISTEMA.md`
+- **Motivo**: o endpoint aceitava o cabeçalho `x-diag-key:
+  cf-diag-2026-vp-temp` para pular completamente a verificação de login e
+  de perfil ADMIN. Quem descobrisse essa chave (hardcoded no
+  código-fonte) conseguia ler, sem autenticação, dados de até 30 pedidos
+  recentes — incluindo CPF, CNPJ, DDD, celular, data de nascimento e
+  endereço completo dos clientes. Item crítico de LGPD identificado na
+  `AUDITORIA_GERAL_DO_SISTEMA.md` (seção 3.3 e recomendação 3 da seção
+  10). Confirmado que nenhuma tela, script ou job utilizava esse
+  endpoint, com ou sem a chave.
+- **Solução (alternativa conservadora aprovada)**: removidas as
+  referências a `x-diag-key` e `cf-diag-2026-vp-temp`, mantendo apenas a
+  checagem `auth()` + `session.user.role === 'ADMIN'` que já existia.
+  Endpoint preservado para uso futuro de diagnóstico, agora acessível
+  apenas por administradores autenticados.
+- **Impacto**: nenhum — não havia chamadas a esse endpoint em nenhum
+  ponto do sistema (com ou sem a chave). Para administradores
+  autenticados, o comportamento permanece idêntico.
+- **Risco**: baixo — remoção de um bypass não utilizado, mantendo a
+  validação de autenticação/role já existente.
+- **Testes**: `npm test` — 1 arquivo, 2 testes, todos passando. `npm run
+  build` (com `.next` limpo) — build de produção concluído com sucesso,
+  sem erros de TypeScript.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### Correção crítica — autenticação no endpoint /api/cnpj/[cnpj] (10/06/2026)
 - **Arquivos**: `src/app/api/cnpj/[cnpj]/route.ts`,
   `docs/AUDITORIA_GERAL_DO_SISTEMA.md`

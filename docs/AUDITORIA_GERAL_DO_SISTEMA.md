@@ -89,12 +89,15 @@ dedicada** em `/docs` (violação potencial da Regra 1):
 - `src/app/api/test-email`, `src/app/api/test-whatsapp` — também sem
   autenticação.
 
-### 3.3 Chave de diagnóstico hardcoded
-- `src/app/api/admin/diagnostico-protocolo/route.ts:10` — bypass de
+### 3.3 Chave de diagnóstico hardcoded — ✅ Corrigido em 10/06/2026
+- ~~`src/app/api/admin/diagnostico-protocolo/route.ts:10` — bypass de
   autenticação via `chaveDiag === 'cf-diag-2026-vp-temp'` hardcoded no
   código-fonte (mesmo padrão usado nos endpoints temporários criados/
   removidos hoje). Quem souber a string acessa dados de até 30 pedidos com
-  CPF/CNPJ/data de nascimento/endereço.
+  CPF/CNPJ/data de nascimento/endereço.~~ Bypass por chave removido,
+  mantida apenas a checagem `auth()` + `role === 'ADMIN'` já existente.
+  Endpoint preservado para uso futuro de diagnóstico, agora restrito a
+  administradores autenticados. Ver `docs/changelog.md`.
 
 ### 3.4 `catch {}` silenciosos sem feedback ao usuário
 - `src/app/(dashboard)/clientes/novo/page.tsx:109,125,137,368` e
@@ -313,10 +316,12 @@ Ordenadas por risco × esforço, sem alterar nada até aprovação (Regra 2):
    `auth()`. As 5 telas dependentes continuam funcionando normalmente
    (fetch relativo envia o cookie de sessão). Ver `docs/changelog.md`.
 
-3. **ALTO — Eliminar chaves de diagnóstico hardcoded** (padrão
+3. ~~**ALTO — Eliminar chaves de diagnóstico hardcoded** (padrão
    `cf-diag-2026-vp-temp`), a começar por
    `src/app/api/admin/diagnostico-protocolo/route.ts`. Substituir por
-   autenticação ADMIN apenas, ou remover o endpoint se não for mais usado.
+   autenticação ADMIN apenas, ou remover o endpoint se não for mais
+   usado.~~ ✅ **Corrigido em 10/06/2026** — bypass por chave removido,
+   mantida apenas `auth()` + `role === 'ADMIN'`. Ver `docs/changelog.md`.
 
 4. **ALTO — Replicar a correção de isolamento de formulário** (o que foi
    feito em `mergeDadosResponsavelPF`) para os outros 8-10 pontos
