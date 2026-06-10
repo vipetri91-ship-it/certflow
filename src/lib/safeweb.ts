@@ -261,9 +261,17 @@ async function montarClienteNotaFiscal(nome: string, documento: string, end: End
 }
 
 function montarContato(ddd?: string, telefone?: string, email?: string) {
+  const dddDigits = (ddd ?? '').replace(/\D/g, '')
+  let telDigits = (telefone ?? '').replace(/\D/g, '')
+  // No nosso cadastro o celular às vezes vem com o DDD embutido (ex.: "11963447697").
+  // A Safeweb espera DDD e Telefone em campos separados, sem repetição — remove o
+  // DDD do início do telefone quando ele já vier duplicado.
+  if (dddDigits && telDigits.startsWith(dddDigits) && telDigits.length - dddDigits.length >= 8) {
+    telDigits = telDigits.slice(dddDigits.length)
+  }
   return {
-    DDD:      ddd ?? '',
-    Telefone: telefone ?? '',
+    DDD:      dddDigits,
+    Telefone: telDigits,
     Email:    email ?? '',
   }
 }
