@@ -6,6 +6,7 @@ import {
   CheckCircle2, Loader2, ChevronRight, ChevronLeft, User, Building2,
   AlertTriangle, Search, Award, CreditCard, Calendar, History, Paperclip, Globe,
 } from 'lucide-react'
+import { mergeDadosResponsavelPF } from './lib/merge-dados-pf'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -430,22 +431,8 @@ export function NovaVendaWizard({
 
       // CPF novo (sem clienteDb) = dados novos: limpa contato/endereço do
       // cliente pesquisado anteriormente em vez de manter o que estava na tela
-      setDados(d => ({
-        ...d,
-        validado:        true,
-        nomeResponsavel: nomeRfb || (clienteDb?.nome ?? d.nomeResponsavel),
-        nome:            nomeRfb || (clienteDb?.nome ?? d.nome),
-        clienteId:       clienteDb?.id ?? '',
-        email:           clienteDb?.email ?? '',
-        ...telefoneFromCelular(clienteDb?.celular, clienteDb?.ddd, { ddd: '', telefone: '' }),
-        pisNis:          clienteDb?.pisNis ?? '',
-        cep:             clienteDb?.cep ? fmtCEP(clienteDb.cep) : '',
-        logradouro:      clienteDb?.logradouro ?? '',
-        numero:          clienteDb?.numero ?? '',
-        bairro:          clienteDb?.bairro ?? '',
-        municipio:       clienteDb?.cidade ?? '',
-        estado:          clienteDb?.estado ?? '',
-      }))
+      // (lógica em lib/merge-dados-pf.ts, coberta por testes automatizados)
+      setDados(d => ({ ...d, ...mergeDadosResponsavelPF(d, { nomeRfb, clienteDb }) }))
 
       if (clienteDb?.id) {
         fetch(`/api/pedidos?clienteId=${clienteDb.id}&limit=5`)

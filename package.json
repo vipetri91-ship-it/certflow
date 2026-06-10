@@ -7,6 +7,7 @@
     "build": "node scripts/migrate.js || true && npx prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "db:seed": "ts-node --esm prisma/seed.ts",
     "db:studio": "prisma studio",
@@ -82,6 +83,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.8"
   }
 }
