@@ -363,6 +363,13 @@ export async function POST(req: NextRequest) {
       console.log('[Safeweb] resultado adicionarVideoconferencia', JSON.stringify(resultado))
       if (!resultado.ok || !resultado.protocolo) {
         console.error('[Safeweb][diag] MOTIVO DA REJEIÇÃO', { erro: resultado.erro, raw: resultado.raw })
+        const motivo = resultado.erro
+          ? String(resultado.erro)
+          : `Sem protocolo na resposta: ${JSON.stringify(resultado.raw ?? {}).slice(0, 500)}`
+        await prisma.pedido.update({
+          where: { id: pedido.id },
+          data: { safewebStatus: motivo.slice(0, 500) } as any,
+        })
         return
       }
 
