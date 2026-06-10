@@ -118,3 +118,55 @@ export async function GET(req: NextRequest) {
     clientes, pedidos, itensPedido, certificados, lancamentos, historicoContatos, emailLogs, auditLogs, usuarios,
   })
 }
+
+// Apaga os dados de teste criados "hoje" (mesmo critério do GET acima):
+// lançamentos, certificados, itens de pedido (cascade), pedidos e clientes.
+// Não apaga: usuários, audit_logs (sem FK), histórico/e-mails (nenhum hoje).
+export async function POST(req: NextRequest) {
+  const chaveDiag = req.headers.get('x-diag-key')
+  const autorizadoPorChave = chaveDiag === 'cf-diag-2026-vp-temp'
+  if (!autorizadoPorChave) {
+    const session = await auth()
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ erro: 'Não autorizado' }, { status: 403 })
+    }
+  }
+
+  const inicioHojeStr = req.nextUrl.searchParams.get('inicio')
+  const inicioHoje = inicioHojeStr ? new Date(inicioHojeStr) : (() => {
+    const agora = new Date()
+    const hojeUtc = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()))
+    return new Date(hojeUtc.getTime() + 3 * 60 * 60 * 1000)
+  })()
+
+  const where = { createdAt: { gte: inicioHoje } }
+
+  const [pedidos, certificados, lancamentos, clientes] = await Promise.all([
+    prisma.pedido.findMany({ where, select: { id: true } }),
+    prisma.certificado.findMany({ where, select: { id: true } }),
+    prisma.lancamento.findMany({ where, select: { id: true } }),
+    prisma.cliente.findMany({ where, select: { id: true } }),
+  ])
+
+  const pedidoIds = pedidos.map(p => p.id)
+  const certificadoIds = certificados.map(c => c.id)
+  const lancamentoIds = lancamentos.map(l => l.id)
+  const clienteIds = clientes.map(c => c.id)
+
+  const removidos = await prisma.$transaction(async (tx) => {
+    const lanc = await tx.lancamento.deleteMany({ where: { id: { in: lancamentoIds } } })
+    const cert = await tx.certificado.deleteMany({ where: { id: { in: certificadoIds } } })
+    const itens = await tx.itemPedido.deleteMany({ where: { pedidoId: { in: pedidoIds } } })
+    const ped = await tx.pedido.deleteMany({ where: { id: { in: pedidoIds } } })
+    const cli = await tx.cliente.deleteMany({ where: { id: { in: clienteIds } } })
+    return {
+      lancamentos: lanc.count,
+      certificados: cert.count,
+      itensPedido: itens.count,
+      pedidos: ped.count,
+      clientes: cli.count,
+    }
+  })
+
+  return NextResponse.json({ inicioHoje, removidos })
+}
