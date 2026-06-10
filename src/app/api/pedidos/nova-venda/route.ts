@@ -437,20 +437,44 @@ export async function POST(req: NextRequest) {
     try {
       const modelo = await prisma.modeloCertificado.findUnique({ where: { id: modeloId }, select: { nome: true } })
       const inicio = new Date(`${agendamento.data}T${agendamento.hora}:00-03:00`)
-      await fetch(`${process.env.NEXTAUTH_URL}/api/agenda`, {
+
+      // A agenda (Google Calendar) só conhece os AGRs vinicius/ana/arlen.
+      // Quando o AGR do pedido não é nenhum desses (ex.: laryssa, que ainda
+      // não tem calendário próprio), o evento é criado em vermelho (tipo
+      // "pessoal") para ser recolorido manualmente depois.
+      const AGR_PARA_AGENDA: Record<string, 'vinicius' | 'ana' | 'arlen'> = {
+        vinicius: 'vinicius',
+        arlen: 'arlen',
+        'ana.karolina': 'ana',
+      }
+      const agrAgenda = AGR_PARA_AGENDA[pedidoDados.agr]
+      const tipoAgenda = agrAgenda ? (pedidoDados.tipoAtendimento ?? 'videoconferencia') : 'pessoal'
+
+      const descricao = [
+        `Pedido: ${pedido.numero}`,
+        `Certificado: ${modelo?.nome}`,
+        safewebProtocolo ? `Protocolo Safeweb: ${safewebProtocolo}` : null,
+      ].filter(Boolean).join('\n')
+
+      const respAgenda = await fetch(`${process.env.NEXTAUTH_URL}/api/agenda`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': req.headers.get('cookie') ?? '' },
         body: JSON.stringify({
           titulo: `${cliente?.nome} — ${modelo?.nome}`,
-          descricao: `Pedido: ${pedido.numero}\nCertificado: ${modelo?.nome}`,
+          descricao,
           inicio: inicio.toISOString(),
           duracao: agendamento.duracao,
-          agr: pedidoDados.agr,
-          tipo: pedidoDados.tipoAtendimento ?? 'videoconferencia',
+          agr: agrAgenda ?? 'vinicius',
+          tipo: tipoAgenda,
           pedidoId: pedido.id,
         }),
       })
-    } catch { /* agenda falhou, não bloqueia */ }
+      if (!respAgenda.ok) {
+        console.error('[Agenda] falha ao criar evento para o pedido', pedido.numero, await respAgenda.text())
+      }
+    } catch (err) {
+      console.error('[Agenda] exceção ao criar evento para o pedido', pedido.numero, err)
+    }
   }
 
   await registrarAuditoria({
