@@ -428,21 +428,23 @@ export function NovaVendaWizard({
       const nomeRfb: string = data.nome ?? previa?.nome ?? ''
       const clienteDb = data.clienteExistente
 
+      // CPF novo (sem clienteDb) = dados novos: limpa contato/endereço do
+      // cliente pesquisado anteriormente em vez de manter o que estava na tela
       setDados(d => ({
         ...d,
         validado:        true,
         nomeResponsavel: nomeRfb || (clienteDb?.nome ?? d.nomeResponsavel),
         nome:            nomeRfb || (clienteDb?.nome ?? d.nome),
-        clienteId:       clienteDb?.id ?? d.clienteId,
-        email:           clienteDb?.email    ?? d.email,
-        ...telefoneFromCelular(clienteDb?.celular, clienteDb?.ddd, { ddd: d.ddd, telefone: d.telefone }),
-        pisNis:          clienteDb?.pisNis   ?? d.pisNis,
-        cep:             clienteDb?.cep      ? fmtCEP(clienteDb.cep) : d.cep,
-        logradouro:      clienteDb?.logradouro ?? d.logradouro,
-        numero:          clienteDb?.numero   ?? d.numero,
-        bairro:          clienteDb?.bairro   ?? d.bairro,
-        municipio:       clienteDb?.cidade   ?? d.municipio,
-        estado:          clienteDb?.estado   ?? d.estado,
+        clienteId:       clienteDb?.id ?? '',
+        email:           clienteDb?.email ?? '',
+        ...telefoneFromCelular(clienteDb?.celular, clienteDb?.ddd, { ddd: '', telefone: '' }),
+        pisNis:          clienteDb?.pisNis ?? '',
+        cep:             clienteDb?.cep ? fmtCEP(clienteDb.cep) : '',
+        logradouro:      clienteDb?.logradouro ?? '',
+        numero:          clienteDb?.numero ?? '',
+        bairro:          clienteDb?.bairro ?? '',
+        municipio:       clienteDb?.cidade ?? '',
+        estado:          clienteDb?.estado ?? '',
       }))
 
       if (clienteDb?.id) {
