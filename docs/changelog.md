@@ -73,6 +73,25 @@ Registro de alterações no CertFlow, conforme Regra 5 da
   prévio e levantamento detalhado aprovado pelo Vinicius antes da execução.
 - **Autor**: Vinicius Petri (via Claude Code)
 
+### Correção crítica — remoção do endpoint /api/test-db (10/06/2026)
+- **Arquivos**: `src/app/api/test-db/route.ts` (removido),
+  `docs/endpoints-removidos.md` (novo),
+  `docs/AUDITORIA_GERAL_DO_SISTEMA.md`
+- **Motivo**: o endpoint, em caso de erro na consulta ao banco, retornava
+  `process.env.DATABASE_URL` completo (usuário/senha/host do Postgres) sem
+  exigir autenticação — vazamento crítico de credenciais identificado na
+  `AUDITORIA_GERAL_DO_SISTEMA.md` (item 1 das recomendações prioritárias).
+  Não havia nenhuma referência a esse endpoint em telas, regras de negócio
+  ou integrações.
+- **Impacto**: nenhum funcional — endpoint de diagnóstico não usado por
+  nenhum fluxo do sistema. Documentado em
+  `docs/endpoints-removidos.md` antes da remoção.
+- **Risco**: baixo — remoção isolada de arquivo não referenciado.
+- **Testes**: `npm test` — 1 arquivo, 2 testes, todos passando. `npm run
+  build` (com `.next` limpo) — build de produção concluído com sucesso,
+  sem erros de TypeScript, sem referências residuais a `test-db`.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### Auditoria Geral do Sistema (10/06/2026)
 - **Arquivos**: `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (novo)
 - **Motivo**: Regra 9 (auditoria contínua) — mapear funcionalidades,

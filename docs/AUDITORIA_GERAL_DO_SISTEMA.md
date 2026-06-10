@@ -76,9 +76,11 @@ dedicada** em `/docs` (violação potencial da Regra 1):
   `src/app/api/cpf/[cpf]/route.ts:12` exige `auth()`.
 
 ### 3.2 Endpoints de teste expostos em produção
-- `src/app/api/test-db/route.ts:11-13` — em caso de erro, retorna
+- ~~`src/app/api/test-db/route.ts:11-13` — em caso de erro, retorna
   `db_url_raw: process.env.DATABASE_URL` **completo** (credenciais do
-  banco).
+  banco).~~ **Corrigido em 10/06/2026** — endpoint removido. Ver
+  [docs/endpoints-removidos.md](./endpoints-removidos.md) e
+  `docs/changelog.md`.
 - `src/app/api/test-auth/route.ts:13,19` — testa se a senha
   `certflow@2024` é válida para `admin@certflow.com.br`, sem autenticação
   (permite força bruta).
@@ -197,11 +199,13 @@ dedicada** em `/docs` (violação potencial da Regra 1):
   HTTPS (Vercel), mas vale revisar se há necessidade de manter esses dados
   em algum log/estado por mais tempo que o necessário.
 
-### 6.5 Endpoint de teste expõe credenciais de banco
-- `src/app/api/test-db/route.ts:12-13` — em erro, retorna
+### 6.5 Endpoint de teste expõe credenciais de banco — ✅ Corrigido em 10/06/2026
+- ~~`src/app/api/test-db/route.ts:12-13` — em erro, retorna
   `process.env.DATABASE_URL` completo (usuário/senha/host do Postgres).
   Crítico mesmo não envolvendo diretamente dados de clientes, pois uma
-  credencial vazada dá acesso a TODOS os dados pessoais do banco.
+  credencial vazada dá acesso a TODOS os dados pessoais do banco.~~
+  Endpoint removido (ver [docs/endpoints-removidos.md](./endpoints-removidos.md)
+  e `docs/changelog.md`).
 
 ---
 
@@ -289,6 +293,9 @@ Ordenadas por risco × esforço, sem alterar nada até aprovação (Regra 2):
    (`/api/test-db`, `/api/test-auth`, `/api/test-email`,
    `/api/test-whatsapp`). `test-db` vaza a `DATABASE_URL` completa em
    caso de erro; `test-auth` permite testar senha do admin sem auth.
+   - ✅ `/api/test-db` removido em 10/06/2026 (ver
+     [docs/endpoints-removidos.md](./endpoints-removidos.md)).
+   - Pendentes: `/api/test-auth`, `/api/test-email`, `/api/test-whatsapp`.
    Risco: vazamento total do banco. Esforço: baixo.
 
 2. **CRÍTICO — Adicionar autenticação ao endpoint `/api/cnpj/[cnpj]`**,
