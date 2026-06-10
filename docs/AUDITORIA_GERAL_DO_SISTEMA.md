@@ -69,11 +69,13 @@ dedicada** em `/docs` (violação potencial da Regra 1):
 
 ## 3. Bugs potenciais
 
-### 3.1 Endpoint CNPJ sem autenticação
-- **Arquivo**: `src/app/api/cnpj/[cnpj]/route.ts:4`
-- Endpoint GET retorna dados sensíveis (CPF mascarado de sócios, e-mail,
+### 3.1 Endpoint CNPJ sem autenticação — ✅ Corrigido em 10/06/2026
+- ~~**Arquivo**: `src/app/api/cnpj/[cnpj]/route.ts:4`~~
+- ~~Endpoint GET retorna dados sensíveis (CPF mascarado de sócios, e-mail,
   telefone, endereço) **sem verificar sessão**. Em contraste,
-  `src/app/api/cpf/[cpf]/route.ts:12` exige `auth()`.
+  `src/app/api/cpf/[cpf]/route.ts:12` exige `auth()`.~~ Adicionada a mesma
+  checagem `auth()` de `/api/cpf/[cpf]`, retornando `401` para requisições
+  sem sessão. Ver `docs/changelog.md`.
 
 ### 3.2 Endpoints de teste expostos em produção
 - ~~`src/app/api/test-db/route.ts:11-13` — em caso de erro, retorna
@@ -184,9 +186,15 @@ dedicada** em `/docs` (violação potencial da Regra 1):
   CNPJ, DDD, celular, data de nascimento, CEP e endereço completo de até
   30 clientes, com bypass via chave hardcoded (ver 3.3).
 
-### 6.2 Endpoint CNPJ retorna CPF de sócios sem autenticação
-- `src/app/api/cnpj/[cnpj]/route.ts:53-57` — array `qsa` com
-  `cpfMascarado` de sócios, acessível publicamente.
+### 6.2 Endpoint CNPJ retorna dados pessoais sem autenticação — ✅ Corrigido em 10/06/2026
+- ~~`src/app/api/cnpj/[cnpj]/route.ts:53-57` — array `qsa` com
+  `cpfMascarado` de sócios, acessível publicamente.~~ Análise mais
+  aprofundada (10/06/2026) mostrou risco maior do que o registrado
+  originalmente: o endpoint também consultava `prisma.cliente` e
+  retornava, sem máscara, CPF, data de nascimento, e-mail, celular,
+  endereço completo, PIS/NIS e responsável de clientes já cadastrados,
+  para qualquer requisição sem login. Corrigido com a mesma checagem
+  `auth()` de `/api/cpf/[cpf]`. Ver `docs/changelog.md`.
 
 ### 6.3 Log de dados pessoais em produção
 - `src/app/api/pedidos/nova-venda/route.ts:39-40` —
@@ -298,10 +306,12 @@ Ordenadas por risco × esforço, sem alterar nada até aprovação (Regra 2):
    - Pendentes: `/api/test-auth`, `/api/test-email`, `/api/test-whatsapp`.
    Risco: vazamento total do banco. Esforço: baixo.
 
-2. **CRÍTICO — Adicionar autenticação ao endpoint `/api/cnpj/[cnpj]`**,
+2. ~~**CRÍTICO — Adicionar autenticação ao endpoint `/api/cnpj/[cnpj]`**,
    que hoje retorna CPF de sócios e dados de contato sem sessão. Esforço:
    médio (precisa coordenar os 5 pontos do frontend que o consomem — ver
-   seção 5.3).
+   seção 5.3).~~ ✅ **Corrigido em 10/06/2026** — adicionada checagem
+   `auth()`. As 5 telas dependentes continuam funcionando normalmente
+   (fetch relativo envia o cookie de sessão). Ver `docs/changelog.md`.
 
 3. **ALTO — Eliminar chaves de diagnóstico hardcoded** (padrão
    `cf-diag-2026-vp-temp`), a começar por

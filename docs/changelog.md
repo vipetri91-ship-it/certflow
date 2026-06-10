@@ -73,6 +73,32 @@ Registro de alterações no CertFlow, conforme Regra 5 da
   prévio e levantamento detalhado aprovado pelo Vinicius antes da execução.
 - **Autor**: Vinicius Petri (via Claude Code)
 
+### Correção crítica — autenticação no endpoint /api/cnpj/[cnpj] (10/06/2026)
+- **Arquivos**: `src/app/api/cnpj/[cnpj]/route.ts`,
+  `docs/AUDITORIA_GERAL_DO_SISTEMA.md`
+- **Motivo**: o endpoint estava acessível sem login (todas as rotas
+  `/api/*` são isentas da checagem de autenticação em `src/proxy.ts`) e,
+  além de dados públicos da Receita Federal, também consultava o banco do
+  CertFlow e retornava — sem máscara — CPF, data de nascimento, e-mail,
+  celular, endereço completo, PIS/NIS e responsável de clientes já
+  cadastrados, caso o CNPJ consultado já existisse na base. Item crítico
+  de LGPD identificado na `AUDITORIA_GERAL_DO_SISTEMA.md` (seções 3.1, 6.2
+  e recomendação 2 da seção 10).
+- **Solução**: adicionada a mesma checagem `auth()` já usada em
+  `src/app/api/cpf/[cpf]/route.ts` (2 linhas no início do handler),
+  retornando `401 Não autorizado` para requisições sem sessão válida.
+  Nenhum payload, tela, regra de negócio ou integração foi alterada.
+- **Impacto**: nenhum para usuários logados — as 5 telas que usam o
+  endpoint (`clientes/novo`, `clientes/[id]/editar`, `parceiros/novo`,
+  `sst`, wizard de `pedidos/nova-venda`) fazem `fetch` relativo no
+  navegador, que envia o cookie de sessão automaticamente. Acesso direto
+  ao endpoint sem login agora retorna `401` em vez dos dados.
+- **Risco**: baixo — mesmo padrão já validado em `/api/cpf/[cpf]`.
+- **Testes**: `npm test` — 1 arquivo, 2 testes, todos passando. `npm run
+  build` (com `.next` limpo) — build de produção concluído com sucesso,
+  sem erros de TypeScript.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### Correção crítica — remoção do endpoint /api/test-db (10/06/2026)
 - **Arquivos**: `src/app/api/test-db/route.ts` (removido),
   `docs/endpoints-removidos.md` (novo),
