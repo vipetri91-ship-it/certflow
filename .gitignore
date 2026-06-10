@@ -43,6 +43,9 @@ scripts/check-db.js
 scripts/upload-logo.js
 scripts/seed-*.js
 
+# backups locais com dados pessoais (CPF/CNPJ etc.) — não versionar
+/backups/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
