@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle2, Loader2, ChevronRight, ChevronLeft, User, Building2,
@@ -86,6 +86,19 @@ const fmtCNPJ = (v: string) => v.replace(/\D/g,'').slice(0,14).replace(/(\d{2})(
 const fmtCEP  = (v: string) => v.replace(/\D/g,'').slice(0,8).replace(/(\d{5})(\d{0,3})/,'$1-$2').replace(/-$/,'')
 const fmtData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
 
+// Separa um celular salvo no banco (com ou sem DDD) em { ddd, telefone } de 2 e 9 dígitos,
+// evitando que o DDD fique duplicado quando o autopreenchimento ocorre
+function telefoneFromCelular(
+  celular: string | null | undefined,
+  dddOrigem: string | null | undefined,
+  atual: { ddd: string; telefone: string }
+): { ddd: string; telefone: string } {
+  const digitos = (celular ?? '').replace(/\D/g, '')
+  if (digitos.length >= 10) return { ddd: digitos.slice(0, 2), telefone: digitos.slice(2, 11) }
+  if (digitos.length > 0)   return { ddd: dddOrigem || atual.ddd, telefone: digitos.slice(0, 9) }
+  return atual
+}
+
 function Campo({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
@@ -97,9 +110,11 @@ function Campo({ label, required, children }: { label: string; required?: boolea
   )
 }
 const cls = "w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-function Input({ className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={`${cls} ${className}`} {...props} />
-}
+const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ className = '', ...props }, ref) {
+    return <input ref={ref} className={`${cls} ${className}`} {...props} />
+  }
+)
 function Sel({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select className={`${cls} bg-white`} {...props}>{children}</select>
 }
@@ -182,6 +197,8 @@ export function NovaVendaWizard({
   const [pedidoCriado,    setPedidoCriado]    = useState<{ id: string; numero: string; safewebProtocolo?: string | null; hopeUrlDocumentos?: string | null } | null>(null)
   const [protocolo,       setProtocolo]       = useState('')
   const [salvandoProt,    setSalvandoProt]    = useState(false)
+  const telefoneRef    = useRef<HTMLInputElement>(null)
+  const telEmpresaRef  = useRef<HTMLInputElement>(null)
 
   function set<K extends keyof WizardDados>(k: K, v: WizardDados[K]) {
     setDados(d => ({ ...d, [k]: v }))
@@ -270,8 +287,7 @@ export function NovaVendaWizard({
         cpfResponsavel:   cli?.cpf ? cli.cpf.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : d.cpfResponsavel,
         dataNascimento:   cli?.dataNascimento ? cli.dataNascimento.split('T')[0] : d.dataNascimento,
         email:       cli?.email ?? d.email,
-        ddd:         cli?.ddd ?? d.ddd,
-        telefone:    cli?.celular ?? d.telefone,
+        ...telefoneFromCelular(cli?.celular, cli?.ddd, { ddd: d.ddd, telefone: d.telefone }),
         cepEmpresa:  data.cep ? fmtCEP(data.cep) : d.cepEmpresa,
         logradouroEmpresa: data.logradouro ?? d.logradouroEmpresa,
         numeroEmpresa:     data.numero ?? d.numeroEmpresa,
@@ -321,7 +337,10 @@ export function NovaVendaWizard({
         if (pf?.cpf) { cpfFill = pf.cpf; nascFill = pf.dataNascimento ?? nascFill }
       }
 
-      setDados(d => ({
+      setDados(d => {
+        const telResp = telefoneFromCelular(c.celular as string, c.ddd as string, { ddd: d.ddd, telefone: d.telefone })
+        const telEmp  = telefoneFromCelular(c.celular as string, c.ddd as string, { ddd: d.dddEmpresa, telefone: d.telEmpresa })
+        return {
         ...d,
         clienteId:        c.id as string,
         nomeEmpresa:      (c.nome as string) ?? d.nomeEmpresa,
@@ -332,18 +351,19 @@ export function NovaVendaWizard({
         cpfResponsavel:   cpfFill ? cpfFill.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : d.cpfResponsavel,
         dataNascimento:   nascFill ? nascFill.split('T')[0] : d.dataNascimento,
         email:            (c.email as string) ?? d.email,
-        ddd:              (c.ddd as string) ?? d.ddd,
-        telefone:         (c.celular as string) ?? d.telefone,
+        ddd:              telResp.ddd,
+        telefone:         telResp.telefone,
         emailEmpresa:     (c.email as string) ?? d.emailEmpresa,
-        dddEmpresa:       (c.ddd as string) ?? d.dddEmpresa,
-        telEmpresa:       (c.celular as string) ?? d.telEmpresa,
+        dddEmpresa:       telEmp.ddd,
+        telEmpresa:       telEmp.telefone,
         cepEmpresa:       (c.cep as string) ? fmtCEP(c.cep as string) : d.cepEmpresa,
         logradouroEmpresa: (c.logradouro as string) ?? d.logradouroEmpresa,
         numeroEmpresa:    (c.numero as string) ?? d.numeroEmpresa,
         bairroEmpresa:    (c.bairro as string) ?? d.bairroEmpresa,
         municipioEmpresa: (c.cidade as string) ?? d.municipioEmpresa,
         estadoEmpresa:    (c.estado as string) ?? d.estadoEmpresa,
-      }))
+        }
+      })
     } catch {}
   }
 
@@ -365,8 +385,7 @@ export function NovaVendaWizard({
           dataNascimento:  c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNascimento,
           dataNasc:        c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNasc,
           email:     c.email    ?? d.email,
-          ddd:       c.ddd      ?? d.ddd,
-          telefone:  c.celular  ?? d.telefone,
+          ...telefoneFromCelular(c.celular, c.ddd, { ddd: d.ddd, telefone: d.telefone }),
           pisNis:    c.pisNis   ?? d.pisNis,
           cep:       c.cep      ? fmtCEP(c.cep) : d.cep,
           logradouro: c.logradouro ?? d.logradouro,
@@ -416,8 +435,7 @@ export function NovaVendaWizard({
         nome:            nomeRfb || (clienteDb?.nome ?? d.nome),
         clienteId:       clienteDb?.id ?? d.clienteId,
         email:           clienteDb?.email    ?? d.email,
-        ddd:             clienteDb?.ddd      ?? d.ddd,
-        telefone:        clienteDb?.celular  ?? d.telefone,
+        ...telefoneFromCelular(clienteDb?.celular, clienteDb?.ddd, { ddd: d.ddd, telefone: d.telefone }),
         pisNis:          clienteDb?.pisNis   ?? d.pisNis,
         cep:             clienteDb?.cep      ? fmtCEP(clienteDb.cep) : d.cep,
         logradouro:      clienteDb?.logradouro ?? d.logradouro,
@@ -867,13 +885,17 @@ export function NovaVendaWizard({
                   </Campo>
                 </div>
                 <div className="w-full sm:w-20 shrink-0">
-                  <Campo label="DDD">
-                    <Input value={dados.ddd} onChange={e => set('ddd', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} />
+                  <Campo label="DDD" required>
+                    <Input value={dados.ddd} onChange={e => {
+                      const v = e.target.value.replace(/\D/g,'').slice(0,2)
+                      set('ddd', v)
+                      if (v.length === 2) telefoneRef.current?.focus()
+                    }} placeholder="11" maxLength={2} required />
                   </Campo>
                 </div>
                 <div className="flex-1">
                   <Campo label="Telefone" required>
-                    <Input value={dados.telefone} onChange={e => set('telefone', e.target.value.replace(/\D/g,'').slice(0,9))} placeholder="999999999" maxLength={9} required />
+                    <Input ref={telefoneRef} value={dados.telefone} onChange={e => set('telefone', e.target.value.replace(/\D/g,'').slice(0,9))} placeholder="999999999" maxLength={9} required />
                   </Campo>
                 </div>
               </div>
@@ -916,7 +938,7 @@ export function NovaVendaWizard({
               className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
               <ChevronLeft className="w-4 h-4" /> Anterior
             </button>
-            <button onClick={nextStep} disabled={!dados.nome || !dados.email || !dados.telefone}
+            <button onClick={nextStep} disabled={!dados.nome || !dados.email || dados.ddd.length !== 2 || dados.telefone.length !== 9}
               className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
               Próximo <ChevronRight className="w-4 h-4" />
             </button>
@@ -949,10 +971,16 @@ export function NovaVendaWizard({
               <Campo label="E-mail da Empresa" required><Input type="email" value={dados.emailEmpresa} onChange={e => set('emailEmpresa', e.target.value)} required /></Campo>
               <div className="flex gap-2 sm:col-span-2">
                 <div className="w-20 shrink-0">
-                  <Campo label="DDD"><Input value={dados.dddEmpresa} onChange={e => set('dddEmpresa', e.target.value.replace(/\D/g,'').slice(0,2))} placeholder="11" maxLength={2} /></Campo>
+                  <Campo label="DDD" required>
+                    <Input value={dados.dddEmpresa} onChange={e => {
+                      const v = e.target.value.replace(/\D/g,'').slice(0,2)
+                      set('dddEmpresa', v)
+                      if (v.length === 2) telEmpresaRef.current?.focus()
+                    }} placeholder="11" maxLength={2} required />
+                  </Campo>
                 </div>
                 <div className="flex-1">
-                  <Campo label="Telefone" required><Input value={dados.telEmpresa} onChange={e => set('telEmpresa', e.target.value.replace(/\D/g,'').slice(0,9))} maxLength={9} required /></Campo>
+                  <Campo label="Telefone" required><Input ref={telEmpresaRef} value={dados.telEmpresa} onChange={e => set('telEmpresa', e.target.value.replace(/\D/g,'').slice(0,9))} maxLength={9} required /></Campo>
                 </div>
               </div>
               <Campo label="Inscrição Estadual"><Input value={dados.ie} onChange={e => set('ie', e.target.value)} placeholder="Opcional" /></Campo>
@@ -983,7 +1011,7 @@ export function NovaVendaWizard({
               className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
               <ChevronLeft className="w-4 h-4" /> Anterior
             </button>
-            <button onClick={nextStep} disabled={!dados.cnpj || !dados.razaoSocial || !dados.emailEmpresa || !dados.telEmpresa}
+            <button onClick={nextStep} disabled={!dados.cnpj || !dados.razaoSocial || !dados.emailEmpresa || dados.dddEmpresa.length !== 2 || dados.telEmpresa.length !== 9}
               className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
               Próximo <ChevronRight className="w-4 h-4" />
             </button>
