@@ -467,6 +467,18 @@ export function NovaVendaWizard({
   async function finalizar() {
     setLoading(true); setErroValidacao('')
     try {
+      if (dados.agendar) {
+        const horario = await fetch('/api/sistema/horario').then(r => r.json()).catch(() => null)
+        if (horario?.agora) {
+          const agora = new Date(horario.agora)
+          const horarioAgendado = new Date(`${dados.dataAgendamento}T${dados.horaAgendamento}:00-03:00`)
+          if (horarioAgendado <= agora) {
+            setErroValidacao('O horário de agendamento já passou. Selecione um horário futuro.')
+            return
+          }
+        }
+      }
+
       const isPJ = dados.tipoPessoa === 'PJ'
       const obsExtra = [
         dados.cei   && `CEI: ${dados.cei}`,

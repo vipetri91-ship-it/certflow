@@ -21,7 +21,7 @@ export default async function EmissaoOnlinePage() {
     }),
   ])
 
-  const defaultAgr = deriveAgr(session.user.email ?? '')
+  const defaultAgr = deriveAgr(session.user.name ?? session.user.email ?? '')
 
   return (
     <div>

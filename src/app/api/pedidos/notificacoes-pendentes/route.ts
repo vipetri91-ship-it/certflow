@@ -10,7 +10,7 @@ export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
-  const meuAgr = deriveAgr(session.user.email ?? '')
+  const meuAgr = deriveAgr(session.user.name ?? session.user.email ?? '')
 
   const pedido = await prisma.pedido.findFirst({
     where: { agr: meuAgr, status: 'EMITIDO', popupNotificacaoVisto: false },
