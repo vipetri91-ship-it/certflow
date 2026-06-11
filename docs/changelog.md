@@ -7,6 +7,58 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 11/06/2026
 
+### 1b1d268 — feat: cancelamento integrado de pedidos com Safeweb (Frente B)
+- **Arquivos**: `prisma/schema.prisma`, `scripts/migrate.js`,
+  `src/app/(dashboard)/pedidos/[id]/acoes.tsx`,
+  `src/app/(dashboard)/pedidos/[id]/page.tsx`,
+  `src/app/api/pedidos/[id]/route.ts`,
+  `src/app/api/pedidos/[id]/cancelar/route.ts` (novo),
+  `src/app/api/pedidos/[id]/cancelar/lib.ts` (novo),
+  `src/app/api/pedidos/[id]/cancelar/lib.test.ts` (novo),
+  `src/components/modal-cancelar-pedido.tsx` (novo),
+  `src/lib/audit.ts`, `src/lib/permissoes-estrutura.ts`,
+  `docs/ESPECIFICACAO_CANCELAMENTO_PROTOCOLO.md`.
+- **Motivo**: implementação da "Frente B" especificada em
+  `docs/ESPECIFICACAO_CANCELAMENTO_PROTOCOLO.md` — o cancelamento de um
+  pedido no CertFlow não sincronizava com a Safeweb, deixando protocolos
+  abertos sem rastreabilidade (ver caso real documentado em
+  `docs/LIMPEZA_EXECUTADA.md`).
+- **Impacto**:
+  - Novo endpoint `POST /api/pedidos/[id]/cancelar` é o único caminho
+    suportado para cancelar um pedido. `PATCH /api/pedidos/[id]` agora
+    rejeita `status: 'CANCELADO'` com erro 400.
+  - Cancelamento exige motivo obrigatório (categoria fixa + observação
+    opcional), bloqueia pedidos `EMITIDO` (400) e cancelamento duplo
+    (409, com registro de auditoria da tentativa).
+  - Quando há `safewebProtocolo`, chama `cancelarSolicitacao` (Safeweb);
+    se a Safeweb recusar/der timeout, nada é alterado localmente (V1).
+    Campo `safewebCancelamentoPendente` foi criado no schema mas ainda
+    **não é usado** — reservado para uma futura V2 de reprocessamento
+    manual.
+  - Histórico completo do cancelamento (data/hora, usuário, motivo,
+    protocolo, resultado Safeweb) é gravado em `AuditLog` (`acao:
+    'CANCELAR_PEDIDO'`) e exibido na tela do pedido.
+  - Botão "Cancelar" só aparece para ADMIN e GERENTE com a permissão
+    granular `monitor.cancelar=true`; OPERADOR, FINANCEIRO e
+    VISUALIZADOR não veem o botão. A trava real continua sendo o backend
+    (403 para quem não tem permissão).
+- **Risco**: médio — altera o fluxo de cancelamento de pedidos em
+  produção. Mitigado por: validação de segurança operacional cobrindo
+  todos os caminhos que alteram `status = CANCELADO` (apenas o novo
+  endpoint e o webhook Safeweb pré-existente, este último fora de
+  escopo); matriz de permissões revisada perfil a perfil; simulação dos
+  4 cenários (GERADO sem protocolo, GERADO com protocolo, CANCELADO,
+  EMITIDO).
+- **Pendência conhecida**: o webhook `/api/safeweb/webhook` possui um
+  caminho pré-existente que pode marcar `Pedido.status = 'CANCELADO'`
+  a partir de eventos da Safeweb (Cancelamento/Revogação) sem atualizar
+  `canceladoEm`/`AuditLog`/lançamentos — não foi alterado nesta frente
+  (fora de escopo); candidato a uma futura "Frente C".
+- **Testes**: `npm test` — 2 arquivos, 15 testes, todos passando.
+  `rm -rf .next && npx prisma generate && npx next build` — build de
+  produção concluído com sucesso.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### feat: lançamento financeiro nasce na emissão do certificado (não mais no protocolo gerado)
 - **Arquivos**: `src/app/api/pedidos/nova-venda/route.ts`,
   `src/app/api/pedidos/route.ts`, `src/app/api/pedidos/[id]/route.ts`,

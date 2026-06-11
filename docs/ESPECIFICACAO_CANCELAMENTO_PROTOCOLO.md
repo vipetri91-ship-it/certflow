@@ -1,16 +1,20 @@
 # Especificação — Cancelamento Integrado CertFlow + Safeweb
 
-> **Status**: documento de especificação. Nenhum código, migration, banco
-> de dados ou deploy foi alterado para produzir este documento — apenas
-> leitura do código existente (`src/lib/safeweb.ts`,
-> `src/app/(dashboard)/pedidos/[id]/acoes.tsx`,
-> `src/app/api/pedidos/[id]/route.ts`, `prisma/schema.prisma`,
-> `src/lib/permissoes-estrutura.ts`) e da validação real feita em
-> 11/06/2026 com o protocolo `1010781571` (ver
-> `docs/LIMPEZA_EXECUTADA.md`).
+> **Status**: ✅ **implementado** (commit `1b1d268`, 11/06/2026).
+> Endpoint `POST /api/pedidos/[id]/cancelar`, modal de cancelamento,
+> histórico no AuditLog e controle de visibilidade do botão "Cancelar"
+> por permissão estão em produção. Ajustes aprovados em relação à
+> proposta original: categorias de motivo fixas (`MOTIVOS_CANCELAMENTO`
+> em `src/app/api/pedidos/[id]/cancelar/lib.ts`), tentativa de
+> cancelamento duplo retorna 409 e gera registro de auditoria, e o campo
+> `safewebCancelamentoPendente` foi criado no schema mas **não é
+> utilizado nesta versão** — reservado para uma futura V2 de
+> reprocessamento manual quando a Safeweb estiver indisponível.
 >
-> Esta é a "Frente B" mencionada em `docs/LIMPEZA_EXECUTADA.md`, ainda
-> **não autorizada para implementação**.
+> O texto abaixo é o documento de especificação original (pré-
+> implementação), mantido como registro histórico da decisão.
+>
+> Esta foi a "Frente B" mencionada em `docs/LIMPEZA_EXECUTADA.md`.
 
 ---
 
