@@ -172,6 +172,9 @@ async function migrate() {
     `UPDATE "usuarios" SET username = SPLIT_PART(username, '@', 1) WHERE username LIKE '%@%'`,
     `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "whatsappVencimentoAtivo" BOOLEAN NOT NULL DEFAULT true`,
     `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "emailVencimentoAtivo" BOOLEAN NOT NULL DEFAULT true`,
+    // Cancelamento Integrado — Frente B
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "canceladoEm" TIMESTAMP(3)`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "safewebCancelamentoPendente" BOOLEAN NOT NULL DEFAULT false`,
     `CREATE TABLE IF NOT EXISTS "posts_social" (
       "id"        TEXT NOT NULL,
       "categoria" TEXT NOT NULL,

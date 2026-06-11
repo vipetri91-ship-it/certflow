@@ -1,10 +1,13 @@
 import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, User, Building2, CheckCircle2, Clock, XCircle, FileCheck, Paperclip } from 'lucide-react'
+import { ArrowLeft, User, Building2, CheckCircle2, Clock, XCircle, FileCheck, Paperclip, Ban } from 'lucide-react'
 import { formatarData, formatarMoeda, formatarCPF, formatarCNPJ } from '@/lib/utils'
 import { PedidoAcoes } from './acoes'
+import { temPermissaoGranular } from '@/lib/permissoes-estrutura'
+import { MOTIVOS_CANCELAMENTO_LABELS, podeCancelarPedido, type MotivoCancelamento } from '@/app/api/pedidos/[id]/cancelar/lib'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -19,6 +22,11 @@ const STATUS_INFO: Record<string, { label: string; cor: string; icone: React.Rea
 
 export default async function PedidoDetalhePage({ params }: Props) {
   const { id } = await params
+
+  const session = await auth()
+  const role = session?.user.role ?? ''
+  const monitorCancelarGerente = role === 'GERENTE' ? await temPermissaoGranular('GERENTE', 'monitor.cancelar') : false
+  const podeCancelar = podeCancelarPedido(role, monitorCancelarGerente)
 
   const pedido = await prisma.pedido.findUnique({
     where: { id },
@@ -42,6 +50,45 @@ export default async function PedidoDetalhePage({ params }: Props) {
 
   const status = STATUS_INFO[pedido.status] ?? STATUS_INFO.GERADO
 
+  // Histórico de cancelamento — fonte oficial é o AuditLog (ver
+  // docs/ESPECIFICACAO_CANCELAMENTO_PROTOCOLO.md, seção 9-10)
+  let cancelamento: {
+    dataHora: Date
+    usuario: string
+    motivoCategoria?: string
+    motivoTexto?: string
+    protocoloSafeweb?: string
+    resultadoSafeweb?: { ok: boolean; erro?: string; tratadoComo?: string }
+  } | null = null
+
+  if (pedido.canceladoEm) {
+    const logs = await prisma.auditLog.findMany({
+      where: { entidade: 'Pedido', entidadeId: id, acao: 'CANCELAR_PEDIDO' },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: { usuario: { select: { nome: true } } },
+    })
+
+    const logCancelamento = logs.find(l => {
+      const dados = l.dados as Record<string, unknown> | null
+      return dados && typeof dados === 'object' && 'statusAnterior' in dados
+    })
+
+    if (logCancelamento) {
+      const dados = logCancelamento.dados as Record<string, unknown>
+      cancelamento = {
+        dataHora: pedido.canceladoEm,
+        usuario: logCancelamento.usuario?.nome ?? '—',
+        motivoCategoria: dados.motivoCategoria as string | undefined,
+        motivoTexto: dados.motivoTexto as string | undefined,
+        protocoloSafeweb: dados.protocoloSafeweb as string | undefined,
+        resultadoSafeweb: dados.resultadoSafeweb as { ok: boolean; erro?: string; tratadoComo?: string } | undefined,
+      }
+    } else {
+      cancelamento = { dataHora: pedido.canceladoEm, usuario: '—' }
+    }
+  }
+
   return (
     <div>
       <Header titulo={`Pedido ${pedido.numero}`} />
@@ -61,7 +108,7 @@ export default async function PedidoDetalhePage({ params }: Props) {
               {pedido.agr && <p className="text-sm text-gray-500">AGR: <strong>{pedido.agr}</strong></p>}
             </div>
             <div className="flex gap-2 shrink-0">
-              <PedidoAcoes pedidoId={id} statusAtual={pedido.status} />
+              <PedidoAcoes pedidoId={id} numeroPedido={pedido.numero} statusAtual={pedido.status} podeCancelar={podeCancelar} />
               <Link href="/pedidos" className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
                 <ArrowLeft className="w-4 h-4" /> Voltar
               </Link>
@@ -206,6 +253,57 @@ export default async function PedidoDetalhePage({ params }: Props) {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-semibold text-gray-900 mb-2">Observações</h2>
             <p className="text-sm text-gray-600">{pedido.observacoes}</p>
+          </div>
+        )}
+
+        {/* Cancelamento */}
+        {cancelamento && (
+          <div className="bg-white rounded-xl border border-red-100 shadow-sm p-5">
+            <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Ban className="w-4 h-4 text-red-500" /> Cancelamento
+            </h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Data/Hora</span>
+                <span className="font-medium">{formatarData(cancelamento.dataHora)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Cancelado por</span>
+                <span className="font-medium">{cancelamento.usuario}</span>
+              </div>
+              {cancelamento.motivoCategoria && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Motivo</span>
+                  <span className="font-medium">
+                    {MOTIVOS_CANCELAMENTO_LABELS[cancelamento.motivoCategoria as MotivoCancelamento] ?? cancelamento.motivoCategoria}
+                  </span>
+                </div>
+              )}
+              {cancelamento.motivoTexto && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500 shrink-0">Observação</span>
+                  <span className="text-right text-gray-700">{cancelamento.motivoTexto}</span>
+                </div>
+              )}
+              {cancelamento.protocoloSafeweb && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Protocolo Safeweb</span>
+                  <span className="font-mono">{cancelamento.protocoloSafeweb}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-500">Resultado Safeweb</span>
+                <span className="font-medium text-right">
+                  {!cancelamento.protocoloSafeweb || cancelamento.resultadoSafeweb?.tratadoComo === 'sem_protocolo'
+                    ? 'Sem protocolo vinculado'
+                    : cancelamento.resultadoSafeweb?.tratadoComo === 'protocolo_ja_inexistente'
+                    ? 'Protocolo já não existia na Safeweb'
+                    : cancelamento.resultadoSafeweb?.ok
+                    ? 'Cancelado na Safeweb'
+                    : '—'}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 

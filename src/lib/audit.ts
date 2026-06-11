@@ -2,7 +2,7 @@ import { prisma } from './prisma'
 
 interface AuditParams {
   usuarioId?: string
-  acao: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'VIEW'
+  acao: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'VIEW' | 'CANCELAR_PEDIDO'
   entidade: string
   entidadeId?: string
   dados?: object

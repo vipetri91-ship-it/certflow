@@ -1,6 +1,8 @@
 // Estrutura completa de permissões do CertFlow
 // Organizada por módulo → subgrupo → lista de permissões
 
+import { prisma } from './prisma'
+
 export interface PermissaoItem {
   key: string
   label: string
@@ -275,3 +277,25 @@ function gerarAdminPermissoes(): Record<string, boolean> {
 }
 
 PERMISSOES_PADRAO.ADMIN = gerarAdminPermissoes()
+
+// Verifica se um perfil possui uma permissão granular específica,
+// considerando a configuração salva em `Configuracao.permissoes_{ROLE}`
+// (com fallback para PERMISSOES_PADRAO). ADMIN sempre retorna true.
+export async function temPermissaoGranular(role: string, key: string): Promise<boolean> {
+  if (role === 'ADMIN') return true
+
+  const config = await prisma.configuracao.findUnique({ where: { chave: `permissoes_${role}` } })
+
+  let permissoes: Record<string, boolean>
+  if (config?.valor) {
+    try {
+      permissoes = JSON.parse(config.valor)
+    } catch {
+      permissoes = PERMISSOES_PADRAO[role] ?? {}
+    }
+  } else {
+    permissoes = PERMISSOES_PADRAO[role] ?? {}
+  }
+
+  return permissoes[key] === true
+}

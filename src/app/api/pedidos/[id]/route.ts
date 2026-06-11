@@ -53,6 +53,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const antigo = await prisma.pedido.findUnique({ where: { id } })
   if (!antigo) return NextResponse.json({ erro: 'Não encontrado' }, { status: 404 })
 
+  // Cancelamento passa pelo fluxo dedicado (validação de motivo, integração
+  // Safeweb e auditoria) — ver POST /api/pedidos/[id]/cancelar
+  if (parsed.data.status === 'CANCELADO') {
+    return NextResponse.json(
+      { erro: 'Use o endpoint POST /api/pedidos/[id]/cancelar para cancelar pedidos' },
+      { status: 400 },
+    )
+  }
+
   const { boletoVencimento, status, ...rest } = parsed.data
 
   const data: Record<string, unknown> = { ...rest }

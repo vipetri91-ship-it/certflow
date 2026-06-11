@@ -342,6 +342,8 @@ model Pedido {
   boletoVencimento     DateTime?
   verificadoEm         DateTime?
   emitidoEm            DateTime?
+  canceladoEm          DateTime?    // data/hora do cancelamento (detalhes em AuditLog)
+  safewebCancelamentoPendente Boolean @default(false) // true se cancelamento local ocorreu sem confirmação da Safeweb
   observacoes          String?
   contabilidade        String?      // escritório de contabilidade / parceiro indicador
   codigoCobranca       String?      // código de cobrança (financeiro)
