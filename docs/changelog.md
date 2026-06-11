@@ -7,6 +7,41 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 11/06/2026
 
+### feat: endpoint temporário de diagnóstico — cancelamento dos 3 protocolos restantes
+- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
+  (novo, temporário)
+- **Motivo**: concluir a limpeza pendente de `docs/LIMPEZA_EXECUTADA.md`,
+  cancelando na Safeweb os 3 últimos protocolos de teste de 10/06
+  (`1010781647`, `1010782402`, `1010782465`), usando o mesmo procedimento
+  já validado com sucesso para o protocolo `1010781571`.
+- **Escopo**: endpoint `GET`, protegido por `auth()` + `role === 'ADMIN'`,
+  lista fixa de 3 protocolos hardcoded no código, sem aceitar nenhum
+  parâmetro externo. Não altera nenhum fluxo existente, não é chamado por
+  nenhuma tela. Não expõe tokens, segredos ou variáveis `SAFEWEB_*` na
+  resposta.
+- **Impacto**: nenhum em fluxos existentes — endpoint isolado e de uso
+  único. Será removido após a validação (ver entrada de remoção neste
+  changelog assim que concluída).
+- **Risco**: a chamada real de cancelamento na Safeweb é uma ação em
+  sistema de terceiro, possivelmente irreversível — só pode ser acionada
+  manualmente pelo Vinicius (ADMIN autenticado) acessando a URL.
+- **Autor**: Vinicius Petri (via Claude Code)
+
+### chore: remoção de arquivo residual diag3.json
+- **Arquivos**: `diag3.json` (removido), `docs/LIMPEZA_EXECUTADA.md`
+- **Motivo**: arquivo órfão na raiz do projeto, gerado em 10/06/2026
+  durante o levantamento que antecedeu a limpeza de testes (provável
+  saída de consulta ao endpoint `/api/admin/diagnostico-limpeza`, já
+  removido). Continha dados pessoais (CPF, CNPJ, nome, telefone, data de
+  nascimento, endereço) dos clientes de teste, fora do diretório
+  protegido `/backups/`.
+- **Impacto**: nenhum — arquivo nunca foi versionado pelo git e não tinha
+  nenhuma dependência de código, scripts ou documentação. Dados já
+  cobertos pelo backup oficial em
+  `backups/limpeza-2026-06-10-backup.json`.
+- **Risco**: nenhum.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### chore: remoção do endpoint temporário de diagnóstico de cancelamento
 - **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
   (removido), `docs/LIMPEZA_EXECUTADA.md`

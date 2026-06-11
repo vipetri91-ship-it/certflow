@@ -92,3 +92,34 @@ removido logo após esta validação — ver `docs/changelog.md`).
 O endpoint `/api/admin/diagnostico-limpeza` (GET de diagnóstico + POST de
 exclusão), criado especificamente para este levantamento e limpeza, foi
 removido do código após a conclusão.
+
+O endpoint `/api/admin/diagnostico-cancelamento-temp`, criado em 11/06/2026
+para validar `cancelarSolicitacao` com o protocolo `1010781571`, também foi
+removido após a validação (commit `7ef6bf9`). Confirmado em produção: a
+URL retorna `404` e não há mais nenhuma referência ao endpoint no código
+(`src/`).
+
+## Arquivo residual removido — diag3.json (11/06/2026)
+
+- **Nome do arquivo**: `diag3.json` (raiz do projeto, 12.188 bytes,
+  criado em 10/06/2026 às 16:42).
+- **Motivo da remoção**: arquivo órfão, gerado durante o levantamento que
+  antecedeu a limpeza de 10/06/2026 (provável saída salva de uma consulta
+  ao endpoint `/api/admin/diagnostico-limpeza`, já removido). Não estava
+  protegido em `/backups/` (que é gitignored), ficando solto na raiz do
+  repositório.
+- **Dados pessoais**: **sim** — continha CPF, CNPJ, nome, telefone, data
+  de nascimento e endereço completo dos clientes dos 18 pedidos de teste
+  de 10/06/2026. Esses dados já estavam cobertos pelo backup oficial em
+  `backups/limpeza-2026-06-10-backup.json` (protegido, não versionado).
+- **Dependências**: nenhuma. Não havia referência a `diag3.json` em
+  código, scripts ou documentação. Arquivo nunca foi versionado pelo git
+  (`??` no `git status`).
+- **Ação**: arquivo removido do disco.
+
+## Status final — protocolo 1010781571
+
+✅ **Encerrado em 11/06/2026**: cancelado na Safeweb com sucesso
+(`cancelamento.ok: true`), não mais consultável (`"Protocolo não
+encontrado"`), e o endpoint temporário usado na validação foi removido e
+confirmado fora do ar (404 em produção).
