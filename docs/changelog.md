@@ -7,6 +7,45 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 11/06/2026
 
+### feat: lançamento financeiro nasce na emissão do certificado (não mais no protocolo gerado)
+- **Arquivos**: `src/app/api/pedidos/nova-venda/route.ts`,
+  `src/app/api/pedidos/route.ts`, `src/app/api/pedidos/[id]/route.ts`,
+  `docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md` (novo),
+  `docs/ESPECIFICACAO_CANCELAMENTO_PROTOCOLO.md`,
+  `docs/ROADMAP_CORRECOES.md`.
+- **Motivo**: nova regra de negócio definida pelo Vinicius — a empresa
+  concilia diariamente "certificados emitidos na agenda" com
+  "lançamentos do contas a receber". Lançamentos criados no momento do
+  protocolo gerado (antes da emissão) geravam divergência nessa
+  conciliação.
+- **Mudança**: removida a criação automática de `Lancamento`
+  `RECEBER`/`PENDENTE` em `nova-venda/route.ts` e `pedidos/route.ts`
+  (no momento da criação do pedido). `PATCH /api/pedidos/[id]`, no bloco
+  já existente que cria o `Certificado` ao transicionar o pedido para
+  `EMITIDO`, passou a também criar o `Lancamento`, com os mesmos campos
+  usados anteriormente (descrição, valor, vencimento, forma de
+  pagamento, parceiro). Criação **idempotente**: verifica se já existe
+  `Lancamento` para o `pedidoId` antes de criar (evita duplicidade para
+  pedidos "em transição" criados sob a regra antiga ou com lançamento
+  manual antecipado feito pelo Financeiro).
+- **Sem migration** — sem alteração de schema, apenas mudança de
+  lógica/momento de criação.
+- **Impacto**: tela Financeiro ("Contas a Receber") e widgets do
+  dashboard ("A Receber", "A Receber Vencidos", "Recebido no Mês")
+  passam a refletir apenas pedidos `EMITIDO`. "Vendas"/"Faturamento"/
+  "Emissões" do dashboard principal não mudam (já eram baseados em
+  `Pedido`, não em `Lancamento`). Pedidos já em `GERADO`/`VERIFICADO`
+  antes desta mudança mantêm o lançamento criado sob a regra antiga
+  (não duplicado quando forem emitidos, por causa da idempotência).
+- **Risco**: pagamento recebido antes da emissão não gera lançamento
+  automático — mitigação: `ADMIN`/`GERENTE` podem criar lançamento
+  manual vinculado ao pedido pela tela Financeiro
+  (`POST /api/financeiro/lancamentos`, `pedidoId` opcional já suportado).
+- **Testes**: `npm test` — 1 arquivo, 2 testes, todos passando. `npm run
+  build` (com `.next` limpo) — build de produção concluído com sucesso.
+- **Autor**: Vinicius Petri (via Claude Code)
+
+
 ### chore: remoção do endpoint temporário de diagnóstico (cancelamento dos 3 protocolos restantes)
 - **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
   (removido), `docs/LIMPEZA_EXECUTADA.md`

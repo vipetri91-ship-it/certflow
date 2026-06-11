@@ -414,23 +414,12 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // 4. Lançamento financeiro automático
+  // 4. Buscar cliente (usado no agendamento e na auditoria abaixo)
   const cliente = await prisma.cliente.findUnique({ where: { id: idCliente! }, select: { nome: true } })
 
-  await prisma.lancamento.create({
-    data: {
-      tipo:           'RECEBER',
-      descricao:      `${cliente?.nome ?? 'Cliente'} — Pedido ${pedido.numero}`,
-      valor:          valorFinal,
-      dataVencimento: new Date(),
-      status:         'PENDENTE',
-      pedidoId:       pedido.id,
-      tipoConta:      'Certificado',
-      referencia:     pedido.numero,
-      formaPagamento: pedidoDados.formaPagamento ?? undefined,
-      ...(pedidoDados.parceiroId ? { parceiroId: pedidoDados.parceiroId } : {}),
-    },
-  })
+  // Lançamento financeiro: não é mais criado aqui — passa a ser criado
+  // quando o pedido for marcado como EMITIDO (ver
+  // PATCH /api/pedidos/[id], docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md)
 
   // 4. Agendar no Google Calendar se solicitado
   if (agendamento && pedidoDados.agr) {

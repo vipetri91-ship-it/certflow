@@ -94,6 +94,31 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         }
       }
     } catch { /* não bloqueia a atualização do pedido */ }
+
+    // Lançamento financeiro nasce na emissão (ver
+    // docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md). Idempotente: não cria
+    // se já existir lançamento vinculado a este pedido (ex.: lançamento
+    // manual antecipado criado pelo Financeiro).
+    try {
+      const lancamentoExistente = await prisma.lancamento.findFirst({ where: { pedidoId: id } })
+      if (!lancamentoExistente) {
+        const cliente = await prisma.cliente.findUnique({ where: { id: antigo.clienteId }, select: { nome: true } })
+        await prisma.lancamento.create({
+          data: {
+            tipo:           'RECEBER',
+            descricao:      `${cliente?.nome ?? 'Cliente'} — Pedido ${pedido.numero}`,
+            valor:          pedido.valorFinal,
+            dataVencimento: new Date(),
+            status:         'PENDENTE',
+            pedidoId:       id,
+            tipoConta:      'Certificado',
+            referencia:     pedido.numero,
+            formaPagamento: pedido.formaPagamento ?? undefined,
+            ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
+          },
+        })
+      }
+    } catch { /* não bloqueia a atualização do pedido */ }
   }
 
   // Monta diff dos campos alterados

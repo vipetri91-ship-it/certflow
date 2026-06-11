@@ -305,11 +305,27 @@ funcionalidade pretende resolver, só que invertida.
 
 ## 8. Impacto financeiro
 
+> **Atualização (11/06/2026)**: foi definida como regra oficial que o
+> `Lancamento` financeiro (`tipo: 'RECEBER'`) **nasce no momento em que o
+> pedido é marcado como `EMITIDO`** (certificado emitido), e não mais no
+> momento em que o pedido é criado/protocolo gerado (`GERADO`). Ver
+> [docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md](./ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md)
+> para a especificação completa dessa mudança (separada desta, mas com
+> impacto direto aqui).
+
 ### Contas a receber
-- Pedidos `CANCELADO` que possuam `Lancamento` do tipo `RECEBER` com
-  `status = PENDENTE` (vinculados via `pedidoId`) devem ter esses
-  lançamentos automaticamente movidos para `status = CANCELADO`
-  (enum `StatusLancamento` já possui esse valor).
+- Como o cancelamento só é permitido em `GERADO`/`VERIFICADO` (nunca em
+  `EMITIDO`) e, sob a nova regra, o `Lancamento` só passa a existir **a
+  partir de `EMITIDO`**, **na imensa maioria dos cancelamentos não
+  existirá nenhum `Lancamento` vinculado ao pedido** — a etapa "atualizar
+  lançamentos pendentes" deixa de ser o caso comum.
+- Mesmo assim, o endpoint de cancelamento deve manter (de forma
+  defensiva, idempotente) a regra: **se** existir algum `Lancamento` do
+  tipo `RECEBER` com `status = PENDENTE` vinculado ao pedido (ex.: caso
+  excepcional de lançamento criado manualmente pela tela Financeiro para
+  registrar um pagamento antecipado — ver seção 8.3 de
+  `ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md`), ele deve ser movido para
+  `status = CANCELADO`.
 - Lançamentos já `PAGO` **não** devem ser alterados automaticamente —
   isso indicaria que o cliente já pagou, e qualquer estorno é uma decisão
   financeira manual (fora do escopo automático). O sistema deve apenas
@@ -429,7 +445,8 @@ livres impossíveis de agrupar.
 - `src/app/api/pedidos/[id]/route.ts` (ou um novo endpoint dedicado, ex.
   `src/app/api/pedidos/[id]/cancelar/route.ts`) — implementar a lógica
   completa: validação de permissão/status, chamada à Safeweb, transação
-  de gravação, auditoria, atualização de lançamentos.
+  de gravação, auditoria, e (de forma defensiva/idempotente, ver seção 8)
+  atualização de eventuais lançamentos `PENDENTE` vinculados.
 - `src/lib/safeweb.ts` — **nenhuma alteração necessária**;
   `cancelarSolicitacao` e `consultarProtocolo` já existem e foram
   validadas. Arquivo permanece IMUTÁVEL/sagrado conforme já estabelecido.
@@ -561,9 +578,12 @@ essencialmente:
   pode "quebrar" o fluxo de cancelamento para usuários que hoje cancelam
   pedidos sem ter essa permissão marcada explicitamente. Levantamento
   prévio dos perfis de usuário existentes é necessário antes do rollout.
-- **Impacto financeiro automático** (cancelar lançamentos `PENDENTE`)
-  precisa de validação do time financeiro — comportamento incorreto aqui
-  afeta relatórios e contas a receber reais.
+- **Impacto financeiro automático** (cancelar lançamentos `PENDENTE`) —
+  com a regra "lançamento nasce na emissão" (ver
+  `ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md`), esse caso passa a ser raro
+  (só ocorre se houver lançamento manual antecipado). Mantido como
+  tratamento defensivo/idempotente, sem impacto relevante esperado nos
+  relatórios sob a nova regra.
 
 ### Benefícios
 - Elimina a necessidade de processos manuais excepcionais (como o

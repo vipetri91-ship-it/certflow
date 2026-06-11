@@ -100,19 +100,40 @@ aprovação prévia (Regra 2 e 3), conforme o ciclo já validado na ONDA 1.
   em produção pela primeira vez.
 - **Resumo da proposta**: ao cancelar um pedido com protocolo gerado,
   cancelar automaticamente o protocolo na Safeweb, exigindo motivo,
-  restrito a `ADMIN`/`GERENTE`, com auditoria completa, atualização de
-  lançamentos financeiros pendentes e indicadores gerenciais de
-  desistência.
+  restrito a `ADMIN`/`GERENTE`, com auditoria completa, e indicadores
+  gerenciais de desistência.
 - **Riscos principais**: ação na Safeweb é praticamente irreversível;
   `idJustificativa = 4` sem documentação oficial confirmada; ativar a
   permissão `monitor.cancelar` (hoje definida mas não usada) pode mudar
-  quem consegue cancelar pedidos hoje; mudanças automáticas no
-  financeiro precisam de validação do time financeiro.
+  quem consegue cancelar pedidos hoje.
 - **Próximo passo**: aguardando aprovação do Vinicius para iniciar a
   implementação faseada (migration de novos campos → endpoint dedicado
   testado em homologação Safeweb → enforcement de `monitor.cancelar` →
   UI → dashboard gerencial), conforme ordem recomendada na seção 14 da
   especificação.
+
+---
+
+## Funcionalidade Lançamento financeiro nasce na Emissão
+
+**Status**: `IMPLEMENTADO` em 11/06/2026 (aguardando aprovação para push)
+
+- **Especificação completa**:
+  [docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md](./ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md)
+- **Origem**: o lançamento `RECEBER` era criado já na geração do pedido
+  (protocolo gerado), divergindo da conciliação diária da empresa
+  (certificados emitidos x contas a receber).
+- **Mudança aplicada**: `src/app/api/pedidos/nova-venda/route.ts` e
+  `src/app/api/pedidos/route.ts` deixaram de criar `Lancamento`;
+  `src/app/api/pedidos/[id]/route.ts` passou a criar o `Lancamento`
+  `RECEBER`/`PENDENTE` no mesmo bloco em que cria o `Certificado`, ao
+  transicionar o pedido para `EMITIDO`, com checagem de idempotência
+  (não duplica se já existir lançamento para o pedido).
+- **Sem migration** — apenas mudança de lógica.
+- **Impacto na Frente B (cancelamento)**: já refletido na seção 8 de
+  `ESPECIFICACAO_CANCELAMENTO_PROTOCOLO.md` — a etapa de "cancelar
+  lançamentos pendentes" passa a ser, na maioria dos casos, não
+  aplicável.
 
 ---
 

@@ -98,20 +98,12 @@ export async function POST(req: NextRequest) {
     include: { itens: true },
   })
 
-  // Buscar nome do cliente para o lançamento
+  // Buscar nome do cliente para a auditoria
   const cliente = await prisma.cliente.findUnique({ where: { id: parsed.data.clienteId }, select: { nome: true } })
 
-  // Criar lançamento financeiro automaticamente
-  await prisma.lancamento.create({
-    data: {
-      tipo: 'RECEBER',
-      descricao: `Pedido ${pedido.numero} — ${cliente?.nome ?? ''}`,
-      valor: valorFinal,
-      dataVencimento: new Date(),
-      status: 'PENDENTE',
-      pedidoId: pedido.id,
-    },
-  })
+  // Lançamento financeiro: não é mais criado aqui — passa a ser criado
+  // quando o pedido for marcado como EMITIDO (ver
+  // PATCH /api/pedidos/[id], docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md)
 
   await registrarAuditoria({
     usuarioId: session.user.id,
