@@ -11,6 +11,80 @@
 
 ---
 
+## ONDA 1 — CONCLUÍDA
+
+**Data de conclusão**: 10/06/2026
+
+**Commits realizados**:
+
+| Commit | Descrição |
+|---|---|
+| `de70c47` | Remoção do endpoint `/api/test-db` (vazava `DATABASE_URL` em erro) |
+| `e713645` | Autenticação obrigatória (`auth()`) em `/api/cnpj/[cnpj]` |
+| `6790572` | Remoção do bypass por chave hardcoded em `/api/admin/diagnostico-protocolo` |
+| `a2d999c` | Documentação: encerramento da ONDA 1 e criação deste roadmap |
+
+**Problemas corrigidos**:
+
+1. **`/api/test-db`** — em caso de erro, retornava `process.env.DATABASE_URL`
+   completo (usuário/senha/host do Postgres) sem exigir autenticação.
+   Endpoint removido e documentado em
+   [docs/endpoints-removidos.md](./endpoints-removidos.md).
+2. **`/api/cnpj/[cnpj]`** — acessível sem login, retornava sem máscara CPF,
+   data de nascimento, e-mail, celular, endereço completo, PIS/NIS e
+   responsável de clientes já cadastrados. Corrigido com a mesma checagem
+   `auth()` usada em `/api/cpf/[cpf]`.
+3. **`/api/admin/diagnostico-protocolo`** — aceitava o cabeçalho
+   `x-diag-key: cf-diag-2026-vp-temp` como bypass total de autenticação e
+   de verificação de perfil ADMIN. Bypass removido; mantida apenas
+   `auth()` + `role === 'ADMIN'`.
+
+**Evidências de validação**:
+
+- `npm test` — 1 arquivo, 2 testes, todos passando (em cada um dos 3
+  commits).
+- `npm run build` (com `.next` limpo) — build de produção concluído sem
+  erros de TypeScript (em cada um dos 3 commits).
+- `GET /api/test-db` em produção → `404`.
+- `GET /api/cnpj/[cnpj]` sem autenticação em produção → `401`.
+- `GET /api/admin/diagnostico-protocolo` sem autenticação em produção →
+  `403`.
+- Busca em todo o código-fonte (`*.ts`, `*.tsx`) confirma **zero**
+  referências residuais a `x-diag-key` e `cf-diag-2026-vp-temp` (as
+  únicas ocorrências restantes são em `docs/changelog.md` e
+  `docs/AUDITORIA_GERAL_DO_SISTEMA.md`, como registro histórico).
+- As 5 telas dependentes de `/api/cnpj/[cnpj]` (`clientes/novo`,
+  `clientes/[id]/editar`, `parceiros/novo`, `sst`, wizard de
+  `pedidos/nova-venda`) continuam funcionando normalmente para usuários
+  logados (fetch relativo envia o cookie de sessão automaticamente).
+- Para administradores autenticados, `/api/admin/diagnostico-protocolo`
+  mantém exatamente o mesmo comportamento anterior (apenas a checagem
+  `auth()` + `role === 'ADMIN'` que já existia, sem alteração de query,
+  payload ou regra de negócio).
+
+**Deploys realizados** (Vercel, produção — `https://certflow-nine.vercel.app`):
+
+| Deploy | Commit | Status |
+|---|---|---|
+| 1 | `de70c47` | ✅ Ready |
+| 2 | `e713645` | ✅ Ready |
+| 3 | `6790572` | ✅ Ready |
+
+---
+
+## PRÓXIMA ETAPA
+
+**ONDA 2 — Correção dos vazamentos de dados entre formulários**
+
+Próximo trabalho a ser iniciado: replicar o padrão de isolamento de
+formulário (`mergeDados*`, mesmo princípio do commit `c3e9803` que
+corrigiu `mergeDadosResponsavelPF`) para os demais pontos mapeados na
+seção 7 da auditoria — detalhes em **P1.1** abaixo. Nenhuma
+implementação foi iniciada; aguardando análise de impacto item a item e
+aprovação prévia (Regra 2 e 3), conforme o ciclo já validado na ONDA 1.
+
+---
+
 ## P0 — Crítico
 
 ### P0.1 — Remover/proteger endpoints de teste restantes em produção
@@ -31,11 +105,15 @@
 - **Dependências**: nenhuma. Pode ser feito de forma independente, item a
   item, seguindo o mesmo ciclo (documentar → remover → testar → build →
   changelog → commit → aprovação → push → verificação pós-deploy).
-- **Onda**: ONDA 2.
+- **Onda**: ONDA 3.
 
 ---
 
 ## P1 — Alto
+
+> **Nota**: P1.1 e P1.2 foram antecipados para a **ONDA 2** (próxima
+> etapa, ver seção "PRÓXIMA ETAPA" acima). P1.3 permanece na ONDA 3,
+> junto com P0.1.
 
 ### P1.1 — Replicar isolamento de formulário (`mergeDados*`) nos demais pontos de vazamento
 - **Descrição**: a correção da ONDA 0 (`mergeDadosResponsavelPF`,
@@ -59,7 +137,7 @@
   os 2 itens "não verificados" (`parceiros/[id]/editar`, `sst/page.tsx`)
   para confirmar se o padrão se aplica antes de definir o tamanho total
   do trabalho.
-- **Onda**: ONDA 3 (item a item, com aprovação individual).
+- **Onda**: ONDA 2 (item a item, com aprovação individual).
 
 ### P1.2 — Debounce/cancelamento na busca de CPF do wizard (race condition)
 - **Descrição**: `wizard.tsx:371-403` (`buscarClientePorCPF`) dispara a
@@ -76,7 +154,7 @@
 - **Status**: pendente.
 - **Dependências**: idealmente feito **depois** de P1.1 (mesma área de
   código), para evitar dois rounds de teste sobre `wizard.tsx`.
-- **Onda**: ONDA 3.
+- **Onda**: ONDA 2.
 
 ### P1.3 — Revisar exposição de PII em `/api/admin/diagnostico-protocolo` e política de retenção de `audit_logs`
 - **Descrição**: mesmo após a ONDA 1 (que exigiu `auth()` + `role ===
@@ -191,7 +269,7 @@
 - **Dependências**: idealmente feito **junto** com P1.1/P1.2, já que
   ambos tocam as mesmas funções — escrever testes antes ou durante essas
   correções reduz risco de regressão.
-- **Onda**: ONDA 3 ou 5 (recomendado: junto com P1.1).
+- **Onda**: ONDA 2 (recomendado: junto com P1.1).
 
 ### P3.2 — Consolidar lista de AGRs (Ana/Arlen/Vinicius/Laryssa) mantida em 3 lugares
 - **Descrição**: a lista de AGRs aparece duplicada em 3 pontos do código
@@ -212,9 +290,9 @@
 
 | Onda | Itens | Foco |
 |---|---|---|
-| ONDA 1 | ✅ Concluída | 3 itens críticos de segurança (test-db, cnpj sem auth, chave diagnóstico hardcoded) |
-| ONDA 2 | P0.1 | Endpoints de teste restantes (`test-auth`, `test-email`, `test-whatsapp`) |
-| ONDA 3 | P1.1, P1.2, P1.3, (P3.1) | Isolamento de formulário no wizard, race condition CPF, revisão LGPD do diagnóstico/audit_logs |
+| ONDA 1 | ✅ Concluída (10/06/2026) | 3 itens críticos de segurança (test-db, cnpj sem auth, chave diagnóstico hardcoded) |
+| ONDA 2 | P1.1, P1.2, (P3.1) | **Próxima etapa** — vazamento de dados entre formulários (isolamento `mergeDados*` no wizard e telas de cadastro) + race condition CPF |
+| ONDA 3 | P0.1, P1.3 | Endpoints de teste restantes (`test-auth`, `test-email`, `test-whatsapp`) + revisão LGPD do diagnóstico/audit_logs |
 | ONDA 4 | P2.1 a P2.5 | Duplicação de código, log com PII, feedback de erros, documentação, revisão widget RFB |
 | ONDA 5 | P3.2 | Consolidação da lista de AGRs |
 
