@@ -47,13 +47,18 @@ lado da Safeweb**, pois excluir o registro local não cancela nada lá:
 
 - `1010781571` (era do pedido PED-202606-15449) — ✅ **cancelado em
   11/06/2026**, ver seção "Validação do cancelamento" abaixo.
-- `1010781647` (era do pedido PED-202606-28769) — pendente
-- `1010782402` (era do pedido PED-202606-69746) — pendente
-- `1010782465` (era do pedido PED-202606-68833) — pendente
+- `1010781647` (era do pedido PED-202606-28769) — ✅ **cancelado em
+  11/06/2026**, ver seção "Cancelamento dos 3 protocolos restantes"
+  abaixo.
+- `1010782402` (era do pedido PED-202606-69746) — ✅ **cancelado em
+  11/06/2026**, ver seção "Cancelamento dos 3 protocolos restantes"
+  abaixo.
+- `1010782465` (era do pedido PED-202606-68833) — ✅ **cancelado em
+  11/06/2026**, ver seção "Cancelamento dos 3 protocolos restantes"
+  abaixo.
 
-**Próxima tarefa**: repetir o mesmo procedimento de cancelamento (via
-`cancelarSolicitacao` em `src/lib/safeweb.ts`) para os 3 protocolos
-restantes, item a item, com aprovação prévia para cada um.
+**Status**: pendência encerrada — os 4 protocolos de teste gerados em
+10/06/2026 foram cancelados na Safeweb.
 
 ## Validação do cancelamento — protocolo 1010781571 (11/06/2026)
 
@@ -87,6 +92,33 @@ removido logo após esta validação — ver `docs/changelog.md`).
   encontrada sobre o significado exato — ver análise em conversa de
   11/06/2026). O cancelamento foi aceito mesmo assim.
 
+## Cancelamento dos 3 protocolos restantes (11/06/2026)
+
+Procedimento idêntico ao validado para o protocolo `1010781571`,
+executado via endpoint administrativo temporário
+`/api/admin/diagnostico-cancelamento-temp` (restrito a ADMIN autenticado,
+lista fixa dos 3 protocolos, removido logo após — ver
+`docs/changelog.md`).
+
+**Resposta da Safeweb**:
+```json
+{"resultados":[
+  {"protocolo":"1010781647","cancelamento":{"ok":true},"consulta":{"ok":false,"erro":"Protocolo não encontrado"}},
+  {"protocolo":"1010782402","cancelamento":{"ok":true},"consulta":{"ok":false,"erro":"Protocolo não encontrado"}},
+  {"protocolo":"1010782465","cancelamento":{"ok":true},"consulta":{"ok":false,"erro":"Protocolo não encontrado"}}
+]}
+```
+
+| Protocolo | Cancelamento | Consulta posterior | Status final |
+|---|---|---|---|
+| `1010781647` | ✅ aceito (`ok: true`) | "Protocolo não encontrado" | Cancelado, não mais consultável |
+| `1010782402` | ✅ aceito (`ok: true`) | "Protocolo não encontrado" | Cancelado, não mais consultável |
+| `1010782465` | ✅ aceito (`ok: true`) | "Protocolo não encontrado" | Cancelado, não mais consultável |
+
+Reversibilidade e observações sobre `idJustificativa = 4`: idênticas ao
+registrado para o protocolo `1010781571` (ver seção "Validação do
+cancelamento" acima) — tratar como irreversível na prática.
+
 ## Infraestrutura temporária removida
 
 O endpoint `/api/admin/diagnostico-limpeza` (GET de diagnóstico + POST de
@@ -98,6 +130,11 @@ para validar `cancelarSolicitacao` com o protocolo `1010781571`, também foi
 removido após a validação (commit `7ef6bf9`). Confirmado em produção: a
 URL retorna `404` e não há mais nenhuma referência ao endpoint no código
 (`src/`).
+
+O endpoint foi recriado em seguida (commit `88a44be`), restrito aos 3
+protocolos restantes (`1010781647`, `1010782402`, `1010782465`), usado
+uma única vez para cancelá-los, e removido novamente após a confirmação
+dos resultados (ver seção "Cancelamento dos 3 protocolos restantes").
 
 ## Arquivo residual removido — diag3.json (11/06/2026)
 
@@ -123,3 +160,13 @@ URL retorna `404` e não há mais nenhuma referência ao endpoint no código
 (`cancelamento.ok: true`), não mais consultável (`"Protocolo não
 encontrado"`), e o endpoint temporário usado na validação foi removido e
 confirmado fora do ar (404 em produção).
+
+## Status final — pendência de protocolos Safeweb
+
+✅ **Pendência encerrada em 11/06/2026**: os 4 protocolos de teste
+gerados em 10/06/2026 (`1010781571`, `1010781647`, `1010782402`,
+`1010782465`) foram cancelados com sucesso na Safeweb
+(`cancelamento.ok: true` em todos), nenhum é mais consultável
+(`"Protocolo não encontrado"`), e o endpoint administrativo temporário
+usado nas validações foi removido em definitivo (sem nenhuma rota
+residual em `src/`).

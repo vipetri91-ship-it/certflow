@@ -7,6 +7,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 11/06/2026
 
+### chore: remoção do endpoint temporário de diagnóstico (cancelamento dos 3 protocolos restantes)
+- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
+  (removido), `docs/LIMPEZA_EXECUTADA.md`
+- **Motivo**: o endpoint cumpriu seu propósito — cancelar na Safeweb os 3
+  protocolos de teste remanescentes (`1010781647`, `1010782402`,
+  `1010782465`). Todos os 3 cancelamentos foram aceitos
+  (`cancelamento.ok: true`) e a consulta posterior de cada um retornou
+  "Protocolo não encontrado", confirmando o cancelamento. Resultado
+  individual registrado em `docs/LIMPEZA_EXECUTADA.md` (seção
+  "Cancelamento dos 3 protocolos restantes"). Com isso, a pendência de 4
+  protocolos órfãos da limpeza de 10/06/2026 está encerrada.
+- **Impacto**: nenhum — endpoint isolado, de uso único, removido por
+  completo. Nenhuma tela ou fluxo dependia dele.
+- **Risco**: nenhum.
+- **Testes**: `npm test` — 1 arquivo, 2 testes, todos passando. `npm run
+  build` (com `.next` limpo) — build de produção concluído com sucesso.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### feat: endpoint temporário de diagnóstico — cancelamento dos 3 protocolos restantes
 - **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
   (novo, temporário)
