@@ -11,6 +11,33 @@ vazamento de dados entre clientes (tema do bug corrigido hoje em
 
 ---
 
+## ONDA 1 — Itens críticos de segurança — ✅ CONCLUÍDA em 10/06/2026
+
+Os 3 itens críticos identificados nesta auditoria foram corrigidos,
+testados, publicados e verificados em produção:
+
+| # | Item | Commit | Status |
+|---|------|--------|--------|
+| 1 | `/api/test-db` vazava `DATABASE_URL` em erro | `de70c47` | ✅ Removido (404 confirmado em produção) |
+| 2 | `/api/cnpj/[cnpj]` sem autenticação, expondo PII de clientes cadastrados | `e713645` | ✅ Protegido com `auth()` (401 sem sessão confirmado) |
+| 3 | Bypass por chave hardcoded `x-diag-key: cf-diag-2026-vp-temp` em `/api/admin/diagnostico-protocolo` | `6790572` | ✅ Removido, mantida `auth()` + `role === 'ADMIN'` (403 sem sessão confirmado) |
+
+**Verificações pós-deploy realizadas:**
+- Deploy do commit `6790572` confirmado `Ready` em produção (Vercel).
+- `GET /api/admin/diagnostico-protocolo` sem autenticação → `403`
+  (confirmado via curl em produção).
+- Para administradores autenticados, o endpoint mantém exatamente o
+  mesmo comportamento anterior (apenas a checagem `auth()` +
+  `role === 'ADMIN'` que já existia, sem alteração de query, payload ou
+  regra de negócio).
+- Busca em todo o código-fonte (`*.ts`, `*.tsx`, `*.md`) confirma **zero
+  referências residuais** a `x-diag-key` e `cf-diag-2026-vp-temp`.
+
+Os demais itens (não críticos) seguem priorizados em
+[docs/ROADMAP_CORRECOES.md](./ROADMAP_CORRECOES.md).
+
+---
+
 ## 1. Funcionalidades implementadas
 
 Com base em `docs/MAPA_DO_SISTEMA.md`, `src/app/(dashboard)/` e `src/app/api/`,
@@ -184,10 +211,15 @@ dedicada** em `/docs` (violação potencial da Regra 1):
 
 ## 6. Riscos de LGPD
 
-### 6.1 Endpoint de diagnóstico expõe dados pessoais com proteção fraca
+### 6.1 Endpoint de diagnóstico expõe dados pessoais com proteção fraca — bypass corrigido em 10/06/2026
 - `src/app/api/admin/diagnostico-protocolo/route.ts:43-47` retorna CPF,
   CNPJ, DDD, celular, data de nascimento, CEP e endereço completo de até
-  30 clientes, com bypass via chave hardcoded (ver 3.3).
+  30 clientes. ~~Bypass via chave hardcoded (ver 3.3).~~ Bypass removido —
+  agora exige `auth()` + `role === 'ADMIN'` em 100% dos acessos. A
+  exposição de PII para administradores autenticados permanece e está
+  registrada na recomendação 9 (revisão de retenção/exposição à luz da
+  LGPD), priorizada em
+  [docs/ROADMAP_CORRECOES.md](./ROADMAP_CORRECOES.md).
 
 ### 6.2 Endpoint CNPJ retorna dados pessoais sem autenticação — ✅ Corrigido em 10/06/2026
 - ~~`src/app/api/cnpj/[cnpj]/route.ts:53-57` — array `qsa` com

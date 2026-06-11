@@ -7,6 +7,26 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 10/06/2026
 
+### ONDA 1 — verificação pós-deploy e encerramento (commit 6790572)
+- **Arquivos**: `docs/AUDITORIA_GERAL_DO_SISTEMA.md`,
+  `docs/ROADMAP_CORRECOES.md` (novo)
+- **Motivo**: encerrar formalmente a ONDA 1 (3 itens críticos de
+  segurança) com verificação pós-deploy do commit `6790572`.
+- **Verificações realizadas**:
+  - `npx vercel ls certflow` — deploy do commit `6790572` em `Ready`.
+  - `GET /api/admin/diagnostico-protocolo` sem autenticação →
+    `403` (curl em produção).
+  - Busca em todo o código-fonte (`*.ts`, `*.tsx`) confirma **zero**
+    referências residuais a `x-diag-key` e `cf-diag-2026-vp-temp` (as
+    únicas ocorrências restantes são nos próprios `changelog.md` e
+    `AUDITORIA_GERAL_DO_SISTEMA.md`, como registro histórico do que foi
+    removido).
+- **Impacto**: nenhum no código — apenas documentação/verificação.
+  Adicionado bloco "ONDA 1 — Concluída" no topo da auditoria e criado
+  `docs/ROADMAP_CORRECOES.md` priorizando os itens restantes (P0-P3).
+- **Risco**: nenhum.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### dc06582 — fix: remover DDD duplicado do telefone enviado a Safeweb
 - **Arquivos**: `src/lib/safeweb.ts` (e arquivos relacionados ao envio de
   telefone do titular)
