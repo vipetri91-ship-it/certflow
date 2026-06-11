@@ -85,6 +85,37 @@ aprovação prévia (Regra 2 e 3), conforme o ciclo já validado na ONDA 1.
 
 ---
 
+## Funcionalidade Cancelamento Integrado CertFlow + Safeweb
+
+**Status**: `ESPECIFICADO` / `AGUARDANDO IMPLEMENTAÇÃO`
+
+- **Especificação completa**:
+  [docs/ESPECIFICACAO_CANCELAMENTO_PROTOCOLO.md](./ESPECIFICACAO_CANCELAMENTO_PROTOCOLO.md)
+- **Origem**: ao cancelar um pedido no CertFlow, o protocolo
+  correspondente na Safeweb continua ativo (não há sincronização). Esse
+  problema motivou a limpeza manual de 4 protocolos órfãos em
+  11/06/2026, documentada em
+  [docs/LIMPEZA_EXECUTADA.md](./LIMPEZA_EXECUTADA.md), durante a qual
+  `cancelarSolicitacao` (`src/lib/safeweb.ts`) foi validada com sucesso
+  em produção pela primeira vez.
+- **Resumo da proposta**: ao cancelar um pedido com protocolo gerado,
+  cancelar automaticamente o protocolo na Safeweb, exigindo motivo,
+  restrito a `ADMIN`/`GERENTE`, com auditoria completa, atualização de
+  lançamentos financeiros pendentes e indicadores gerenciais de
+  desistência.
+- **Riscos principais**: ação na Safeweb é praticamente irreversível;
+  `idJustificativa = 4` sem documentação oficial confirmada; ativar a
+  permissão `monitor.cancelar` (hoje definida mas não usada) pode mudar
+  quem consegue cancelar pedidos hoje; mudanças automáticas no
+  financeiro precisam de validação do time financeiro.
+- **Próximo passo**: aguardando aprovação do Vinicius para iniciar a
+  implementação faseada (migration de novos campos → endpoint dedicado
+  testado em homologação Safeweb → enforcement de `monitor.cancelar` →
+  UI → dashboard gerencial), conforme ordem recomendada na seção 14 da
+  especificação.
+
+---
+
 ## P0 — Crítico
 
 ### P0.1 — Remover/proteger endpoints de teste restantes em produção
