@@ -5,6 +5,29 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 11/06/2026
+
+### feat: endpoint temporário de diagnóstico — validação de cancelarSolicitacao
+- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts` (novo,
+  temporário)
+- **Motivo**: validar, em produção, a função `cancelarSolicitacao()` de
+  `src/lib/safeweb.ts` (escrita em 27/05/2026, nunca testada), para resolver
+  a pendência registrada em `docs/LIMPEZA_EXECUTADA.md` (4 protocolos de
+  teste que continuam ativos na Safeweb após a limpeza de 10/06).
+- **Escopo**: endpoint `GET`, protegido por `auth()` + `role === 'ADMIN'`,
+  aceita **apenas** o protocolo `1010781571` (fixo no código, sem parâmetro).
+  Não altera nenhum fluxo existente, não é chamado por nenhuma tela. Não
+  expõe tokens, segredos ou variáveis `SAFEWEB_*` na resposta.
+- **Impacto**: nenhum em fluxos existentes — endpoint isolado e de uso
+  único. Será removido após a validação (ver entrada de remoção neste
+  changelog assim que concluída).
+- **Risco**: a chamada real de cancelamento na Safeweb é uma ação em
+  sistema de terceiro, possivelmente irreversível — só pode ser acionada
+  manualmente pelo Vinicius (ADMIN autenticado) acessando a URL.
+- **Testes**: `npm test` — 1 arquivo, 2 testes, todos passando. `npm run
+  build` (com `.next` limpo) — build de produção concluído com sucesso.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ## 10/06/2026
 
 ### ONDA 1 — verificação pós-deploy e encerramento (commit 6790572)
