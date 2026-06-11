@@ -45,6 +45,28 @@ Registro de alterações no CertFlow, conforme Regra 5 da
   build` (com `.next` limpo) — build de produção concluído com sucesso.
 - **Autor**: Vinicius Petri (via Claude Code)
 
+### docs: deploy do commit a791e20 e atualização de documentação para a nova regra
+- **Arquivos**: `docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md`,
+  `docs/ROADMAP_CORRECOES.md`, `docs/BANCO_DE_DADOS.md`,
+  `docs/MAPA_DO_SISTEMA.md`.
+- **Motivo**: commit `a791e20` foi enviado e o deploy em produção
+  confirmado (`Ready`). Restavam trechos de documentação descrevendo a
+  regra antiga (lançamento criado ao registrar a venda/protocolo
+  gerado).
+- **Mudança**: status atualizado para `DEPLOYADO — Aguardando Validação
+  Operacional` em `ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md` e
+  `ROADMAP_CORRECOES.md`; corrigidas as descrições em
+  `BANCO_DE_DADOS.md` (origem dos dados da tabela `lancamentos`) e
+  `MAPA_DO_SISTEMA.md` (itens "Concluído" que mencionavam lançamento
+  automático "ao vender"/"ao registrar venda") para refletir que o
+  lançamento nasce em `EMITIDO`.
+- **Validação operacional**: pendente — será confirmada durante o fluxo
+  normal da empresa (próximo pedido emitido deve gerar exatamente 1
+  `Lancamento` `RECEBER`/`PENDENTE` vinculado, sem duplicidade).
+- **Sem alteração de código/produção** nesta entrada — apenas
+  documentação.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 
 ### chore: remoção do endpoint temporário de diagnóstico (cancelamento dos 3 protocolos restantes)
 - **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`

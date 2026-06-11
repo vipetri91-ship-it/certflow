@@ -116,7 +116,10 @@ aprovação prévia (Regra 2 e 3), conforme o ciclo já validado na ONDA 1.
 
 ## Funcionalidade Lançamento financeiro nasce na Emissão
 
-**Status**: `IMPLEMENTADO` em 11/06/2026 (aguardando aprovação para push)
+**Status**: `DEPLOYADO` em 11/06/2026 (commit `a791e20`, em produção) —
+**Aguardando Validação Operacional** (será confirmado durante o fluxo
+normal da empresa: próximo pedido emitido deve gerar exatamente 1
+`Lancamento` vinculado).
 
 - **Especificação completa**:
   [docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md](./ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md)

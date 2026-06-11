@@ -1,7 +1,9 @@
 # Especificação — Lançamento financeiro nasce na Emissão do Certificado
 
-> **Status**: documento de especificação. Nenhum código, migration, banco
-> de dados ou deploy foi alterado para produzir este documento.
+> **Status**: `IMPLEMENTADO E DEPLOYADO` (commit `a791e20`, 11/06/2026).
+> Aguardando **validação operacional** (confirmação durante o fluxo normal
+> da empresa de que o próximo pedido emitido gera exatamente 1
+> `Lancamento` vinculado).
 >
 > **Decisão oficial (11/06/2026, Vinicius)**: o evento financeiro correto
 > passa a ser **CERTIFICADO EMITIDO**, e não mais **PROTOCOLO GERADO**. O

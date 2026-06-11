@@ -601,7 +601,7 @@ sst_historico.leadId            → sst_leads.id         (CASCADE DELETE)
 
 **Finalidade:** Controle financeiro de contas a receber e a pagar. Inclui integração com Banco Inter para geração de cobranças.
 
-**Origem dos dados:** Criado automaticamente ao registrar uma nova venda; criado manualmente em `/financeiro/contas-a-receber/novo` e `/financeiro/contas-a-pagar/novo`.
+**Origem dos dados:** Criado automaticamente quando o pedido é marcado como `EMITIDO` (certificado emitido) — ver [ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md](./ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md); criado manualmente em `/financeiro/contas-a-receber/novo` e `/financeiro/contas-a-pagar/novo`.
 
 **Quem utiliza:** Módulo financeiro, conciliações Inter, relatórios.
 

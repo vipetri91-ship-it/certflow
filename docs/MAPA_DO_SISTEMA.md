@@ -200,7 +200,7 @@ Acesso separado via `/portal/login`. Login próprio (loginParceiro/senhaParceiro
 | Ciclo: GERADO → VERIFICADO → EMITIDO → CANCELADO | Concluído |
 | Popup de notificação "Certificado Emitido" para o AGR | Concluído |
 | Consulta Prévia RFB antes da emissão | Concluído |
-| Geração de lançamento financeiro automático ao vender | Concluído |
+| Geração de lançamento financeiro automático na emissão (EMITIDO) | Concluído |
 | Agendamento no Google Calendar ao registrar venda | Concluído |
 | Cancelamento de protocolo Safeweb | Concluído (via API) |
 | Boleto Inter integrado ao pedido | Parcial — API configurada, fluxo UI básico |
@@ -271,7 +271,7 @@ Acesso separado via `/portal/login`. Login próprio (loginParceiro/senhaParceiro
 | Baixa manual de lançamentos (marcar como pago) | Concluído |
 | Upload de comprovante de pagamento | Concluído |
 | Cadastro manual de lançamento (receber/pagar) | Concluído |
-| Lançamento automático ao registrar venda | Concluído |
+| Lançamento automático na emissão do certificado (EMITIDO) | Concluído |
 | Geração de cobrança Inter (boleto/PIX) | Concluído |
 | Webhook Inter — confirmação automática de pagamento | Concluído |
 | Conciliação bancária Inter (extrato vs lançamentos) | Concluído |
