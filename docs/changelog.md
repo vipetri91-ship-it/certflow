@@ -7,6 +7,23 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 11/06/2026
 
+### chore: remoção do endpoint temporário de diagnóstico de cancelamento
+- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
+  (removido), `docs/LIMPEZA_EXECUTADA.md`
+- **Motivo**: o endpoint cumpriu seu propósito — validar
+  `cancelarSolicitacao()` com o protocolo de teste `1010781571`. O
+  cancelamento foi aceito pela Safeweb (`cancelamento.ok: true`) e a
+  consulta posterior retornou "Protocolo não encontrado", confirmando que
+  o protocolo foi cancelado. Resultado registrado em
+  `docs/LIMPEZA_EXECUTADA.md` (seção "Validação do cancelamento —
+  protocolo 1010781571").
+- **Impacto**: nenhum — endpoint isolado, de uso único, removido por
+  completo. Nenhuma tela ou fluxo dependia dele.
+- **Risco**: nenhum.
+- **Testes**: `npm test` — 1 arquivo, 2 testes, todos passando. `npm run
+  build` (com `.next` limpo) — build de produção concluído com sucesso.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ### feat: endpoint temporário de diagnóstico — validação de cancelarSolicitacao
 - **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts` (novo,
   temporário)

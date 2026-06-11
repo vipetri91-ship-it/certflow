@@ -42,19 +42,50 @@ lançamentos — confirmando que a limpeza foi completa.
 
 ## ⚠️ Pendência: protocolos Safeweb
 
-4 protocolos gerados durante os testes de hoje **continuam existindo no
+4 protocolos gerados durante os testes de hoje **continuavam existindo no
 lado da Safeweb**, pois excluir o registro local não cancela nada lá:
 
-- `1010781571` (era do pedido PED-202606-15449)
-- `1010781647` (era do pedido PED-202606-28769)
-- `1010782402` (era do pedido PED-202606-69746)
-- `1010782465` (era do pedido PED-202606-68833)
+- `1010781571` (era do pedido PED-202606-15449) — ✅ **cancelado em
+  11/06/2026**, ver seção "Validação do cancelamento" abaixo.
+- `1010781647` (era do pedido PED-202606-28769) — pendente
+- `1010782402` (era do pedido PED-202606-69746) — pendente
+- `1010782465` (era do pedido PED-202606-68833) — pendente
 
-Esses protocolos seguem ativos na Safeweb mesmo após a exclusão local.
-**Próxima tarefa**: implementar o cancelamento via API na Safeweb (já existe
-a função `cancelarSolicitacao` em `src/lib/safeweb.ts`, falta conectá-la ao
-fluxo de "Cancelar pedido" do CertFlow) e usá-la para cancelar esses 4
-protocolos remanescentes.
+**Próxima tarefa**: repetir o mesmo procedimento de cancelamento (via
+`cancelarSolicitacao` em `src/lib/safeweb.ts`) para os 3 protocolos
+restantes, item a item, com aprovação prévia para cada um.
+
+## Validação do cancelamento — protocolo 1010781571 (11/06/2026)
+
+Teste controlado realizado via endpoint administrativo temporário
+`/api/admin/diagnostico-cancelamento-temp` (restrito a ADMIN autenticado,
+removido logo após esta validação — ver `docs/changelog.md`).
+
+**Requisição enviada** (sem segredos): `POST
+/Shared/Partner/api/CancelarSolicitacao` com `Protocolo: 1010781571`,
+`CnpjAR: <SAFEWEB_CNPJ_AR>`, `idJustificativa: 4`.
+
+**Resposta da Safeweb**:
+```json
+{"protocolo":"1010781571","cancelamento":{"ok":true},"consulta":{"ok":false,"erro":"Protocolo não encontrado"}}
+```
+
+- **Cancelamento**: aceito pela Safeweb (`ok: true`).
+- **Consulta posterior** (`GET /api/solicitacao/1010781571`): retornou
+  "Protocolo não encontrado" — coerente com um protocolo cancelado, que
+  deixa de existir para consulta normal.
+- **Status final**: protocolo `1010781571` cancelado e não mais
+  consultável na Safeweb.
+- **Reversibilidade**: não foi possível confirmar com certeza se a
+  operação é reversível do lado da Safeweb (não há documentação local
+  sobre isso, e o protocolo deixou de ser consultável, o que dificulta
+  qualquer verificação posterior). Para fins práticos, deve ser tratada
+  como **irreversível** — se a Safeweb mantiver algum registro interno
+  de protocolos cancelados, a reativação dependeria do suporte deles.
+- **Observação sobre `idJustificativa = 4`**: usado conforme o valor
+  padrão já hardcoded em `cancelarSolicitacao` (sem documentação
+  encontrada sobre o significado exato — ver análise em conversa de
+  11/06/2026). O cancelamento foi aceito mesmo assim.
 
 ## Infraestrutura temporária removida
 
