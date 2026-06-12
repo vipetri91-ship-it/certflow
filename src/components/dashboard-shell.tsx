@@ -6,6 +6,7 @@ import { Sidebar } from './sidebar'
 import { WelcomePopup } from './welcome-popup'
 import { AssistenteWidget } from './assistente-widget'
 import { NotificacaoAgenda } from './notificacao-agenda'
+import { MobileBottomNav } from './mobile-bottom-nav'
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [menuAberto, setMenuAberto] = useState(false)
@@ -24,11 +25,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Conteúdo principal */}
-      <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+      <main className="flex-1 overflow-y-auto flex flex-col min-w-0 pb-24 lg:pb-0">
         <MobileMenuProvider onAbrirMenu={() => setMenuAberto(true)}>
           {children}
         </MobileMenuProvider>
       </main>
+
+      {/* Navegação inferior — mobile/tablet */}
+      <MobileBottomNav />
 
       {/* Popup de boas-vindas — aparece uma vez por dia */}
       {session?.user?.name && (

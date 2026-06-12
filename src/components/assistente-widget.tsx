@@ -275,8 +275,8 @@ export function AssistenteWidget() {
     <>
       {aberto && (
         <div
-          className="fixed bottom-20 right-4 z-50 w-[360px] sm:w-[400px] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden"
-          style={{ height: '520px' }}
+          className="fixed bottom-40 lg:bottom-20 right-4 left-4 sm:left-auto z-50 sm:w-[400px] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden"
+          style={{ height: '520px', maxHeight: 'calc(100vh - 12rem)' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-blue-600 shrink-0">
@@ -430,7 +430,7 @@ export function AssistenteWidget() {
       <button
         onClick={() => (aberto ? fechar() : setAberto(true))}
         title={aberto ? 'Fechar assistente' : 'Abrir assistente ZOE'}
-        className={`fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${
+        className={`fixed bottom-24 lg:bottom-4 right-4 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${
           aberto
             ? 'bg-gray-700 hover:bg-gray-800'
             : 'bg-blue-600 hover:bg-blue-700 hover:scale-105'

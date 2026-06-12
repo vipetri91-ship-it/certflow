@@ -7,6 +7,32 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### feat: barra de navegação inferior flutuante no mobile/tablet
+- **Arquivos**: `src/components/mobile-bottom-nav.tsx` (novo),
+  `src/components/dashboard-shell.tsx`, `src/components/assistente-widget.tsx`.
+- **Motivo**: solicitação do Vinicius para adotar, no mobile/tablet, um
+  estilo de navegação inferior flutuante (pill, com blur) similar ao do
+  Instagram, em vez de depender apenas do drawer lateral.
+- **Alteração**: novo componente `MobileBottomNav`, visível apenas em
+  `lg:hidden` (mobile/tablet), fixo no rodapé com `safe-area-inset-bottom`,
+  com 5 acessos: Início (Dashboard), Agenda, Nova Venda (destaque central),
+  Clientes e Menu (abre o drawer lateral existente, com todos os demais
+  itens). `dashboard-shell.tsx` passou a renderizar essa barra e adicionou
+  `pb-24` ao conteúdo principal no mobile/tablet para o conteúdo não ficar
+  escondido atrás da barra. O botão e o painel do assistente ZOE
+  (`assistente-widget.tsx`) foram reposicionados no mobile (`bottom-24`/
+  `bottom-40`) para não sobrepor a nova barra; o painel também passou a
+  ocupar a largura da tela (com margens) em telas pequenas.
+- **Impacto**: apenas visual/layout no mobile/tablet (`lg:hidden`). Sidebar
+  desktop (`lg:flex`) e drawer lateral mobile (acessível pelo botão "Menu"
+  da nova barra) não foram alterados em sua lógica. Nenhuma alteração em
+  rotas, autenticação ou regras de negócio.
+- **Reversão**: mudança isolada em um commit único — revertível com
+  `git revert` deste commit sem efeitos colaterais em outras áreas.
+- **Testes**: `npx vitest run` — 37/37 passando (sem novos testes, mudança
+  é apenas de UI). `npx next build` — build limpo.
+- **Autor**: Vinicius (via Claude Code).
+
 ### análise: buscarCnpj em SST (ONDA 2 — item "não verificado") — risco residual aceitável, baixa prioridade
 - **Arquivo analisado**: `src/app/(dashboard)/sst/page.tsx` (`buscarCnpj()`,
   linhas 209-228).
