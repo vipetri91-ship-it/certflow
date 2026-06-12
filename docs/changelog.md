@@ -7,6 +7,29 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### docs: visão geral do PROJETO 001 — Centro de Inteligência e Automação V&G
+- **Arquivo**: `docs/PROJETO_001_CENTRO_INTELIGENCIA_VG.md` (novo).
+- **Motivo**: registrar a especificação completa enviada pelo Vinicius
+  para o "Centro de Inteligência V&G" — visão de longo prazo em 4 fases
+  (Observador, Copiloto, Autopilot de Renovação, Executor Operacional),
+  conforme Regra 1 (documentar antes de planejar/implementar).
+- **Relação com outros documentos**: definido junto com o Vinicius que
+  este documento é o guarda-chuva da visão, e que
+  `docs/AGENTE_IA_WHATSAPP.md` (categorização de conversas Digisac) é uma
+  peça da Fase 1 deste projeto — sua estrutura de categorização deve ser
+  reaproveitada, evitando tabelas/estruturas duplicadas.
+- **Mapeamento de infraestrutura reaproveitável** para a Fase 1
+  (Observador Operacional): integração Digisac (`src/lib/digisac.ts`,
+  webhook — hoje stateless, sem histórico de conversas), Google Agenda
+  (`src/lib/google/calendar.ts`, já funcional e retorna AGR/eventos),
+  dados Prisma já existentes (`Cliente`, `Certificado`, `Pedido`,
+  `Lancamento`, `HistoricoContato`) e padrão de migração
+  (`scripts/migrate.js`, `CREATE TABLE IF NOT EXISTS`).
+- **Impacto**: nenhum em código/produção. Apenas documentação. Próximo
+  passo: plano técnico de implementação da Fase 1 (com análise de
+  impacto — Regra 3) para aprovação, a ser retomado em sessão futura.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: reordenação da Dashboard — Controle de Vencimentos acima dos widgets
 - **Arquivo**: `src/app/(dashboard)/dashboard/page.tsx`.
 - **Motivo**: solicitação do Vinicius para dar mais destaque ao Controle
