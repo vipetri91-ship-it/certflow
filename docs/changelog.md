@@ -7,6 +7,29 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### análise: buscarCnpj em Editar Cliente (ONDA 2 — item #7) — sem ação necessária
+- **Arquivo analisado**: `src/app/(dashboard)/clientes/[id]/editar/page.tsx`
+  (`buscarCnpj()`, linhas 118-140).
+- **Motivo da análise**: item #7 do mapa de `docs/AUDITORIA_GERAL_DO_SISTEMA.md`
+  (seção 7) / `docs/ROADMAP_CORRECOES.md` (P1.1).
+- **Diferença em relação ao item #6**: em "Novo Cliente" o formulário nasce
+  vazio, então limpar os campos em caso de falha é seguro. Em "Editar
+  Cliente" o formulário é pré-carregado com os dados reais do cliente já
+  salvos no banco (`useEffect` de carregamento). Limpar ou restaurar um
+  snapshot em caso de falha do `buscarCnpj` arriscaria apagar dados do
+  cliente ou desfazer edições manuais feitas pelo usuário durante a edição.
+- **Decisão**: nenhuma alteração de código. Em caso de falha (CNPJ não
+  encontrado ou erro de rede), o código atual já não chama `setForm` —
+  apenas exibe `setErro(...)`, preservando tanto os dados do cliente quanto
+  qualquer edição manual em andamento. Esse comportamento já é o desejado.
+- **Risco residual aceito**: cenário composto em que uma busca de CNPJ B é
+  bem-sucedida (sobrescrevendo razão social/endereço com dados da Empresa
+  B) e uma busca seguinte falha — os dados da Empresa B permaneceriam na
+  tela e poderiam ser salvos no registro do cliente A. Considerado menos
+  grave que o risco de perda de dados/edições introduzido por limpeza ou
+  restauração automática nesta tela.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: vazamento de dados na busca de CNPJ (Novo Cliente, ONDA 2 — item #6)
 - **Arquivos**: `src/app/(dashboard)/clientes/novo/page.tsx`,
   `src/app/(dashboard)/clientes/novo/lib/merge-dados-cnpj.ts` (novo),
