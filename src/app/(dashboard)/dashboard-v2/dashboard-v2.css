@@ -1,0 +1,27 @@
+/* ════════════════════════════════════════════════════════════════════════
+   CertFlow Dashboard 2.0 — microinterações
+   Namespace "v2-" — sutil, sem neon, sem efeitos "futuristas".
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Entrada suave dos cards */
+@keyframes v2-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.v2-rise {
+  animation: v2-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Ponto "vivo" — respiração sutil para indicadores críticos/ao vivo */
+@keyframes v2-pulse-dot {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(1.3); }
+}
+.v2-pulse-dot {
+  animation: v2-pulse-dot 1.8s ease-in-out infinite;
+}
+
+/* Transição suave para valores numéricos que mudam */
+.v2-num {
+  transition: color 0.3s ease;
+}
