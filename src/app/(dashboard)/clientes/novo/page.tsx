@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/header'
 import { ArrowLeft, Save, Loader2, User, Building2, Handshake } from 'lucide-react'
 import Link from 'next/link'
+import { mergeDadosEmpresaPorCnpj, type CnpjEncontrado } from './lib/merge-dados-cnpj'
 
 type TipoPessoa = 'PF' | 'PJ'
 
@@ -91,23 +92,16 @@ export default function NovoClientePage() {
     try {
       const res  = await fetch(`/api/cnpj/${nums}`)
       const data = await res.json()
-      if (!res.ok) { setErro(data.erro ?? 'CNPJ não encontrado'); return }
+      if (!res.ok) {
+        setErro(data.erro ?? 'CNPJ não encontrado')
+        setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpj(f, null) }))
+        return
+      }
 
-      setForm(f => ({
-        ...f,
-        razaoSocial:  data.razaoSocial  ?? f.razaoSocial,
-        nomeFantasia: data.nomeFantasia ?? f.nomeFantasia,
-        email:        data.email        ?? f.email,
-        telefone:     data.telefone     ?? f.telefone,
-        cep:          data.cep         ? formatarCEP(data.cep)    : f.cep,
-        logradouro:   data.logradouro  ?? f.logradouro,
-        numero:       data.numero      ?? f.numero,
-        bairro:       data.bairro      ?? f.bairro,
-        cidade:       data.municipio   ?? f.cidade,
-        estado:       data.uf          ?? f.estado,
-      }))
+      setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpj(f, data as CnpjEncontrado) }))
     } catch {
       setErro('Erro ao consultar CNPJ. Verifique sua conexão.')
+      setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpj(f, null) }))
     } finally {
       setBuscandoCnpj(false)
     }

@@ -7,6 +7,32 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### fix: vazamento de dados na busca de CNPJ (Novo Cliente, ONDA 2 — item #6)
+- **Arquivos**: `src/app/(dashboard)/clientes/novo/page.tsx`,
+  `src/app/(dashboard)/clientes/novo/lib/merge-dados-cnpj.ts` (novo),
+  `src/app/(dashboard)/clientes/novo/lib/merge-dados-cnpj.test.ts` (novo).
+- **Motivo**: conforme `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (seção 7) e
+  `docs/ROADMAP_CORRECOES.md` (P1.1), `buscarCnpj()` mantinha os dados de
+  uma empresa pesquisada anteriormente (Razão Social, Nome Fantasia,
+  e-mail, telefone e endereço) quando a busca do novo CNPJ falhava (CNPJ
+  não encontrado na Receita ou erro de rede/API).
+- **Alteração**: novo módulo `lib/merge-dados-cnpj.ts` (com testes), com
+  `mergeDadosEmpresaPorCnpj` (mesmo padrão de `mergeDadosEmpresaPorCNPJ`):
+  replica exatamente a lógica atual quando o CNPJ é encontrado na Receita
+  (mesmos fallbacks `?? f.campo`), e zera os 10 campos de empresa
+  (`razaoSocial`, `nomeFantasia`, `email`, `telefone`, `cep`,
+  `logradouro`, `numero`, `bairro`, `cidade`, `estado`) quando não é
+  encontrado ou ocorre erro.
+- **Impacto**: nenhuma mudança de layout ou no caminho de sucesso da
+  busca. Único efeito visível: ao falhar a busca de um novo CNPJ, os 10
+  campos de empresa voltam a ficar vazios em vez de manter dados da
+  empresa pesquisada antes. Item #5 (`buscarCep` em `wizard.tsx`)
+  analisado e classificado como sem ação necessária — não há vazamento de
+  PII de terceiros, apenas endereço do próprio cliente em edição.
+- **Testes**: `npx vitest run` — 28/28 passando (5 novos casos em
+  `merge-dados-cnpj.test.ts`). `npx next build` — build limpo.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: vazamento de dados na validação e autopreenchimento de CNPJ (Nova Venda, ONDA 2 — itens #3 e #4)
 - **Arquivos**: `src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`,
   `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-pj.ts` (novo),
