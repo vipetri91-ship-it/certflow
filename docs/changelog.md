@@ -7,6 +7,32 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### fix: retenção indevida de documento e e-mail em revalidações sucessivas (Emissão Online, ONDA 2 — item #10)
+- **Arquivos**: `src/app/(dashboard)/pedidos/nova-venda/emissao-online.tsx`,
+  `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-emissao-online.ts` (novo),
+  `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-emissao-online.test.ts` (novo).
+- **Motivo**: conforme `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (seção 7) e
+  `docs/ROADMAP_CORRECOES.md` (P1.1), `validar()` atualizava `documento` e
+  `email` apenas com `if (...)` sem `else`. Ao validar um certificado, voltar
+  ("Anterior") e validar outro certificado de um cliente diferente cuja
+  resposta da Receita/Safeweb não retornasse `email` e/ou CPF/CNPJ, os
+  valores do cliente validado anteriormente permaneciam na tela — e podiam
+  ser enviados em `gerarProtocolo()` no pedido do novo cliente.
+- **Alteração**: novo módulo `lib/merge-dados-emissao-online.ts` (com
+  testes), com `mergeDadosEmissaoOnline(ext)`: substitui sempre
+  `nome`/`documento`/`email` pelo resultado da validação atual — se
+  `ext.email`/`ext.cpf`/`ext.cnpj` vierem vazios, os campos correspondentes
+  voltam para `''` em vez de manter o valor da validação anterior.
+- **Impacto**: nenhuma mudança de layout, na integração Safeweb
+  (`/api/safeweb/validar-cert-online`) ou em `gerarProtocolo()`/
+  `/api/pedidos/nova-venda`. Nenhuma alteração nos retornos antecipados por
+  série/produto não informados ou validação com erro (pontos que não levam
+  à etapa "Dados da Renovação"). Validações bem-sucedidas com dados
+  completos mantêm exatamente o comportamento atual.
+- **Testes**: `npx vitest run` — 33/33 passando (5 novos casos em
+  `merge-dados-emissao-online.test.ts`). `npx next build` — build limpo.
+- **Autor**: Vinicius (via Claude Code).
+
 ### análise: buscarCnpj em Editar Cliente (ONDA 2 — item #7) — sem ação necessária
 - **Arquivo analisado**: `src/app/(dashboard)/clientes/[id]/editar/page.tsx`
   (`buscarCnpj()`, linhas 118-140).

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Loader2, Search, CheckCircle2, ChevronLeft, Globe, CreditCard, AlertTriangle, Info,
 } from 'lucide-react'
+import { mergeDadosEmissaoOnline } from './lib/merge-dados-emissao-online'
 
 interface Modelo {
   id: string; nome: string; tipoPessoa: string; tipoCertificado: string
@@ -104,13 +105,10 @@ export function EmissaoOnlineFluxo({ modelos, parceiros, defaultAgr }: Props) {
       setModeloNome(modelo?.nome ?? '')
       setModeloPreco(modelo?.preco ?? 0)
       setValorVenda(modelo?.preco ?? 0)
-      setNome(ext.nome)
-      const docRaw = ext.cnpj || ext.cpf
-      if (docRaw) {
-        const digits = docRaw.replace(/\D/g,'')
-        setDocumento(digits.length === 14 ? fmtCNPJ(digits) : fmtCPF(digits))
-      }
-      if (ext.email) setEmail(ext.email)
+      const dadosCliente = mergeDadosEmissaoOnline(ext)
+      setNome(dadosCliente.nome)
+      setDocumento(dadosCliente.documento)
+      setEmail(dadosCliente.email)
       setEtapa('dados')
     } catch {
       setErroValidacao('Erro de conexão')
