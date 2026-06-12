@@ -82,3 +82,98 @@ export function mergeDadosResponsavelPF(
     estado:          clienteDb?.estado ?? '',
   }
 }
+
+export interface ClienteEncontradoPorCPF {
+  id: string
+  tipoPessoa?: string | null
+  cpf?: string | null
+  nome?: string | null
+  dataNascimento?: string | null
+  email?: string | null
+  celular?: string | null
+  ddd?: string | null
+  pisNis?: string | null
+  cep?: string | null
+  logradouro?: string | null
+  numero?: string | null
+  bairro?: string | null
+  cidade?: string | null
+  estado?: string | null
+}
+
+export interface DadosClientePorCPF {
+  clienteId: string
+  validado: boolean
+  nomeResponsavel: string
+  nome: string
+  dataNascimento: string
+  dataNasc: string
+  email: string
+  ddd: string
+  telefone: string
+  pisNis: string
+  cep: string
+  logradouro: string
+  numero: string
+  bairro: string
+  municipio: string
+  estado: string
+}
+
+/**
+ * Monta o novo estado do responsável/titular após a busca de CPF no step
+ * "Identificação" (buscarClientePorCPF, wizard de Nova Venda).
+ *
+ * Regra obrigatória (isolamento-de-formularios.md):
+ *  - Se o CPF buscado não corresponder a nenhum cliente, todos os campos de
+ *    contato/endereço voltam para vazio — nunca herdam o valor anterior (`d`).
+ *  - `clienteId`/`validado` só são alterados quando `d.tipoPessoa === 'PF'`
+ *    (para PJ, esses campos pertencem à empresa, não ao responsável).
+ */
+export function mergeDadosClientePorCPF(
+  d: Pick<DadosClientePorCPF, 'clienteId' | 'validado'> & { tipoPessoa: 'PF' | 'PJ' },
+  cliente: ClienteEncontradoPorCPF | null | undefined,
+  cpfBuscado: string,
+): DadosClientePorCPF {
+  const c = cliente?.cpf?.replace(/\D/g, '') === cpfBuscado ? cliente : null
+
+  if (!c) {
+    return {
+      clienteId:       d.tipoPessoa === 'PF' ? '' : d.clienteId,
+      validado:        d.tipoPessoa === 'PF' ? false : d.validado,
+      nomeResponsavel: '',
+      nome:            '',
+      dataNascimento:  '',
+      dataNasc:        '',
+      email:           '',
+      ddd:             '',
+      telefone:        '',
+      pisNis:          '',
+      cep:             '',
+      logradouro:      '',
+      numero:          '',
+      bairro:          '',
+      municipio:       '',
+      estado:          '',
+    }
+  }
+
+  const dataNasc = c.dataNascimento ? c.dataNascimento.split('T')[0] : ''
+  return {
+    clienteId:       d.tipoPessoa === 'PF' ? c.id : d.clienteId,
+    validado:        d.tipoPessoa === 'PF' ? true : d.validado,
+    nomeResponsavel: c.nome ?? '',
+    nome:            c.nome ?? '',
+    dataNascimento:  dataNasc,
+    dataNasc:        dataNasc,
+    email:           c.email ?? '',
+    ...telefoneFromCelular(c.celular, c.ddd, { ddd: '', telefone: '' }),
+    pisNis:          c.pisNis ?? '',
+    cep:             c.cep ? fmtCEP(c.cep) : '',
+    logradouro:      c.logradouro ?? '',
+    numero:          c.numero ?? '',
+    bairro:          c.bairro ?? '',
+    municipio:       c.cidade ?? '',
+    estado:          c.estado ?? '',
+  }
+}

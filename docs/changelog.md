@@ -5,6 +5,31 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 12/06/2026
+
+### fix: vazamento de dados e race condition na busca de CPF (Nova Venda, ONDA 2 — itens #1 e #2)
+- **Arquivos**: `src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`,
+  `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-pf.ts`,
+  `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-pf.test.ts`.
+- **Motivo**: conforme `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (seção 7) e
+  `docs/ROADMAP_CORRECOES.md` (P1.1/P1.2), `buscarClientePorCPF()` mantinha
+  os dados de um cliente pesquisado anteriormente quando o CPF buscado não
+  era encontrado/dava erro (`?? d.campo`), e não tinha proteção contra
+  respostas fora de ordem (race condition) entre buscas consecutivas.
+- **Alteração**: nova função pura `mergeDadosClientePorCPF` (com testes)
+  que limpa os 16 campos do responsável/titular (e o histórico de pedidos)
+  quando o CPF não corresponde a nenhum cliente ou a busca falha — mesmo
+  princípio já validado em `mergeDadosResponsavelPF`. Adicionado
+  `AbortController` (cancela buscas obsoletas) e debounce de 300ms no
+  `onBlur` do campo CPF.
+- **Impacto**: nenhuma mudança de layout, regra de negócio Safeweb ou de
+  CNPJ. Único efeito visível: ao buscar um CPF que não existe (ou em caso
+  de erro), os campos do responsável/endereço voltam a ficar vazios em vez
+  de manter dados do cliente pesquisado antes.
+- **Testes**: `npx vitest run` — 20/20 passando (7 novos casos para
+  `mergeDadosClientePorCPF`). `npx next build` — build limpo.
+- **Autor**: Vinicius (via Claude Code).
+
 ## 11/06/2026
 
 ### 1b1d268 — feat: cancelamento integrado de pedidos com Safeweb (Frente B)

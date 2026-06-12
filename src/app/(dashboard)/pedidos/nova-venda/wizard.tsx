@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle2, Loader2, ChevronRight, ChevronLeft, User, Building2,
   AlertTriangle, Search, Award, CreditCard, Calendar, History, Paperclip, Globe,
 } from 'lucide-react'
-import { mergeDadosResponsavelPF } from './lib/merge-dados-pf'
+import { mergeDadosResponsavelPF, mergeDadosClientePorCPF } from './lib/merge-dados-pf'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -200,6 +200,15 @@ export function NovaVendaWizard({
   const [salvandoProt,    setSalvandoProt]    = useState(false)
   const telefoneRef    = useRef<HTMLInputElement>(null)
   const telEmpresaRef  = useRef<HTMLInputElement>(null)
+  const cpfAbortRef     = useRef<AbortController | null>(null)
+  const cpfDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (cpfDebounceRef.current) clearTimeout(cpfDebounceRef.current)
+      cpfAbortRef.current?.abort()
+    }
+  }, [])
 
   function set<K extends keyof WizardDados>(k: K, v: WizardDados[K]) {
     setDados(d => ({ ...d, [k]: v }))
@@ -368,39 +377,42 @@ export function NovaVendaWizard({
     } catch {}
   }
 
+  // Dispara a busca de CPF com debounce (300ms) — evita disparos duplicados
+  // quando o blur ocorre mais de uma vez em sequência rápida.
+  function buscarClientePorCPFDebounced() {
+    if (cpfDebounceRef.current) clearTimeout(cpfDebounceRef.current)
+    cpfDebounceRef.current = setTimeout(() => { buscarClientePorCPF() }, 300)
+  }
+
   async function buscarClientePorCPF() {
     const cpf = dados.cpfResponsavel.replace(/\D/g,'')
     if (cpf.length !== 11) return
+
+    // Cancela qualquer busca de CPF anterior ainda em andamento, evitando
+    // que uma resposta obsoleta sobrescreva os dados do CPF atual.
+    cpfAbortRef.current?.abort()
+    const controller = new AbortController()
+    cpfAbortRef.current = controller
+
     try {
-      const res = await fetch(`/api/clientes?q=${cpf}&limit=1`)
+      const res = await fetch(`/api/clientes?q=${cpf}&limit=1`, { signal: controller.signal })
       const data = await res.json()
+      if (controller.signal.aborted) return
+
       const c = data.clientes?.[0]
-      if (c?.cpf === cpf) {
-        setDados(d => ({
-          ...d,
-          // Para PF: preenche clienteId e todos os dados
-          ...(d.tipoPessoa === 'PF' ? { clienteId: c.id, validado: true } : {}),
-          // Para ambos: preenche nome responsável e data de nascimento
-          nomeResponsavel: c.nome ?? d.nomeResponsavel,
-          nome:            c.nome ?? d.nome,
-          dataNascimento:  c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNascimento,
-          dataNasc:        c.dataNascimento ? c.dataNascimento.split('T')[0] : d.dataNasc,
-          email:     c.email    ?? d.email,
-          ...telefoneFromCelular(c.celular, c.ddd, { ddd: d.ddd, telefone: d.telefone }),
-          pisNis:    c.pisNis   ?? d.pisNis,
-          cep:       c.cep      ? fmtCEP(c.cep) : d.cep,
-          logradouro: c.logradouro ?? d.logradouro,
-          numero:    c.numero   ?? d.numero,
-          bairro:    c.bairro   ?? d.bairro,
-          municipio: c.cidade   ?? d.municipio,
-          estado:    c.estado   ?? d.estado,
-        }))
-        if (c.tipoPessoa === 'PF') {
-          fetch(`/api/pedidos?clienteId=${c.id}&limit=5`)
-            .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
-        }
+      setDados(d => ({ ...d, ...mergeDadosClientePorCPF(d, c, cpf) }))
+
+      if (c?.cpf?.replace(/\D/g,'') === cpf && c.tipoPessoa === 'PF') {
+        fetch(`/api/pedidos?clienteId=${c.id}&limit=5`)
+          .then(r => r.json()).then(d => setHistorico(d.pedidos ?? [])).catch(() => {})
+      } else {
+        setHistorico([])
       }
-    } catch {}
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
+      setDados(d => ({ ...d, ...mergeDadosClientePorCPF(d, null, cpf) }))
+      setHistorico([])
+    }
   }
 
   async function validarPF() {
@@ -701,7 +713,7 @@ export function NovaVendaWizard({
               <Campo label={dados.tipoPessoa === 'PJ' ? 'CPF do Responsável' : 'CPF'} required>
                 <Input value={dados.cpfResponsavel}
                   onChange={e => { set('cpfResponsavel', fmtCPF(e.target.value)); set('validado', false) }}
-                  onBlur={() => buscarClientePorCPF()}
+                  onBlur={() => buscarClientePorCPFDebounced()}
                   placeholder="000.000.000-00" maxLength={14} />
               </Campo>
               <Campo label="Data de Nascimento" required>
