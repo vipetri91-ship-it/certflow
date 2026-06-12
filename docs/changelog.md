@@ -7,6 +7,76 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### análise: buscarCnpj em SST (ONDA 2 — item "não verificado") — risco residual aceitável, baixa prioridade
+- **Arquivo analisado**: `src/app/(dashboard)/sst/page.tsx` (`buscarCnpj()`,
+  linhas 209-228).
+- **Motivo da análise**: item "não verificado" do mapa de
+  `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (seção 7) / `docs/ROADMAP_CORRECOES.md`
+  (P1.1).
+- **Observação**: o mesmo modal/formulário atende dois modos — "novo lead"
+  (`abrirNovo`, formulário vazio) e "editar lead" (`abrirEditar`, pré-carregado
+  com dados reais). Em caso de falha do `buscarCnpj`, nenhum dos dois modos
+  limpa os campos `empresa`/`nome` preenchidos por uma busca anterior.
+- **Decisão**: nenhuma alteração de código nesta etapa. Uma correção análoga
+  ao item #9 exigiria diferenciar os dois modos do mesmo formulário, o que
+  aumenta a complexidade de forma desproporcional ao risco: trata-se de leads
+  comerciais internos do módulo SST, sem impacto em certificados, integração
+  Safeweb ou dados financeiros. Classificado como risco residual aceitável,
+  de baixa prioridade, a ser tratado em uma ONDA futura caso o módulo SST
+  ganhe relevância operacional maior.
+- **Autor**: Vinicius (via Claude Code).
+
+### análise: buscarCnpj em Editar Parceiro (ONDA 2 — item "não verificado") — não aplicável
+- **Arquivo analisado**: `src/app/(dashboard)/parceiros/[id]/editar/page.tsx`.
+- **Motivo da análise**: item "não verificado" do mapa de
+  `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (seção 7) / `docs/ROADMAP_CORRECOES.md`
+  (P1.1).
+- **Decisão**: encerrado como não aplicável. A página não possui nenhuma
+  função `buscarCnpj()` nem consulta a `/api/cnpj/...` — o único uso
+  relacionado a CNPJ é `formatarCNPJ`, utilizado apenas para exibir o CNPJ de
+  clientes vinculados em uma tabela somente leitura. O padrão de vazamento de
+  dados entre consultas não se aplica a esta tela.
+- **Autor**: Vinicius (via Claude Code).
+
+### análise: buscarCep em Editar Cliente (ONDA 2 — item #8) — sem ação necessária
+- **Arquivo analisado**: `src/app/(dashboard)/clientes/[id]/editar/page.tsx`
+  (`buscarCep()`, linhas 142-160).
+- **Motivo da análise**: item #8 do mapa de `docs/AUDITORIA_GERAL_DO_SISTEMA.md`
+  (seção 7) / `docs/ROADMAP_CORRECOES.md` (P1.1).
+- **Diferença em relação ao item #6**: assim como no item #7, "Editar
+  Cliente" é uma tela pré-carregada com os dados reais do cliente já salvos
+  no banco. Limpar ou restaurar um snapshot dos campos de endereço em caso de
+  falha do `buscarCep` arriscaria apagar dados do cliente ou desfazer edições
+  manuais feitas pelo usuário durante a edição.
+- **Decisão**: nenhuma alteração de código. Em caso de CEP não encontrado
+  (`data.erro`) ou erro de rede, o código atual já não chama `setForm` —
+  os campos de endereço permanecem como estavam, preservando os dados do
+  cliente e qualquer edição manual em andamento. Esse comportamento já é o
+  desejado, na mesma linha da decisão do item #7.
+- **Autor**: Vinicius (via Claude Code).
+
+### fix: vazamento de dados na busca de CNPJ (Novo Parceiro, ONDA 2 — item #9)
+- **Arquivos**: `src/app/(dashboard)/parceiros/novo/page.tsx`,
+  `src/app/(dashboard)/parceiros/novo/lib/merge-dados-cnpj.ts` (novo),
+  `src/app/(dashboard)/parceiros/novo/lib/merge-dados-cnpj.test.ts` (novo).
+- **Motivo**: conforme `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (seção 7) e
+  `docs/ROADMAP_CORRECOES.md` (P1.1), `buscarCnpj()` em "Novo Parceiro" tinha
+  o mesmo padrão do item #6: em caso de CNPJ não encontrado ou erro de
+  consulta, os campos `razaoSocial`, `email` e `telefone` preenchidos por uma
+  busca anterior permaneciam na tela e podiam ser salvos vinculados a um CNPJ
+  diferente do pesquisado por último.
+- **Alteração**: novo módulo `lib/merge-dados-cnpj.ts` (com testes), com
+  `mergeDadosParceiroPorCnpj(f, data)`: no sucesso, mantém exatamente a lógica
+  anterior (`data.campo ?? f.campo`); em caso de `data === null` (CNPJ não
+  encontrado ou erro de rede), os 3 campos voltam para `''` em vez de manter
+  o valor pesquisado anteriormente.
+- **Impacto**: nenhuma alteração no caminho de sucesso da consulta de CNPJ.
+  Demais campos do formulário (nome, tipo, dados bancários, observações etc.)
+  não são afetados.
+- **Testes**: `npx vitest run` — 37/37 passando (4 novos casos em
+  `merge-dados-cnpj.test.ts`). `npx next build` — build limpo.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: retenção indevida de documento e e-mail em revalidações sucessivas (Emissão Online, ONDA 2 — item #10)
 - **Arquivos**: `src/app/(dashboard)/pedidos/nova-venda/emissao-online.tsx`,
   `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-emissao-online.ts` (novo),
