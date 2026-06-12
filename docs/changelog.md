@@ -7,6 +7,22 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### feat: reordenação da Dashboard — Controle de Vencimentos acima dos widgets
+- **Arquivo**: `src/app/(dashboard)/dashboard/page.tsx`.
+- **Motivo**: solicitação do Vinicius para dar mais destaque ao Controle
+  de Vencimentos de certificados, posicionando-o antes da grade de
+  widgets (Vendas, Financeiro, Agenda, Meta, RFB, Calculadora).
+- **Alteração**: bloco `<VencimentosWidget />` (full width) movido para
+  antes do `<div>` da grade 3×2 de widgets, na coluna principal da
+  Dashboard. Nenhuma alteração nos dados (`getDashboardData`,
+  `getVencimentosData`), nos componentes dos widgets ou na lógica
+  condicional por perfil — apenas a ordem de exibição.
+- **Reversão**: mudança isolada em um commit único — revertível com
+  `git revert` deste commit sem efeitos colaterais em outras áreas.
+- **Testes**: `npx vitest run` — 37/37 passando. `npx next build` — build
+  limpo.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: barra de navegação inferior flutuante no mobile/tablet
 - **Arquivos**: `src/components/mobile-bottom-nav.tsx` (novo),
   `src/components/dashboard-shell.tsx`, `src/components/assistente-widget.tsx`.

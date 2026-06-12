@@ -221,6 +221,15 @@ export default async function DashboardPage({ searchParams }: Props) {
               />
             </div>
 
+            {/* ── Controle de Vencimentos (full width) ───────────── */}
+            <VencimentosWidget
+              vencidos={vencimentos.vencidos}
+              em7={vencimentos.em7}
+              em15={vencimentos.em15}
+              em30={vencimentos.em30}
+              proximosMeses={vencimentos.proximosMeses}
+            />
+
             {/* ── 6 widgets iguais 3×2 ──────────────────────────── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
               style={{ gridAutoRows: '288px' }}>
@@ -283,15 +292,6 @@ export default async function DashboardPage({ searchParams }: Props) {
               {/* 6 — Calculadora de deslocamento */}
               <WidgetCalculadora />
             </div>
-
-            {/* ── Controle de Vencimentos (full width) ───────────── */}
-            <VencimentosWidget
-              vencidos={vencimentos.vencidos}
-              em7={vencimentos.em7}
-              em15={vencimentos.em15}
-              em30={vencimentos.em30}
-              proximosMeses={vencimentos.proximosMeses}
-            />
           </div>
 
           {/* ── AGR lateral desktop ───────────────────────────────── */}
