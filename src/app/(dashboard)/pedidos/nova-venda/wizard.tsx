@@ -7,6 +7,7 @@ import {
   AlertTriangle, Search, Award, CreditCard, Calendar, History, Paperclip, Globe,
 } from 'lucide-react'
 import { mergeDadosResponsavelPF, mergeDadosClientePorCPF } from './lib/merge-dados-pf'
+import { mergeDadosEmpresaPorCNPJ, limparDadosValidacaoPJ, type ClienteEncontradoPJ } from './lib/merge-dados-pj'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -259,7 +260,12 @@ export function NovaVendaWizard({
     try {
       const res = await fetch(`/api/cnpj/${cnpj}`)
       const data = await res.json()
-      if (!res.ok) { setErroValidacao(data.erro ?? 'CNPJ não encontrado'); return }
+      if (!res.ok) {
+        setErroValidacao(data.erro ?? 'CNPJ não encontrado')
+        setDados(d => ({ ...d, ...limparDadosValidacaoPJ() }))
+        setHistorico([])
+        return
+      }
 
       const cpfNums = dados.cpfResponsavel.replace(/\D/g,'')
       let nomeRfb: string | undefined
@@ -269,6 +275,8 @@ export function NovaVendaWizard({
         const match = socios.find(s => s.cpfMascarado?.includes(cpfUltimos))
         if (!match) {
           setErroValidacao('Código: 27 - O CPF do responsável não corresponde ao responsável na RFB.')
+          setDados(d => ({ ...d, ...limparDadosValidacaoPJ() }))
+          setHistorico([])
           return
         }
         nomeRfb = match.nome
@@ -279,6 +287,8 @@ export function NovaVendaWizard({
         const previa = await consultarPrevia(cnpj, '2', dados.dataNascimento, cpfNums)
         if (previa && !previa.liberado) {
           setErroValidacao(`Código ${previa.codigo} - ${previa.mensagem}`)
+          setDados(d => ({ ...d, ...limparDadosValidacaoPJ() }))
+          setHistorico([])
           return
         }
       }
@@ -314,7 +324,11 @@ export function NovaVendaWizard({
           .then(d => setHistorico(d.pedidos ?? []))
           .catch(() => {})
       }
-    } catch { setErroValidacao('Erro de conexão') }
+    } catch {
+      setErroValidacao('Erro de conexão')
+      setDados(d => ({ ...d, ...limparDadosValidacaoPJ() }))
+      setHistorico([])
+    }
     finally { setLoading(false) }
   }
 
@@ -330,7 +344,10 @@ export function NovaVendaWizard({
       // Junta os resultados e procura o que tem CNPJ igual (normalizado)
       const todos: Record<string, unknown>[] = [...(d1.clientes ?? []), ...(d2.clientes ?? [])]
       const c = todos.find((x: Record<string, unknown>) => (x.cnpj as string)?.replace(/\D/g,'') === cnpj)
-      if (!c) return
+      if (!c) {
+        setDados(d => ({ ...d, ...mergeDadosEmpresaPorCNPJ(d, null, { cpfFormatado: null, dataNascimentoIso: null }) }))
+        return
+      }
 
       // Para PJ: cpf fica no registro do responsável (PF separado), não no registro da empresa
       let cpfFill = (c.cpf as string | null) ?? null
@@ -347,34 +364,15 @@ export function NovaVendaWizard({
         if (pf?.cpf) { cpfFill = pf.cpf; nascFill = pf.dataNascimento ?? nascFill }
       }
 
-      setDados(d => {
-        const telResp = telefoneFromCelular(c.celular as string, c.ddd as string, { ddd: d.ddd, telefone: d.telefone })
-        const telEmp  = telefoneFromCelular(c.celular as string, c.ddd as string, { ddd: d.dddEmpresa, telefone: d.telEmpresa })
-        return {
+      const cpfFormatado = cpfFill ? cpfFill.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : null
+
+      setDados(d => ({
         ...d,
-        clienteId:        c.id as string,
-        nomeEmpresa:      (c.nome as string) ?? d.nomeEmpresa,
-        razaoSocial:      (c.nome as string) ?? d.razaoSocial,
-        fantasia:         (c.nomeFantasia as string) ?? d.fantasia,
-        nomeResponsavel:  (c.responsavel as string) ?? d.nomeResponsavel,
-        nome:             (c.responsavel as string) ?? d.nome,
-        cpfResponsavel:   cpfFill ? cpfFill.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : d.cpfResponsavel,
-        dataNascimento:   nascFill ? nascFill.split('T')[0] : d.dataNascimento,
-        email:            (c.email as string) ?? d.email,
-        ddd:              telResp.ddd,
-        telefone:         telResp.telefone,
-        emailEmpresa:     (c.email as string) ?? d.emailEmpresa,
-        dddEmpresa:       telEmp.ddd,
-        telEmpresa:       telEmp.telefone,
-        cepEmpresa:       (c.cep as string) ? fmtCEP(c.cep as string) : d.cepEmpresa,
-        logradouroEmpresa: (c.logradouro as string) ?? d.logradouroEmpresa,
-        numeroEmpresa:    (c.numero as string) ?? d.numeroEmpresa,
-        bairroEmpresa:    (c.bairro as string) ?? d.bairroEmpresa,
-        municipioEmpresa: (c.cidade as string) ?? d.municipioEmpresa,
-        estadoEmpresa:    (c.estado as string) ?? d.estadoEmpresa,
-        }
-      })
-    } catch {}
+        ...mergeDadosEmpresaPorCNPJ(d, c as unknown as ClienteEncontradoPJ, { cpfFormatado, dataNascimentoIso: nascFill }),
+      }))
+    } catch {
+      setDados(d => ({ ...d, ...mergeDadosEmpresaPorCNPJ(d, null, { cpfFormatado: null, dataNascimentoIso: null }) }))
+    }
   }
 
   // Dispara a busca de CPF com debounce (300ms) — evita disparos duplicados

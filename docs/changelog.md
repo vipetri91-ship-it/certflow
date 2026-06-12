@@ -7,6 +7,34 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 12/06/2026
 
+### fix: vazamento de dados na validação e autopreenchimento de CNPJ (Nova Venda, ONDA 2 — itens #3 e #4)
+- **Arquivos**: `src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`,
+  `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-pj.ts` (novo),
+  `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-pj.test.ts` (novo).
+- **Motivo**: conforme `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (seção 7) e
+  `docs/ROADMAP_CORRECOES.md` (P1.1), `validarCNPJ()` e
+  `autoPreencherPorCNPJ()` mantinham os dados de uma empresa pesquisada
+  anteriormente quando a validação/busca do novo CNPJ falhava (CNPJ não
+  encontrado, erro da Receita, sócio não corresponde ao CPF informado,
+  Safeweb não libera emissão, CNPJ não encontrado na base local ou erro de
+  rede).
+- **Alteração**: novo módulo `lib/merge-dados-pj.ts` (com testes), com
+  `limparDadosValidacaoPJ()` (zera os 18 campos de
+  empresa/responsável + `validado` em todo retorno antecipado de erro de
+  `validarCNPJ`, junto com `setHistorico([])`) e `mergeDadosEmpresaPorCNPJ`
+  (mesmo padrão de `mergeDadosClientePorCPF`: replica exatamente a lógica
+  atual quando o CNPJ é encontrado na base local, e zera os 20 campos de
+  empresa/responsável quando não é encontrado ou ocorre erro).
+- **Impacto**: nenhuma mudança de layout, regra de negócio Safeweb/Receita
+  ou no caminho de sucesso de ambas as funções. Único efeito visível: ao
+  falhar a validação/busca de um novo CNPJ, os campos de
+  empresa/responsável (incluindo Razão Social, Nome Fantasia, endereço,
+  responsável, CPF do responsável, data de nascimento, e-mail e telefone)
+  voltam a ficar vazios em vez de manter dados da empresa pesquisada antes.
+- **Testes**: `npx vitest run` — 24/24 passando (8 novos casos em
+  `merge-dados-pj.test.ts`). `npx next build` — build limpo.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: vazamento de dados e race condition na busca de CPF (Nova Venda, ONDA 2 — itens #1 e #2)
 - **Arquivos**: `src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`,
   `src/app/(dashboard)/pedidos/nova-venda/lib/merge-dados-pf.ts`,
