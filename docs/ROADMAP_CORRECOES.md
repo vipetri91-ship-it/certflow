@@ -72,16 +72,47 @@
 
 ---
 
+## ONDA 2 — CONCLUÍDA
+
+**Data de conclusão**: 12/06/2026
+
+Replicação do padrão de isolamento de formulário (`mergeDados*`, mesmo
+princípio do commit `c3e9803` que corrigiu `mergeDadosResponsavelPF`) para
+os 12 pontos mapeados na seção 7 da auditoria (P1.1), item a item, com
+análise de impacto e aprovação prévia em cada um (Regra 2 e 3).
+
+**Commits realizados**:
+
+| Commit | Item(s) | Descrição |
+|---|---|---|
+| `bfa1aab` | #1/#2 | `wizard.tsx` — `mergeDadosResponsavelPF`/`buscarClientePorCPF` |
+| `b832b0b` | #3/#4 | `wizard.tsx` — `validarCNPJ`/`autoPreencherPorCNPJ` |
+| `4736fc7` | #6 | `clientes/novo` — `buscarCnpj` (`mergeDadosEmpresaPorCnpj`) |
+| `dfa2696` | #7 | Documentação: `clientes/[id]/editar` `buscarCnpj` — sem ação necessária |
+| `6f48fcb` | #10 | `pedidos/nova-venda/emissao-online.tsx` — `validar()` (`mergeDadosEmissaoOnline`) |
+| `8e7fdba` | #9, #8, parceiros/editar, sst | `parceiros/novo` — `buscarCnpj` (`mergeDadosParceiroPorCnpj`) + documentação dos itens #8/parceiros-editar/sst |
+
+**Resultado final**: 5 itens corrigidos com função pura + testes
+automatizados (`mergeDados*`), 1 item já estava protegido (`clientes/novo`
+`buscarCep`), 4 itens reclassificados como "sem ação necessária" (#5, #7,
+#8 e a verificação de `parceiros/[id]/editar`, que resultou em "não
+aplicável"), e 1 item (`sst/page.tsx`) registrado como risco residual
+aceito de baixa prioridade. Detalhamento completo em `docs/changelog.md`
+(entradas de 12/06/2026) e seção 7 de `docs/AUDITORIA_GERAL_DO_SISTEMA.md`.
+
+**Evidências de validação**: `npx vitest run` (37/37 passando, incluindo os
+novos testes de cada `mergeDados*`) e `npx next build` (build limpo) em
+cada commit; todos os deploys de produção confirmados `● Ready` na Vercel.
+
+---
+
 ## PRÓXIMA ETAPA
 
-**ONDA 2 — Correção dos vazamentos de dados entre formulários**
-
-Próximo trabalho a ser iniciado: replicar o padrão de isolamento de
-formulário (`mergeDados*`, mesmo princípio do commit `c3e9803` que
-corrigiu `mergeDadosResponsavelPF`) para os demais pontos mapeados na
-seção 7 da auditoria — detalhes em **P1.1** abaixo. Nenhuma
-implementação foi iniciada; aguardando análise de impacto item a item e
-aprovação prévia (Regra 2 e 3), conforme o ciclo já validado na ONDA 1.
+Nenhuma nova onda iniciada. Próximos candidatos (não iniciados): ONDA 3
+(P0.1 — endpoints de teste restantes; P1.3 — revisão LGPD do
+diagnóstico/audit_logs) e P1.2 (debounce na busca de CPF do wizard,
+remanescente de P1.1/ONDA 2). Aguardando decisão do Vinicius sobre qual
+onda iniciar a seguir.
 
 ---
 
@@ -166,11 +197,11 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 
 ## P1 — Alto
 
-> **Nota**: P1.1 e P1.2 foram antecipados para a **ONDA 2** (próxima
-> etapa, ver seção "PRÓXIMA ETAPA" acima). P1.3 permanece na ONDA 3,
-> junto com P0.1.
+> **Nota**: P1.1 foi concluído na **ONDA 2** (12/06/2026, ver seção acima).
+> P1.2 permanece pendente (remanescente da ONDA 2). P1.3 permanece na
+> ONDA 3, junto com P0.1.
 
-### P1.1 — Replicar isolamento de formulário (`mergeDados*`) nos demais pontos de vazamento
+### P1.1 — Replicar isolamento de formulário (`mergeDados*`) nos demais pontos de vazamento ✅ CONCLUÍDO
 - **Descrição**: a correção da ONDA 0 (`mergeDadosResponsavelPF`,
   commit `c3e9803`) resolveu 1 de pelo menos 10 pontos do
   `wizard.tsx` e telas de cadastro onde uma consulta (CPF/CNPJ/CEP) sem
@@ -184,15 +215,9 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 - **Risco**: médio-alto — vazamento de dados entre clientes/empresas no
   fluxo de maior volume do sistema (nova venda), mesmo tipo de problema
   do bug já corrigido (LGPD).
-- **Impacto**: alto esforço — 9-10 pontos, cada um precisa de análise de
-  impacto e teste individual (Regra 3 e 6), priorizando `wizard.tsx` por
-  ser o fluxo de vendas.
-- **Status**: pendente — nenhum dos 9-10 pontos corrigido ainda.
-- **Dependências**: nenhuma técnica, mas recomenda-se primeiro investigar
-  os 2 itens "não verificados" (`parceiros/[id]/editar`, `sst/page.tsx`)
-  para confirmar se o padrão se aplica antes de definir o tamanho total
-  do trabalho.
-- **Onda**: ONDA 2 (item a item, com aprovação individual).
+- **Status**: ✅ concluído na ONDA 2 (12/06/2026). Resultado item a item em
+  `docs/changelog.md` e seção 7 de `docs/AUDITORIA_GERAL_DO_SISTEMA.md`.
+- **Onda**: ONDA 2 — concluída.
 
 ### P1.2 — Debounce/cancelamento na busca de CPF do wizard (race condition)
 - **Descrição**: `wizard.tsx:371-403` (`buscarClientePorCPF`) dispara a
@@ -207,9 +232,9 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
   uma função isolada do wizard; não altera regra de negócio, apenas
   timing da consulta.
 - **Status**: pendente.
-- **Dependências**: idealmente feito **depois** de P1.1 (mesma área de
-  código), para evitar dois rounds de teste sobre `wizard.tsx`.
-- **Onda**: ONDA 2.
+- **Dependências**: P1.1 (ONDA 2, mesma área de código) já está concluído —
+  sem impedimento para iniciar.
+- **Onda**: ONDA 3.
 
 ### P1.3 — Revisar exposição de PII em `/api/admin/diagnostico-protocolo` e política de retenção de `audit_logs`
 - **Descrição**: mesmo após a ONDA 1 (que exigiu `auth()` + `role ===
@@ -321,10 +346,14 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 - **Impacto**: nenhum no comportamento — apenas testes (vitest, mesmo
   padrão já usado em `merge-dados-pf.test.ts`).
 - **Status**: pendente.
-- **Dependências**: idealmente feito **junto** com P1.1/P1.2, já que
-  ambos tocam as mesmas funções — escrever testes antes ou durante essas
-  correções reduz risco de regressão.
-- **Onda**: ONDA 2 (recomendado: junto com P1.1).
+- **Observação**: P1.1 (ONDA 2) já adicionou testes automatizados para as
+  funções `mergeDados*` extraídas (`buscarClientePorCPF`, `validarCNPJ`,
+  `autoPreencherPorCNPJ` etc.). Este item trata da cobertura mais ampla do
+  restante do `wizard.tsx`.
+- **Dependências**: idealmente feito **junto** com P1.2, já que ambos
+  tocam as mesmas funções — escrever testes antes ou durante essa correção
+  reduz risco de regressão.
+- **Onda**: ONDA 3 (recomendado: junto com P1.2).
 
 ### P3.2 — Consolidar lista de AGRs (Ana/Arlen/Vinicius/Laryssa) mantida em 3 lugares
 - **Descrição**: a lista de AGRs aparece duplicada em 3 pontos do código
@@ -346,8 +375,8 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 | Onda | Itens | Foco |
 |---|---|---|
 | ONDA 1 | ✅ Concluída (10/06/2026) | 3 itens críticos de segurança (test-db, cnpj sem auth, chave diagnóstico hardcoded) |
-| ONDA 2 | P1.1, P1.2, (P3.1) | **Próxima etapa** — vazamento de dados entre formulários (isolamento `mergeDados*` no wizard e telas de cadastro) + race condition CPF |
-| ONDA 3 | P0.1, P1.3 | Endpoints de teste restantes (`test-auth`, `test-email`, `test-whatsapp`) + revisão LGPD do diagnóstico/audit_logs |
+| ONDA 2 | ✅ Concluída (12/06/2026) | P1.1 — vazamento de dados entre formulários (isolamento `mergeDados*` no wizard e telas de cadastro), 12 itens analisados/corrigidos |
+| ONDA 3 | P0.1, P1.2, P1.3, (P3.1) | **Próxima etapa (candidata)** — endpoints de teste restantes (`test-auth`, `test-email`, `test-whatsapp`) + revisão LGPD do diagnóstico/audit_logs + debounce na busca de CPF do wizard |
 | ONDA 4 | P2.1 a P2.5 | Duplicação de código, log com PII, feedback de erros, documentação, revisão widget RFB |
 | ONDA 5 | P3.2 | Consolidação da lista de AGRs |
 

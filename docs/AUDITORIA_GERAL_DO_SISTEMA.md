@@ -254,30 +254,36 @@ dedicada** em `/docs` (violação potencial da Regra 1):
 
 ## 7. Campos que podem vazar dados entre clientes
 
-O bug corrigido hoje (commit `c3e9803`, função `mergeDadosResponsavelPF` em
+O bug corrigido em `c3e9803` (função `mergeDadosResponsavelPF` em
 `pedidos/nova-venda/lib/merge-dados-pf.ts`) resolveu **um** ponto de
 vazamento. O mesmo padrão (`campo ?? estadoAnterior.campo`, ou
-`if (novoValor) setState(...)` sem `else` para limpar) foi encontrado em
-outros pontos, ainda **sem correção**:
+`if (novoValor) setState(...)` sem `else` para limpar) foi mapeado em
+outros pontos e **tratado na ONDA 2** (concluída em 12/06/2026 — ver
+`docs/changelog.md` e `docs/ROADMAP_CORRECOES.md`):
 
-| Local | Função | Campos em risco | Proteção atual |
+| Local | Função | Campos em risco | Status final (ONDA 2) |
 |---|---|---|---|
-| `wizard.tsx` | `buscarClientePorCPF()` (371-403) | nome, e-mail, telefone, endereço, CEP, PIS/NIS, clienteId | Nenhuma |
-| `wizard.tsx` | `validarCNPJ()` (246-310) | e-mail, telefone, endereço da empresa | Nenhuma |
-| `wizard.tsx` | `autoPreencherPorCNPJ()` (312-368) | praticamente todos os campos PJ + responsável | Nenhuma |
-| `wizard.tsx` | `buscarCep()` (453-471) | logradouro, bairro, município, estado | Nenhuma |
-| `clientes/novo/page.tsx` | `buscarCnpj()` (86-114) | razão social, fantasia, e-mail, telefone, endereço | Nenhuma |
-| `clientes/novo/page.tsx` | `buscarCep()` (116-141) | logradouro, bairro, cidade, estado | ✅ Limpa campos no `onChange` do CEP |
-| `clientes/[id]/editar/page.tsx` | `buscarCnpj()` (118-140) | razão social, fantasia, e-mail, telefone, endereço | Nenhuma |
-| `clientes/[id]/editar/page.tsx` | `buscarCep()` (142-160) | logradouro, bairro, cidade, estado | Nenhuma |
-| `pedidos/nova-venda/emissao-online.tsx` | `validar()` (91-119) | nome, documento, e-mail (padrão `if` sem `else`) | Nenhuma |
-| `parceiros/novo/page.tsx` | `buscarCnpj()` (66-86) | razão social, e-mail, telefone | Nenhuma |
-| `parceiros/[id]/editar/page.tsx` | provável `buscarCnpj()` análogo | (a confirmar) | Não verificado nesta auditoria |
-| `sst/page.tsx` | busca de CNPJ no modal de lead | campos de empresa do lead | Não verificado nesta auditoria |
+| `wizard.tsx` | `buscarClientePorCPF()` (371-403) | nome, e-mail, telefone, endereço, CEP, PIS/NIS, clienteId | ✅ Corrigido — commit `bfa1aab` |
+| `wizard.tsx` | `validarCNPJ()` (246-310) | e-mail, telefone, endereço da empresa | ✅ Corrigido — commit `b832b0b` |
+| `wizard.tsx` | `autoPreencherPorCNPJ()` (312-368) | praticamente todos os campos PJ + responsável | ✅ Corrigido — commit `b832b0b` |
+| `wizard.tsx` | `buscarCep()` (453-471) | logradouro, bairro, município, estado | ➖ Sem ação necessária — sem risco de vazamento de PII de terceiros (análise item #5) |
+| `clientes/novo/page.tsx` | `buscarCnpj()` (86-114) | razão social, fantasia, e-mail, telefone, endereço | ✅ Corrigido — commit `4736fc7` |
+| `clientes/novo/page.tsx` | `buscarCep()` (116-141) | logradouro, bairro, cidade, estado | ✅ Já protegido (limpa campos no `onChange` do CEP) |
+| `clientes/[id]/editar/page.tsx` | `buscarCnpj()` (118-140) | razão social, fantasia, e-mail, telefone, endereço | ➖ Sem ação necessária — tela de edição pré-carregada; falha já não altera `form` (decisão registrada em `dfa2696`, item #7) |
+| `clientes/[id]/editar/page.tsx` | `buscarCep()` (142-160) | logradouro, bairro, cidade, estado | ➖ Sem ação necessária — mesmo racional do item #7 (item #8) |
+| `pedidos/nova-venda/emissao-online.tsx` | `validar()` (91-119) | nome, documento, e-mail (padrão `if` sem `else`) | ✅ Corrigido — commit `6f48fcb` |
+| `parceiros/novo/page.tsx` | `buscarCnpj()` (66-86) | razão social, e-mail, telefone | ✅ Corrigido — commit `8e7fdba` |
+| `parceiros/[id]/editar/page.tsx` | provável `buscarCnpj()` análogo | (a confirmar) | ➖ Não aplicável — função `buscarCnpj()` não existe nesta tela (confirmado por grep) |
+| `sst/page.tsx` | busca de CNPJ no modal de lead | campos de empresa do lead | ⚠️ Risco residual aceito, baixa prioridade — modal dual-mode (novo/editar) torna a correção desproporcional ao risco (lead comercial interno, sem PII de cliente final/Safeweb/financeiro) |
 
-**Conclusão**: a correção de hoje cobre 1 de pelo menos 10 pontos com o
-mesmo padrão de risco. Os 2 itens marcados "não verificado" precisam de
-checagem antes de afirmar se têm ou não o problema (Regra 7 — não supor).
+**Conclusão (ONDA 2)**: dos 12 pontos mapeados, 5 foram corrigidos com o
+padrão `mergeDados*` (testes automatizados incluídos), 1 já estava
+protegido, 4 foram avaliados e reclassificados como "sem ação necessária"
+(telas de edição pré-carregadas, onde limpar/restaurar em caso de falha
+seria mais arriscado que o problema original), 1 foi encerrado como "não
+aplicável" (função inexistente) e 1 permanece como risco residual aceito de
+baixa prioridade (`sst/page.tsx`), a ser revisitado em onda futura caso o
+módulo SST ganhe relevância operacional.
 
 ---
 
@@ -394,10 +400,13 @@ Ordenadas por risco × esforço, sem alterar nada até aprovação (Regra 2):
 
 Por aderência à Regra 7 (proibição de suposições), os seguintes pontos
 precisam de checagem antes de qualquer ação:
-- `src/app/(dashboard)/parceiros/[id]/editar/page.tsx` — confirmar se
-  `buscarCnpj()` tem o mesmo padrão de risco da seção 7.
-- `src/app/(dashboard)/sst/page.tsx` — confirmar se a busca de CNPJ no
-  modal de lead tem o mesmo padrão.
+- ~~`src/app/(dashboard)/parceiros/[id]/editar/page.tsx` — confirmar se
+  `buscarCnpj()` tem o mesmo padrão de risco da seção 7.~~ ✅ Verificado na
+  ONDA 2 (12/06/2026): não existe `buscarCnpj()` nesta tela — não aplicável.
+- ~~`src/app/(dashboard)/sst/page.tsx` — confirmar se a busca de CNPJ no
+  modal de lead tem o mesmo padrão.~~ ✅ Verificado na ONDA 2 (12/06/2026):
+  o padrão existe, mas foi classificado como risco residual aceito de baixa
+  prioridade (ver seção 7).
 - `src/app/(dashboard)/pedidos/[id]/page.tsx` — confirmar se exibe
   CPF/CNPJ completo sem mascaramento.
 - `src/app/(dashboard)/pedidos/novo/` — confirmar se é rota ativa ou
