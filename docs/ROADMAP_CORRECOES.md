@@ -187,7 +187,11 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
   (endpoints de diagnóstico não usados por telas/integrações). Precisa de
   verificação prévia (grep por referências) igual à feita para
   `/api/test-db`.
-- **Status**: pendente — nenhuma análise iniciada.
+- **Status**: ✅ concluído em 15/06/2026 — `/api/test-auth`,
+  `/api/test-email` e `/api/test-whatsapp` removidos. Sem referências
+  encontradas no código (`src/`), `npx vitest run` (37/37) e
+  `npx next build` passaram após a remoção. Ver `docs/changelog.md`
+  (15/06/2026).
 - **Dependências**: nenhuma. Pode ser feito de forma independente, item a
   item, seguindo o mesmo ciclo (documentar → remover → testar → build →
   changelog → commit → aprovação → push → verificação pós-deploy).

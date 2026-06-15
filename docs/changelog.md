@@ -7,6 +7,29 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 15/06/2026
 
+### fix(security): remoção dos endpoints de teste test-auth, test-email e test-whatsapp (ONDA 3 / P0.1)
+- **Arquivos removidos**: `src/app/api/test-auth/route.ts`,
+  `src/app/api/test-email/route.ts`, `src/app/api/test-whatsapp/route.ts`.
+- **Motivo**: os 3 endpoints respondiam sem autenticação em produção.
+  `/api/test-auth` permitia testar repetidamente a senha
+  `certflow@2024` contra o usuário `admin@certflow.com.br` (oráculo de
+  força bruta da senha do admin) e ainda retornava parte do hash da
+  senha e a role do usuário. `/api/test-email` e `/api/test-whatsapp`
+  permitiam a qualquer pessoa, sem login, disparar e-mail (via SMTP da
+  V&G) ou WhatsApp (via canal Digisac da V&G) para qualquer
+  destinatário informado por query string, além de vazar
+  configuração de SMTP/Digisac.
+- **Verificação**: busca global em `src/` por
+  `test-auth|test-email|test-whatsapp` não encontrou nenhuma referência
+  funcional (apenas strings de exemplo dentro dos próprios arquivos
+  removidos) — mesmo perfil de segurança de `/api/test-db`, removido na
+  ONDA 1.
+- **Impacto**: nenhum em fluxos existentes — endpoints de diagnóstico não
+  usados por nenhuma tela/integração.
+- **Testes/build**: `npx vitest run` (37/37 passou) e `npx next build`
+  concluídos com sucesso após limpeza do cache `.next`.
+- **Onda**: ONDA 3 (P0.1).
+
 ### feat: endpoint temporário de diagnóstico — cancelamento de 3 protocolos antigos remanescentes
 - **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
   (novo, temporário — removido após a validação, ver entrada abaixo).

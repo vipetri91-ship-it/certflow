@@ -65,7 +65,7 @@ organizado por área:
 | **Perfil do usuário** | Edição de dados próprios (foto, WhatsApp, senha) | `src/app/(dashboard)/perfil`, `src/app/api/perfil` |
 | **Utilitários diversos** | Calculadora de deslocamento, consulta CNPJ/CPF, heartbeat de sessão, horário do sistema, webmail, upload, bot Telegram, Digisac (WhatsApp) | `src/app/api/calculadora/deslocamento`, `src/app/api/cnpj/[cnpj]`, `src/app/api/cpf/[cpf]`, `src/app/api/sessao/heartbeat`, `src/app/api/sistema/horario`, `src/app/api/webmail/*`, `src/app/api/upload`, `src/app/api/telegram/webhook`, `src/app/api/digisac/webhook`, `src/lib/digisac.ts` |
 | **Notificações** | Notificações gerais e de pedidos pendentes | `src/app/api/notificacoes`, `src/app/api/pedidos/notificacoes-pendentes`, `src/app/api/pedidos/[id]/notificar` |
-| **Endpoints de teste/diagnóstico** | Rotas de teste (auth, db, email, whatsapp, safeweb) usadas em diagnóstico | `src/app/api/test-auth`, `src/app/api/test-db`, `src/app/api/test-email`, `src/app/api/test-whatsapp`, `src/app/api/safeweb/testar` |
+| **Endpoints de teste/diagnóstico** | Rotas de teste (db, safeweb) usadas em diagnóstico — `test-auth`, `test-email` e `test-whatsapp` removidos (ver `docs/endpoints-removidos.md`) | `src/app/api/test-db`, `src/app/api/safeweb/testar` |
 
 ---
 
@@ -86,7 +86,7 @@ dedicada** em `/docs` (violação potencial da Regra 1):
 | `pedidos/novo` (rota distinta de `nova-venda`) | `src/app/(dashboard)/pedidos/novo/` | Não mencionada no MAPA — checar se é rota ativa ou legado |
 | Buscar série A3 | `src/app/api/pedidos/buscar-serie-a3/route.ts` | Sem documentação |
 | Liberar emissão online | `src/app/api/pedidos/[id]/liberar-emissao-online/route.ts` | Citada como funcionalidade, sem detalhamento técnico |
-| Endpoints de teste em produção | `src/app/api/test-auth`, `test-db`, `test-email`, `test-whatsapp` | Não documentados — ver risco crítico na seção 6 |
+| Endpoints de teste em produção | `src/app/api/test-db` | Não documentado — `test-auth`, `test-email` e `test-whatsapp` removidos em 15/06/2026 (ver `docs/endpoints-removidos.md`) |
 | Configurações de permissões (API) | `src/app/api/configuracoes/permissoes/route.ts` | Sem doc do contrato da API |
 | Auditoria (API) | `src/app/api/auditoria/route.ts`, `src/lib/audit.ts` | Sem doc sobre o que é registrado/retenção |
 | Categorias financeiras (API) | `src/app/api/financeiro/categorias/route.ts`, `src/lib/financeiro-config.ts` | Mencionado de forma genérica |
@@ -104,17 +104,20 @@ dedicada** em `/docs` (violação potencial da Regra 1):
   checagem `auth()` de `/api/cpf/[cpf]`, retornando `401` para requisições
   sem sessão. Ver `docs/changelog.md`.
 
-### 3.2 Endpoints de teste expostos em produção
+### 3.2 Endpoints de teste expostos em produção — ✅ Corrigido em 15/06/2026
 - ~~`src/app/api/test-db/route.ts:11-13` — em caso de erro, retorna
   `db_url_raw: process.env.DATABASE_URL` **completo** (credenciais do
   banco).~~ **Corrigido em 10/06/2026** — endpoint removido. Ver
   [docs/endpoints-removidos.md](./endpoints-removidos.md) e
   `docs/changelog.md`.
-- `src/app/api/test-auth/route.ts:13,19` — testa se a senha
+- ~~`src/app/api/test-auth/route.ts:13,19` — testa se a senha
   `certflow@2024` é válida para `admin@certflow.com.br`, sem autenticação
-  (permite força bruta).
-- `src/app/api/test-email`, `src/app/api/test-whatsapp` — também sem
-  autenticação.
+  (permite força bruta).~~
+- ~~`src/app/api/test-email`, `src/app/api/test-whatsapp` — também sem
+  autenticação.~~ **Corrigido em 15/06/2026 (ONDA 3 / P0.1)** — os 3
+  endpoints foram removidos. Ver
+  [docs/endpoints-removidos.md](./endpoints-removidos.md) e
+  `docs/changelog.md`.
 
 ### 3.3 Chave de diagnóstico hardcoded — ✅ Corrigido em 10/06/2026
 - ~~`src/app/api/admin/diagnostico-protocolo/route.ts:10` — bypass de
@@ -338,14 +341,16 @@ módulo SST ganhe relevância operacional.
 
 Ordenadas por risco × esforço, sem alterar nada até aprovação (Regra 2):
 
-1. **CRÍTICO — Remover ou proteger os endpoints de teste em produção**
+1. ~~**CRÍTICO — Remover ou proteger os endpoints de teste em produção**
    (`/api/test-db`, `/api/test-auth`, `/api/test-email`,
    `/api/test-whatsapp`). `test-db` vaza a `DATABASE_URL` completa em
-   caso de erro; `test-auth` permite testar senha do admin sem auth.
+   caso de erro; `test-auth` permite testar senha do admin sem auth.~~
    - ✅ `/api/test-db` removido em 10/06/2026 (ver
      [docs/endpoints-removidos.md](./endpoints-removidos.md)).
-   - Pendentes: `/api/test-auth`, `/api/test-email`, `/api/test-whatsapp`.
-   Risco: vazamento total do banco. Esforço: baixo.
+   - ✅ `/api/test-auth`, `/api/test-email`, `/api/test-whatsapp` removidos
+     em 15/06/2026 (ONDA 3 / P0.1) — ver
+     [docs/endpoints-removidos.md](./endpoints-removidos.md).
+   Risco: vazamento total do banco. Esforço: baixo. **Status: concluído.**
 
 2. ~~**CRÍTICO — Adicionar autenticação ao endpoint `/api/cnpj/[cnpj]`**,
    que hoje retorna CPF de sócios e dados de contato sem sessão. Esforço:
