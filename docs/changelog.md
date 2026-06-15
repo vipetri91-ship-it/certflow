@@ -5,6 +5,43 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/06/2026
+
+### feat: endpoint temporário de diagnóstico — cancelamento de 3 protocolos antigos remanescentes
+- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
+  (novo, temporário — removido após a validação, ver entrada abaixo).
+- **Motivo**: Vinicius recebeu e-mails diários da Safeweb cobrando envio
+  de documentos para os protocolos `1010749376`, `1010766479` e
+  `1010749841` — protocolos de teste mais antigos (anteriores à limpeza
+  de 10/06), sem pedido correspondente no CertFlow, que nunca foram
+  cancelados na Safeweb. Não têm relação com os 4 protocolos já
+  cancelados em 11/06 (ver `docs/LIMPEZA_EXECUTADA.md`).
+- **Escopo**: endpoint `GET`, protegido por `auth()` + `role === 'ADMIN'`,
+  lista fixa de 3 protocolos hardcoded no código, sem aceitar nenhum
+  parâmetro externo. Reaproveita `cancelarSolicitacao`/`consultarProtocolo`
+  já existentes em `src/lib/safeweb.ts`, mesmo procedimento validado em
+  11/06. Não altera nenhum fluxo existente, não é chamado por nenhuma
+  tela.
+- **Impacto**: nenhum em fluxos existentes — endpoint isolado e de uso
+  único, removido após a validação.
+- **Risco**: ação de cancelamento na Safeweb (terceiro), possivelmente
+  irreversível — só pode ser acionada manualmente pelo Vinicius (ADMIN
+  autenticado) acessando a URL. Autorização explícita obtida em
+  15/06/2026.
+- **Autor**: Vinicius Petri (via Claude Code)
+
+### chore: remoção do endpoint temporário de diagnóstico (cancelamento de 3 protocolos antigos)
+- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
+  (removido), `docs/LIMPEZA_EXECUTADA.md`.
+- **Motivo**: Vinicius acessou a URL (ADMIN autenticado) e os 3 protocolos
+  (`1010749376`, `1010766479`, `1010749841`) foram cancelados com sucesso
+  na Safeweb (`cancelamento.ok: true`, "Protocolo não encontrado" na
+  consulta posterior — mesmo padrão de 11/06). Pendência registrada e
+  encerrada em `docs/LIMPEZA_EXECUTADA.md`.
+- **Impacto**: nenhum — endpoint isolado, sem chamadas de nenhuma tela.
+- **Risco**: nenhum.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ## 12/06/2026
 
 ### docs: visão geral do PROJETO 001 — Centro de Inteligência e Automação V&G
@@ -267,31 +304,6 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 - **Testes**: `npx vitest run` — 20/20 passando (7 novos casos para
   `mergeDadosClientePorCPF`). `npx next build` — build limpo.
 - **Autor**: Vinicius (via Claude Code).
-
-## 15/06/2026
-
-### feat: endpoint temporário de diagnóstico — cancelamento de 3 protocolos antigos remanescentes
-- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
-  (novo, temporário).
-- **Motivo**: Vinicius recebeu e-mails diários da Safeweb cobrando envio
-  de documentos para os protocolos `1010749376`, `1010766479` e
-  `1010749841` — protocolos de teste mais antigos (anteriores à limpeza
-  de 10/06), sem pedido correspondente no CertFlow, que nunca foram
-  cancelados na Safeweb. Não têm relação com os 4 protocolos já
-  cancelados em 11/06 (ver `docs/LIMPEZA_EXECUTADA.md`).
-- **Escopo**: endpoint `GET`, protegido por `auth()` + `role === 'ADMIN'`,
-  lista fixa de 3 protocolos hardcoded no código, sem aceitar nenhum
-  parâmetro externo. Reaproveita `cancelarSolicitacao`/`consultarProtocolo`
-  já existentes em `src/lib/safeweb.ts`, mesmo procedimento validado em
-  11/06. Não altera nenhum fluxo existente, não é chamado por nenhuma
-  tela.
-- **Impacto**: nenhum em fluxos existentes — endpoint isolado e de uso
-  único, será removido após a validação.
-- **Risco**: ação de cancelamento na Safeweb (terceiro), possivelmente
-  irreversível — só pode ser acionada manualmente pelo Vinicius (ADMIN
-  autenticado) acessando a URL. Autorização explícita obtida em
-  15/06/2026.
-- **Autor**: Vinicius Petri (via Claude Code)
 
 ## 11/06/2026
 

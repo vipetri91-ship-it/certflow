@@ -170,3 +170,37 @@ gerados em 10/06/2026 (`1010781571`, `1010781647`, `1010782402`,
 (`"Protocolo não encontrado"`), e o endpoint administrativo temporário
 usado nas validações foi removido em definitivo (sem nenhuma rota
 residual em `src/`).
+
+## Cancelamento de 3 protocolos antigos remanescentes (15/06/2026)
+
+Em 15/06/2026, Vinicius reportou e-mails diários da Safeweb cobrando
+envio de documentos para 3 protocolos de teste **mais antigos** (anteriores
+à limpeza de 10/06, sem pedido correspondente no CertFlow):
+`1010749376`, `1010766479`, `1010749841`. O protocolo `1010766479` era
+usado como exemplo em `docs/INTEGRACOES.md`/`docs/protocolo.md`.
+
+Procedimento idêntico ao validado em 11/06/2026, executado via endpoint
+administrativo temporário `/api/admin/diagnostico-cancelamento-temp`
+(restrito a ADMIN autenticado, lista fixa dos 3 protocolos, removido logo
+após — ver `docs/changelog.md`).
+
+**Resposta da Safeweb**:
+```json
+{"resultados":[
+  {"protocolo":"1010749376","cancelamento":{"ok":true},"consulta":{"ok":false,"erro":"Protocolo não encontrado"}},
+  {"protocolo":"1010766479","cancelamento":{"ok":true},"consulta":{"ok":false,"erro":"Protocolo não encontrado"}},
+  {"protocolo":"1010749841","cancelamento":{"ok":true},"consulta":{"ok":false,"erro":"Protocolo não encontrado"}}
+]}
+```
+
+| Protocolo | Cancelamento | Consulta posterior | Status final |
+|---|---|---|---|
+| `1010749376` | ✅ aceito (`ok: true`) | "Protocolo não encontrado" | Cancelado, não mais consultável |
+| `1010766479` | ✅ aceito (`ok: true`) | "Protocolo não encontrado" | Cancelado, não mais consultável |
+| `1010749841` | ✅ aceito (`ok: true`) | "Protocolo não encontrado" | Cancelado, não mais consultável |
+
+✅ **Pendência encerrada em 15/06/2026**: os 3 protocolos foram cancelados
+com sucesso na Safeweb (`cancelamento.ok: true` em todos), nenhum é mais
+consultável (`"Protocolo não encontrado"`). Os e-mails diários de cobrança
+de documentos para esses protocolos devem parar. O endpoint administrativo
+temporário usado nesta validação será removido (ver `docs/changelog.md`).
