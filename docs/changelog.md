@@ -268,7 +268,47 @@ Registro de alterações no CertFlow, conforme Regra 5 da
   `mergeDadosClientePorCPF`). `npx next build` — build limpo.
 - **Autor**: Vinicius (via Claude Code).
 
+## 15/06/2026
+
+### feat: endpoint temporário de diagnóstico — cancelamento de 3 protocolos antigos remanescentes
+- **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
+  (novo, temporário).
+- **Motivo**: Vinicius recebeu e-mails diários da Safeweb cobrando envio
+  de documentos para os protocolos `1010749376`, `1010766479` e
+  `1010749841` — protocolos de teste mais antigos (anteriores à limpeza
+  de 10/06), sem pedido correspondente no CertFlow, que nunca foram
+  cancelados na Safeweb. Não têm relação com os 4 protocolos já
+  cancelados em 11/06 (ver `docs/LIMPEZA_EXECUTADA.md`).
+- **Escopo**: endpoint `GET`, protegido por `auth()` + `role === 'ADMIN'`,
+  lista fixa de 3 protocolos hardcoded no código, sem aceitar nenhum
+  parâmetro externo. Reaproveita `cancelarSolicitacao`/`consultarProtocolo`
+  já existentes em `src/lib/safeweb.ts`, mesmo procedimento validado em
+  11/06. Não altera nenhum fluxo existente, não é chamado por nenhuma
+  tela.
+- **Impacto**: nenhum em fluxos existentes — endpoint isolado e de uso
+  único, será removido após a validação.
+- **Risco**: ação de cancelamento na Safeweb (terceiro), possivelmente
+  irreversível — só pode ser acionada manualmente pelo Vinicius (ADMIN
+  autenticado) acessando a URL. Autorização explícita obtida em
+  15/06/2026.
+- **Autor**: Vinicius Petri (via Claude Code)
+
 ## 11/06/2026
+
+### docs: arquitetura do Agente IA WhatsApp (cliente)
+- **Arquivos**: `docs/AGENTE_IA_WHATSAPP.md` (novo).
+- **Motivo**: planejamento de um agente de IA para conversar diretamente
+  com clientes da V&G via WhatsApp/Digisac (triagem, FAQ, status de
+  pedido/certificado e, em fases futuras, agendamento e cobrança), sem usar
+  a IA paga do Digisac. Conforme Regra 1, a documentação é criada antes de
+  qualquer alteração de código.
+- **Impacto**: nenhum em código/produção nesta etapa. O webhook
+  `/api/digisac/webhook` (fluxo admin) não foi alterado (Regra 2). O
+  documento define escopo de dados, regras de escalonamento para humano,
+  novas tabelas (`agente_ia_conversas`, `agente_ia_cobranca_aprovacao`) e
+  fases de rollout, que serão implementadas em etapas futuras com sua
+  própria análise de impacto.
+- **Autor**: Vinicius (via Claude Code).
 
 ### 1b1d268 — feat: cancelamento integrado de pedidos com Safeweb (Frente B)
 - **Arquivos**: `prisma/schema.prisma`, `scripts/migrate.js`,
