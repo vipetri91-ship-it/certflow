@@ -30,6 +30,59 @@ Registro de alterações no CertFlow, conforme Regra 5 da
   concluídos com sucesso após limpeza do cache `.next`.
 - **Onda**: ONDA 3 (P0.1).
 
+### fix: correção sistêmica de race conditions em buscas assíncronas por CNPJ/CPF (ONDA 3 / P1.2 + P3.1)
+- **Contexto**: durante o mapeamento da ONDA 3, foi confirmado que o
+  escopo original do P1.2 (debounce/`AbortController` na busca de CPF do
+  wizard) já havia sido resolvido na ONDA 2 (commit `bfa1aab`,
+  12/06/2026). O mapeamento identificou, porém, que o mesmo tipo de race
+  condition — resposta tardia de uma busca por CNPJ sobrescrevendo dados
+  de uma busca mais recente, podendo deixar a tela com dados de uma
+  empresa diferente da pesquisada — existia em outros 5 pontos do
+  sistema, sem qualquer cancelamento.
+- **Nova abstração**: `src/lib/busca-cancelavel.ts` (`BuscaCancelavel`) —
+  extraída do padrão já validado em `buscarClientePorCPF` (ONDA 2).
+  Cancela automaticamente a busca anterior ao iniciar uma nova e retorna
+  `{ cancelada: true }` quando a resposta de uma busca obsoleta chega
+  depois de uma mais recente, para que o `setState` correspondente seja
+  ignorado.
+- **Arquivos corrigidos** (nesta ordem de prioridade):
+  1. `src/app/(dashboard)/pedidos/nova-venda/wizard.tsx` —
+     `autoPreencherPorCNPJ` agora usa `cnpjBuscaRef` (`BuscaCancelavel`)
+     no lugar do `AbortController` cru; lógica de
+     `buscarClientePorCPF`/debounce (ONDA 2) não foi alterada.
+  2. `src/app/(dashboard)/clientes/[id]/editar/page.tsx` — `buscarCnpj`
+     refeito sobre `BuscaCancelavel`; novo módulo
+     `lib/merge-dados-cnpj.ts` (`mergeDadosEmpresaPorCnpj`) limpa os
+     campos da empresa quando o novo CNPJ não é encontrado ou a consulta
+     falha.
+  3. `src/app/(dashboard)/sst/page.tsx` — `buscarCnpj` (modal de lead)
+     refeito sobre `BuscaCancelavel`; novo módulo
+     `lib/merge-dados-cnpj.ts` (`mergeDadosEmpresaPorCnpjSst`).
+  4. `src/app/(dashboard)/clientes/novo/page.tsx` — `buscarCnpj` refeito
+     sobre `BuscaCancelavel` (reaproveitando o módulo de merge já
+     existente da ONDA 2).
+  5. `src/app/(dashboard)/parceiros/novo/page.tsx` — `buscarCnpj` refeito
+     sobre `BuscaCancelavel` (reaproveitando o módulo de merge já
+     existente da ONDA 2).
+- **Testes novos (P3.1)**:
+  - `src/lib/busca-cancelavel.test.ts` — valida explicitamente o descarte
+    de uma resposta tardia quando uma busca mais nova já foi iniciada,
+    além de cancelamento manual e propagação de erros que não são de
+    cancelamento.
+  - `src/app/(dashboard)/clientes/[id]/editar/lib/merge-dados-cnpj.test.ts`
+    e `src/app/(dashboard)/sst/lib/merge-dados-cnpj.test.ts` — mesmo
+    padrão de `clientes/novo/lib/merge-dados-cnpj.test.ts` (ONDA 2):
+    preenchimento, fallback de campos nulos e limpeza de dados de uma
+    empresa pesquisada anteriormente quando o CNPJ não é encontrado ou há
+    erro de rede.
+- **Impacto**: nenhuma mudança de regra de negócio — apenas timing/
+  cancelamento das requisições e limpeza de campos obsoletos na tela.
+- **Testes/build**: `npx vitest run` (49/49 passou, +12 novos testes) e
+  `npx next build` concluído com sucesso (mesmos avisos `prisma:error`
+  pré-existentes durante a geração de páginas estáticas, sem relação com
+  esta mudança — ambiente local sem `DATABASE_URL` válida).
+- **Onda**: ONDA 3 (P1.2 ✅ concluído, P3.1 ✅ parcialmente concluído).
+
 ### feat: endpoint temporário de diagnóstico — cancelamento de 3 protocolos antigos remanescentes
 - **Arquivos**: `src/app/api/admin/diagnostico-cancelamento-temp/route.ts`
   (novo, temporário — removido após a validação, ver entrada abaixo).

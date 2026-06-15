@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Header } from '@/components/header'
 import { ArrowLeft, Save, Loader2, User, Building2, Handshake } from 'lucide-react'
 import Link from 'next/link'
+import { mergeDadosEmpresaPorCnpj, type CnpjEncontrado } from './lib/merge-dados-cnpj'
+import { BuscaCancelavel } from '@/lib/busca-cancelavel'
 
 type TipoPessoa = 'PF' | 'PJ'
 
@@ -67,6 +69,11 @@ export default function EditarClientePage() {
   const [buscandoCep,  setBuscandoCep]  = useState(false)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
   const [parceiros,    setParceiros]    = useState<{ id: string; nome: string }[]>([])
+  const cnpjBuscaRef = useRef(new BuscaCancelavel())
+
+  useEffect(() => {
+    return () => { cnpjBuscaRef.current.cancelar() }
+  }, [])
 
   const [form, setForm] = useState({
     nome: '', email: '', telefone: '', celular: '',
@@ -118,25 +125,34 @@ export default function EditarClientePage() {
   async function buscarCnpj(cnpj: string) {
     const nums = cnpj.replace(/\D/g, '')
     if (nums.length !== 14) return
+
     setBuscandoCnpj(true)
     setErro('')
-    try {
-      const res  = await fetch(`/api/cnpj/${nums}`)
+
+    // Cancela qualquer busca de CNPJ anterior ainda em andamento, evitando
+    // que uma resposta obsoleta sobrescreva os dados do CNPJ atual.
+    const resultado = await cnpjBuscaRef.current.executar(async (signal) => {
+      const res  = await fetch(`/api/cnpj/${nums}`, { signal })
       const data = await res.json()
-      if (!res.ok) { setErro(data.erro ?? 'CNPJ não encontrado'); return }
-      setForm(f => ({
-        ...f,
-        razaoSocial:  data.razaoSocial  ?? f.razaoSocial,
-        nomeFantasia: data.nomeFantasia ?? f.nomeFantasia,
-        cep:          data.cep        ? formatarCEP(data.cep) : f.cep,
-        logradouro:   data.logradouro  ?? f.logradouro,
-        numero:       data.numero      ?? f.numero,
-        bairro:       data.bairro      ?? f.bairro,
-        cidade:       data.municipio   ?? f.cidade,
-        estado:       data.uf          ?? f.estado,
-      }))
-    } catch { setErro('Erro ao consultar CNPJ.') }
-    finally { setBuscandoCnpj(false) }
+      return { res, data }
+    })
+
+    if (resultado.cancelada) return
+    setBuscandoCnpj(false)
+
+    if (resultado.erro) {
+      setErro('Erro ao consultar CNPJ.')
+      setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpj(f, null) }))
+      return
+    }
+
+    const { res, data } = resultado.dados!
+    if (!res.ok) {
+      setErro(data.erro ?? 'CNPJ não encontrado')
+      setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpj(f, null) }))
+      return
+    }
+    setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpj(f, data as CnpjEncontrado) }))
   }
 
   async function buscarCep(cep: string) {

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { mergeDadosResponsavelPF, mergeDadosClientePorCPF } from './lib/merge-dados-pf'
 import { mergeDadosEmpresaPorCNPJ, limparDadosValidacaoPJ, type ClienteEncontradoPJ } from './lib/merge-dados-pj'
+import { BuscaCancelavel } from '@/lib/busca-cancelavel'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -203,11 +204,13 @@ export function NovaVendaWizard({
   const telEmpresaRef  = useRef<HTMLInputElement>(null)
   const cpfAbortRef     = useRef<AbortController | null>(null)
   const cpfDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cnpjBuscaRef    = useRef(new BuscaCancelavel())
 
   useEffect(() => {
     return () => {
       if (cpfDebounceRef.current) clearTimeout(cpfDebounceRef.current)
       cpfAbortRef.current?.abort()
+      cnpjBuscaRef.current.cancelar()
     }
   }, [])
 
@@ -335,19 +338,19 @@ export function NovaVendaWizard({
   async function autoPreencherPorCNPJ(valorCampo: string) {
     const cnpj = valorCampo.replace(/\D/g,'')
     if (cnpj.length !== 14) return
-    try {
+
+    // Cancela qualquer busca de CNPJ anterior ainda em andamento, evitando
+    // que uma resposta obsoleta sobrescreva os dados do CNPJ atual.
+    const resultado = await cnpjBuscaRef.current.executar(async (signal) => {
       const fmt = fmtCNPJ(cnpj)
       const [d1, d2] = await Promise.all([
-        fetch(`/api/clientes?q=${cnpj}&limit=5`).then(r => r.json()),
-        fetch(`/api/clientes?q=${encodeURIComponent(fmt)}&limit=5`).then(r => r.json()),
+        fetch(`/api/clientes?q=${cnpj}&limit=5`, { signal }).then(r => r.json()),
+        fetch(`/api/clientes?q=${encodeURIComponent(fmt)}&limit=5`, { signal }).then(r => r.json()),
       ])
       // Junta os resultados e procura o que tem CNPJ igual (normalizado)
       const todos: Record<string, unknown>[] = [...(d1.clientes ?? []), ...(d2.clientes ?? [])]
       const c = todos.find((x: Record<string, unknown>) => (x.cnpj as string)?.replace(/\D/g,'') === cnpj)
-      if (!c) {
-        setDados(d => ({ ...d, ...mergeDadosEmpresaPorCNPJ(d, null, { cpfFormatado: null, dataNascimentoIso: null }) }))
-        return
-      }
+      if (!c) return { cliente: null, cpfFormatado: null, nascFill: null }
 
       // Para PJ: cpf fica no registro do responsável (PF separado), não no registro da empresa
       let cpfFill = (c.cpf as string | null) ?? null
@@ -356,7 +359,7 @@ export function NovaVendaWizard({
       if (!cpfFill && c.responsavel) {
         // Busca o cliente PF cujo nome bate com o responsável
         const primeiroNome = (c.responsavel as string).trim().split(' ')[0]
-        const dr = await fetch(`/api/clientes?q=${encodeURIComponent(primeiroNome)}&tipo=PF&limit=10`).then(r => r.json())
+        const dr = await fetch(`/api/clientes?q=${encodeURIComponent(primeiroNome)}&tipo=PF&limit=10`, { signal }).then(r => r.json())
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pf = (dr.clientes ?? []).find((x: any) =>
           x.tipoPessoa === 'PF' && x.nome?.toLowerCase().includes(primeiroNome.toLowerCase())
@@ -365,14 +368,21 @@ export function NovaVendaWizard({
       }
 
       const cpfFormatado = cpfFill ? cpfFill.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : null
+      return { cliente: c as unknown as ClienteEncontradoPJ, cpfFormatado, nascFill }
+    })
 
-      setDados(d => ({
-        ...d,
-        ...mergeDadosEmpresaPorCNPJ(d, c as unknown as ClienteEncontradoPJ, { cpfFormatado, dataNascimentoIso: nascFill }),
-      }))
-    } catch {
+    if (resultado.cancelada) return
+
+    if (resultado.erro) {
       setDados(d => ({ ...d, ...mergeDadosEmpresaPorCNPJ(d, null, { cpfFormatado: null, dataNascimentoIso: null }) }))
+      return
     }
+
+    const { cliente, cpfFormatado, nascFill } = resultado.dados!
+    setDados(d => ({
+      ...d,
+      ...mergeDadosEmpresaPorCNPJ(d, cliente, { cpfFormatado, dataNascimentoIso: nascFill }),
+    }))
   }
 
   // Dispara a busca de CPF com debounce (300ms) — evita disparos duplicados

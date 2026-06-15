@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, X, Trash2, Loader2, Phone, Users, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { mergeDadosEmpresaPorCnpjSst, type CnpjEncontradoSst } from './lib/merge-dados-cnpj'
+import { BuscaCancelavel } from '@/lib/busca-cancelavel'
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -87,6 +89,11 @@ export default function SSTPage() {
   const [deletando, setDeletando] = useState<string | null>(null)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
   const [erroCnpj, setErroCnpj] = useState('')
+  const cnpjBuscaRef = useRef(new BuscaCancelavel())
+
+  useEffect(() => {
+    return () => { cnpjBuscaRef.current.cancelar() }
+  }, [])
   const [historico, setHistorico] = useState<EntradaHistorico[]>([])
   const [novaEntrada, setNovaEntrada] = useState('')
   const [salvandoEntrada, setSalvandoEntrada] = useState(false)
@@ -209,22 +216,38 @@ export default function SSTPage() {
   async function buscarCnpj(cnpj: string) {
     const nums = cnpj.replace(/\D/g, '')
     if (nums.length !== 14) return
+
     setBuscandoCnpj(true)
     setErroCnpj('')
-    try {
-      const res = await fetch(`/api/cnpj/${nums}`)
+
+    // Cancela qualquer busca de CNPJ anterior ainda em andamento, evitando
+    // que uma resposta obsoleta sobrescreva os dados do CNPJ atual.
+    const resultado = await cnpjBuscaRef.current.executar(async (signal) => {
+      const res = await fetch(`/api/cnpj/${nums}`, { signal })
       const data = await res.json()
-      if (!res.ok) { setErroCnpj(data.erro ?? 'CNPJ não encontrado'); return }
-      setForm(f => ({
-        ...f,
-        empresa: data.razaoSocial ?? f.empresa,
-        nome: f.nome || data.responsavel || f.nome,
-      }))
-    } catch {
+      return { res, data }
+    })
+
+    if (resultado.cancelada) return
+    setBuscandoCnpj(false)
+
+    if (resultado.erro) {
       setErroCnpj('Erro ao consultar CNPJ.')
-    } finally {
-      setBuscandoCnpj(false)
+      setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpjSst(f, null) }))
+      return
     }
+
+    const { res, data } = resultado.dados!
+    if (!res.ok) {
+      setErroCnpj(data.erro ?? 'CNPJ não encontrado')
+      setForm(f => ({ ...f, ...mergeDadosEmpresaPorCnpjSst(f, null) }))
+      return
+    }
+    setForm(f => ({
+      ...f,
+      ...mergeDadosEmpresaPorCnpjSst(f, data as CnpjEncontradoSst),
+      nome: f.nome || data.responsavel || f.nome,
+    }))
   }
 
   async function carregarHistorico(leadId: string) {

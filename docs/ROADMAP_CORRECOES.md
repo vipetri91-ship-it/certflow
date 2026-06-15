@@ -223,22 +223,37 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
   `docs/changelog.md` e seção 7 de `docs/AUDITORIA_GERAL_DO_SISTEMA.md`.
 - **Onda**: ONDA 2 — concluída.
 
-### P1.2 — Debounce/cancelamento na busca de CPF do wizard (race condition)
-- **Descrição**: `wizard.tsx:371-403` (`buscarClientePorCPF`) dispara a
-  consulta no `onBlur` sem debounce/cancelamento. Se o usuário digitar um
-  CPF, sair do campo, voltar e digitar outro CPF rapidamente, a resposta
-  da primeira consulta pode chegar depois da segunda e sobrescrever a
-  tela com dados do CPF errado.
-- **Risco**: médio — vetor adicional para o mesmo tipo de vazamento de
-  dados entre clientes corrigido na ONDA 0, mas requer ação rápida e
-  específica do usuário para ocorrer.
-- **Impacto**: baixo a médio — adicionar debounce/`AbortController` em
-  uma função isolada do wizard; não altera regra de negócio, apenas
-  timing da consulta.
-- **Status**: pendente.
-- **Dependências**: P1.1 (ONDA 2, mesma área de código) já está concluído —
-  sem impedimento para iniciar.
-- **Onda**: ONDA 3.
+### P1.2 — Cancelamento de buscas assíncronas por CNPJ/CPF (race conditions)
+- **Descrição**: escopo original do roadmap (debounce/`AbortController` na
+  busca de CPF do `wizard.tsx`) **já havia sido resolvido na ONDA 2**
+  (commit `bfa1aab`, 12/06/2026 — `buscarClientePorCPF` com debounce de
+  300ms + `cpfAbortRef`). Durante o mapeamento da ONDA 3 foi identificado
+  que o mesmo tipo de race condition (resposta tardia de uma busca por
+  CNPJ sobrescrevendo dados de uma busca mais recente) existia em **outros
+  5 pontos** do sistema, sem debounce/cancelamento:
+  1. `pedidos/nova-venda/wizard.tsx` — `autoPreencherPorCNPJ`
+  2. `clientes/[id]/editar/page.tsx` — `buscarCnpj`
+  3. `sst/page.tsx` — `buscarCnpj` (modal de lead)
+  4. `clientes/novo/page.tsx` — `buscarCnpj`
+  5. `parceiros/novo/page.tsx` — `buscarCnpj`
+- **Risco**: médio — mesmo vetor de vazamento/sobrescrita de dados entre
+  consultas corrigido para CPF na ONDA 2, agora estendido a todas as
+  buscas por CNPJ do sistema.
+- **Impacto**: baixo a médio — correção sistêmica via nova abstração
+  compartilhada `src/lib/busca-cancelavel.ts` (`BuscaCancelavel`), que
+  cancela a busca anterior e descarta sua resposta caso uma nova busca já
+  tenha sido iniciada. Em `clientes/[id]/editar` e `sst` foram criados
+  novos módulos `mergeDados*PorCnpj` (mesmo padrão da ONDA 2) para também
+  limpar os campos preenchidos por uma consulta anterior quando o novo
+  CNPJ não é encontrado ou dá erro.
+- **Status**: ✅ concluído na ONDA 3 (15/06/2026). Inclui testes
+  automatizados que validam explicitamente o descarte de respostas
+  tardias (`src/lib/busca-cancelavel.test.ts`) e os novos módulos de merge
+  (`merge-dados-cnpj.test.ts` em `clientes/[id]/editar/lib` e `sst/lib`).
+  Resultado item a item em `docs/changelog.md`.
+- **Dependências**: P1.1 (ONDA 2, mesma área de código) já estava
+  concluído — sem impedimento.
+- **Onda**: ONDA 3 — concluída.
 
 ### P1.3 — Revisar exposição de PII em `/api/admin/diagnostico-protocolo` e política de retenção de `audit_logs`
 - **Descrição**: mesmo após a ONDA 1 (que exigiu `auth()` + `role ===
@@ -349,15 +364,20 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
   mudança futura no wizard (incluindo P1.1 e P1.2 acima).
 - **Impacto**: nenhum no comportamento — apenas testes (vitest, mesmo
   padrão já usado em `merge-dados-pf.test.ts`).
-- **Status**: pendente.
+- **Status**: ✅ parcialmente concluído na ONDA 3 (15/06/2026) — a
+  correção do P1.2 incluiu testes automatizados para a nova abstração
+  `BuscaCancelavel` (`src/lib/busca-cancelavel.test.ts`) e para os novos
+  módulos `mergeDados*PorCnpj` usados por `autoPreencherPorCNPJ` e pelas
+  telas de cadastro/edição. Cobertura mais ampla do restante do
+  `wizard.tsx` (fora das funções tocadas pelo P1.2) permanece pendente
+  para uma onda futura.
 - **Observação**: P1.1 (ONDA 2) já adicionou testes automatizados para as
   funções `mergeDados*` extraídas (`buscarClientePorCPF`, `validarCNPJ`,
   `autoPreencherPorCNPJ` etc.). Este item trata da cobertura mais ampla do
   restante do `wizard.tsx`.
-- **Dependências**: idealmente feito **junto** com P1.2, já que ambos
-  tocam as mesmas funções — escrever testes antes ou durante essa correção
-  reduz risco de regressão.
-- **Onda**: ONDA 3 (recomendado: junto com P1.2).
+- **Dependências**: feito **junto** com P1.2 (ONDA 3), conforme
+  recomendado.
+- **Onda**: ONDA 3 — parcialmente concluída (escopo restante adiado).
 
 ### P3.2 — Consolidar lista de AGRs (Ana/Arlen/Vinicius/Laryssa) mantida em 3 lugares
 - **Descrição**: a lista de AGRs aparece duplicada em 3 pontos do código
@@ -380,7 +400,7 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 |---|---|---|
 | ONDA 1 | ✅ Concluída (10/06/2026) | 3 itens críticos de segurança (test-db, cnpj sem auth, chave diagnóstico hardcoded) |
 | ONDA 2 | ✅ Concluída (12/06/2026) | P1.1 — vazamento de dados entre formulários (isolamento `mergeDados*` no wizard e telas de cadastro), 12 itens analisados/corrigidos |
-| ONDA 3 | P0.1, P1.2, P1.3, (P3.1) | **Próxima etapa (candidata)** — endpoints de teste restantes (`test-auth`, `test-email`, `test-whatsapp`) + revisão LGPD do diagnóstico/audit_logs + debounce na busca de CPF do wizard |
+| ONDA 3 | P0.1 ✅, P1.2 ✅, P3.1 ✅ (parcial), P1.3 (pendente) | P0.1: endpoints de teste restantes removidos. P1.2: correção sistêmica de race conditions em buscas de CNPJ/CPF (5 pontos) + testes. P1.3 (revisão LGPD do diagnóstico/audit_logs) aguarda decisão de negócio do Vinicius — não bloqueia o encerramento dos demais itens da onda |
 | ONDA 4 | P2.1 a P2.5 | Duplicação de código, log com PII, feedback de erros, documentação, revisão widget RFB |
 | ONDA 5 | P3.2 | Consolidação da lista de AGRs |
 

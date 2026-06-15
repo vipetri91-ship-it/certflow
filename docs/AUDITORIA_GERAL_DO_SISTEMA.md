@@ -135,13 +135,17 @@ dedicada** em `/docs` (violação potencial da Regra 1):
   `buscarCep()`/`buscarCnpj()` são engolidas sem mensagem nem log; usuário
   não percebe que o preenchimento automático falhou.
 
-### 3.5 Race condition na busca de CPF no wizard (sem debounce)
-- `src/app/(dashboard)/pedidos/nova-venda/wizard.tsx:371-403` —
+### 3.5 Race condition na busca de CPF no wizard (sem debounce) — ✅ Corrigido na ONDA 2
+- ~~`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx:371-403` —
   `buscarClientePorCPF()` dispara no `onBlur` sem debounce/cancelamento.
   Se o usuário digitar um CPF, sair do campo, voltar e digitar outro CPF
   rapidamente, a resposta da primeira consulta pode chegar **depois** da
   segunda e sobrescrever os dados na tela com os do CPF errado — um vetor
-  adicional para o mesmo tipo de vazamento corrigido hoje.
+  adicional para o mesmo tipo de vazamento corrigido hoje.~~ Corrigido com
+  debounce de 300ms + `AbortController` (commit `bfa1aab`, 12/06/2026). Na
+  ONDA 3 (P1.2, 15/06/2026), o mesmo tipo de race condition foi corrigido
+  também para todas as buscas por CNPJ do sistema — ver
+  `docs/ROADMAP_CORRECOES.md` (P1.2) e `docs/changelog.md`.
 
 ---
 
@@ -272,12 +276,12 @@ outros pontos e **tratado na ONDA 2** (concluída em 12/06/2026 — ver
 | `wizard.tsx` | `buscarCep()` (453-471) | logradouro, bairro, município, estado | ➖ Sem ação necessária — sem risco de vazamento de PII de terceiros (análise item #5) |
 | `clientes/novo/page.tsx` | `buscarCnpj()` (86-114) | razão social, fantasia, e-mail, telefone, endereço | ✅ Corrigido — commit `4736fc7` |
 | `clientes/novo/page.tsx` | `buscarCep()` (116-141) | logradouro, bairro, cidade, estado | ✅ Já protegido (limpa campos no `onChange` do CEP) |
-| `clientes/[id]/editar/page.tsx` | `buscarCnpj()` (118-140) | razão social, fantasia, e-mail, telefone, endereço | ➖ Sem ação necessária — tela de edição pré-carregada; falha já não altera `form` (decisão registrada em `dfa2696`, item #7) |
+| `clientes/[id]/editar/page.tsx` | `buscarCnpj()` (118-140) | razão social, fantasia, e-mail, telefone, endereço | ➖ Sem ação necessária para vazamento de dados entre clientes (decisão registrada em `dfa2696`, item #7). **ONDA 3 (15/06/2026)**: corrigida separadamente a race condition de buscas de CNPJ assíncronas (ver P1.2) com novo módulo `mergeDadosEmpresaPorCnpj` |
 | `clientes/[id]/editar/page.tsx` | `buscarCep()` (142-160) | logradouro, bairro, cidade, estado | ➖ Sem ação necessária — mesmo racional do item #7 (item #8) |
 | `pedidos/nova-venda/emissao-online.tsx` | `validar()` (91-119) | nome, documento, e-mail (padrão `if` sem `else`) | ✅ Corrigido — commit `6f48fcb` |
 | `parceiros/novo/page.tsx` | `buscarCnpj()` (66-86) | razão social, e-mail, telefone | ✅ Corrigido — commit `8e7fdba` |
 | `parceiros/[id]/editar/page.tsx` | provável `buscarCnpj()` análogo | (a confirmar) | ➖ Não aplicável — função `buscarCnpj()` não existe nesta tela (confirmado por grep) |
-| `sst/page.tsx` | busca de CNPJ no modal de lead | campos de empresa do lead | ⚠️ Risco residual aceito, baixa prioridade — modal dual-mode (novo/editar) torna a correção desproporcional ao risco (lead comercial interno, sem PII de cliente final/Safeweb/financeiro) |
+| `sst/page.tsx` | busca de CNPJ no modal de lead | campos de empresa do lead | ✅ Corrigido na ONDA 3 (15/06/2026, P1.2) — `mergeDadosEmpresaPorCnpjSst` + `BuscaCancelavel`, junto com a correção da race condition de busca por CNPJ |
 
 **Conclusão (ONDA 2)**: dos 12 pontos mapeados, 5 foram corrigidos com o
 padrão `mergeDados*` (testes automatizados incluídos), 1 já estava
