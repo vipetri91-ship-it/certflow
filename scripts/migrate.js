@@ -187,6 +187,95 @@ async function migrate() {
       "criadoEm"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "posts_social_pkey" PRIMARY KEY ("id")
     )`,
+
+    // ─── Frente D — Histórico Inteligente de Certificados (Fase 2, schema only) ──
+
+    // Novos status de Certificado
+    `ALTER TYPE "StatusCertificado" ADD VALUE IF NOT EXISTS 'NAO_RENOVADO'`,
+    `ALTER TYPE "StatusCertificado" ADD VALUE IF NOT EXISTS 'REVOGADO'`,
+
+    // Novos enums para Renovação Manual
+    `DO $$ BEGIN
+       CREATE TYPE "StatusRenovacaoManual" AS ENUM ('PROSPECT','CONVERTIDA','DESCARTADA');
+     EXCEPTION WHEN duplicate_object THEN null;
+     END $$`,
+    `DO $$ BEGIN
+       CREATE TYPE "OrigemRenovacaoManual" AS ENUM ('MANUAL','IMPORTADO','CERTIFICADO');
+     EXCEPTION WHEN duplicate_object THEN null;
+     END $$`,
+
+    // Certificado — renovação encadeada
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "certificadoAnteriorId" TEXT`,
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'certificados_certificadoAnteriorId_key') THEN
+         ALTER TABLE "certificados" ADD CONSTRAINT "certificados_certificadoAnteriorId_key" UNIQUE ("certificadoAnteriorId");
+       END IF;
+     END $$`,
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'certificados_certificadoAnteriorId_fkey') THEN
+         ALTER TABLE "certificados" ADD CONSTRAINT "certificados_certificadoAnteriorId_fkey"
+           FOREIGN KEY ("certificadoAnteriorId") REFERENCES "certificados"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+       END IF;
+     END $$`,
+
+    // Certificado — Não Renovou
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "motivoNaoRenovacao" TEXT`,
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "naoRenovadoEm" TIMESTAMP(3)`,
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "naoRenovadoPorId" TEXT`,
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'certificados_naoRenovadoPorId_fkey') THEN
+         ALTER TABLE "certificados" ADD CONSTRAINT "certificados_naoRenovadoPorId_fkey"
+           FOREIGN KEY ("naoRenovadoPorId") REFERENCES "usuarios"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+       END IF;
+     END $$`,
+
+    // Certificado — Revogação
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "motivoRevogacao" TEXT`,
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "revogadoEm" TIMESTAMP(3)`,
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "revogadoPorId" TEXT`,
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'certificados_revogadoPorId_fkey') THEN
+         ALTER TABLE "certificados" ADD CONSTRAINT "certificados_revogadoPorId_fkey"
+           FOREIGN KEY ("revogadoPorId") REFERENCES "usuarios"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+       END IF;
+     END $$`,
+
+    // Índice de apoio ao matching de renovação (cliente + modelo + status)
+    `CREATE INDEX IF NOT EXISTS "certificados_cliente_modelo_status_idx" ON "certificados" ("clienteId", "modeloId", "status")`,
+
+    // Lancamento — bonificação
+    `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "bonificado" BOOLEAN NOT NULL DEFAULT false`,
+
+    // Tabela de Renovações Manuais (Controle de Vencimentos — origem fora da V&G)
+    `CREATE TABLE IF NOT EXISTS "renovacoes_manuais" (
+      "id" TEXT NOT NULL,
+      "clienteId" TEXT,
+      "nome" TEXT NOT NULL,
+      "cpfCnpj" TEXT,
+      "telefone" TEXT,
+      "email" TEXT,
+      "tipoPessoa" "TipoPessoa",
+      "modeloDescricao" TEXT,
+      "dataVencimento" TIMESTAMP(3) NOT NULL,
+      "observacoes" TEXT,
+      "origem" "OrigemRenovacaoManual" NOT NULL DEFAULT 'MANUAL',
+      "status" "StatusRenovacaoManual" NOT NULL DEFAULT 'PROSPECT',
+      "certificadoConvertidoId" TEXT,
+      "convertidoEm" TIMESTAMP(3),
+      "encerradoEm" TIMESTAMP(3),
+      "criadoPorId" TEXT,
+      "responsavelId" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "renovacoes_manuais_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "renovacoes_manuais_certificadoConvertidoId_key" UNIQUE ("certificadoConvertidoId"),
+      CONSTRAINT "renovacoes_manuais_clienteId_fkey" FOREIGN KEY ("clienteId") REFERENCES "clientes"("id") ON DELETE SET NULL,
+      CONSTRAINT "renovacoes_manuais_certificadoConvertidoId_fkey" FOREIGN KEY ("certificadoConvertidoId") REFERENCES "certificados"("id") ON DELETE SET NULL,
+      CONSTRAINT "renovacoes_manuais_criadoPorId_fkey" FOREIGN KEY ("criadoPorId") REFERENCES "usuarios"("id") ON DELETE SET NULL,
+      CONSTRAINT "renovacoes_manuais_responsavelId_fkey" FOREIGN KEY ("responsavelId") REFERENCES "usuarios"("id") ON DELETE SET NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS "renovacoes_manuais_cpfcnpj_status_idx" ON "renovacoes_manuais" ("cpfCnpj", "status")`,
+    `CREATE INDEX IF NOT EXISTS "renovacoes_manuais_status_idx" ON "renovacoes_manuais" ("status")`,
   ]
 
   for (const q of queries) {

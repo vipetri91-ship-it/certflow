@@ -31,6 +31,20 @@ enum StatusCertificado {
   VENCIDO
   CANCELADO
   RENOVADO
+  NAO_RENOVADO
+  REVOGADO
+}
+
+enum StatusRenovacaoManual {
+  PROSPECT
+  CONVERTIDA
+  DESCARTADA
+}
+
+enum OrigemRenovacaoManual {
+  MANUAL
+  IMPORTADO
+  CERTIFICADO
 }
 
 enum StatusPedido {
@@ -108,6 +122,11 @@ model Usuario {
   orcamentos           Orcamento[]
   sessaoAtividade      SessaoAtividade[]
 
+  certificadosNaoRenovadosPor Certificado[]     @relation("CertificadoNaoRenovadoPor")
+  certificadosRevogadosPor    Certificado[]     @relation("CertificadoRevogadoPor")
+  renovacoesManuaisCriadas    RenovacaoManual[] @relation("RenovacaoManualCriadoPor")
+  renovacoesManuaisResponsavel RenovacaoManual[] @relation("RenovacaoManualResponsavel")
+
   @@map("usuarios")
 }
 
@@ -161,6 +180,7 @@ model Cliente {
   pedidos           Pedido[]
   emails            EmailLog[]
   historicoContatos HistoricoContato[]
+  renovacoesManuais RenovacaoManual[]
 
   @@map("clientes")
 }
@@ -317,7 +337,63 @@ model Certificado {
   emailsEnviados    EmailLog[]
   historicoContatos HistoricoContato[]
 
+  certificadoAnteriorId String?      @unique
+  certificadoAnterior   Certificado? @relation("RenovacaoCertificado", fields: [certificadoAnteriorId], references: [id])
+  certificadoRenovacao  Certificado? @relation("RenovacaoCertificado")
+
+  motivoNaoRenovacao String?
+  naoRenovadoEm      DateTime?
+  naoRenovadoPorId   String?
+  naoRenovadoPor     Usuario? @relation("CertificadoNaoRenovadoPor", fields: [naoRenovadoPorId], references: [id])
+
+  motivoRevogacao String?
+  revogadoEm      DateTime?
+  revogadoPorId   String?
+  revogadoPor     Usuario? @relation("CertificadoRevogadoPor", fields: [revogadoPorId], references: [id])
+
+  renovacaoManual RenovacaoManual?
+
+  @@index([clienteId, modeloId, status])
   @@map("certificados")
+}
+
+// ─── RENOVAÇÕES MANUAIS (Controle de Vencimentos — origem fora da V&G) ────────
+
+model RenovacaoManual {
+  id        String   @id @default(cuid())
+  clienteId String?
+
+  nome     String
+  cpfCnpj  String?
+  telefone String?
+  email    String?
+  tipoPessoa TipoPessoa?
+
+  modeloDescricao String?
+  dataVencimento  DateTime
+  observacoes     String? @db.Text
+
+  origem OrigemRenovacaoManual @default(MANUAL)
+  status StatusRenovacaoManual @default(PROSPECT)
+
+  certificadoConvertidoId String?   @unique
+  convertidoEm            DateTime?
+  encerradoEm              DateTime?
+
+  criadoPorId   String?
+  responsavelId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente               Cliente?     @relation(fields: [clienteId], references: [id])
+  certificadoConvertido Certificado? @relation(fields: [certificadoConvertidoId], references: [id])
+  criadoPor             Usuario?     @relation("RenovacaoManualCriadoPor", fields: [criadoPorId], references: [id])
+  responsavel           Usuario?     @relation("RenovacaoManualResponsavel", fields: [responsavelId], references: [id])
+
+  @@index([cpfCnpj, status])
+  @@index([status])
+  @@map("renovacoes_manuais")
 }
 
 // ─── PEDIDOS DE VENDA ─────────────────────────────────────────────────────────
@@ -420,6 +496,7 @@ model Lancamento {
   banco            String?
   interCobrancaId  String?    // nosso número Inter
   pixCopiaECola    String?    // Pix copia e cola
+  bonificado       Boolean          @default(false)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 

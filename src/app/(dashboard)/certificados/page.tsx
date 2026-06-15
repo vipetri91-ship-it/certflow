@@ -34,6 +34,8 @@ export default async function CertificadosPage({ searchParams }: Props) {
     VENCIDO: 'bg-red-100 text-red-700',
     CANCELADO: 'bg-gray-100 text-gray-600',
     RENOVADO: 'bg-blue-100 text-blue-700',
+    NAO_RENOVADO: 'bg-orange-100 text-orange-700',
+    REVOGADO: 'bg-gray-100 text-gray-600',
   }
 
   return (

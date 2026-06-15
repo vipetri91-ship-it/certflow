@@ -7,6 +7,68 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 15/06/2026
 
+### feat(schema): Frente D — Fase 2 (schema aditivo, sem backfill)
+- **Contexto**: implementação da Fase 2 da especificação
+  `docs/ESPECIFICACAO_HISTORICO_CERTIFICADOS_RENOVACOES.md`, aprovada após
+  inclusão dos campos `origem`, `responsavelId` e `encerradoEm` em
+  `RenovacaoManual` e do índice composto `(cpfCnpj, status)`.
+- **Schema** (`prisma/schema.prisma` + `scripts/migrate.js`, ambos
+  aditivos/idempotentes):
+  - `StatusCertificado`: novos valores `NAO_RENOVADO` e `REVOGADO`
+    (`VENCIDO`/`CANCELADO` permanecem no enum por compatibilidade
+    histórica, sem uso por código novo).
+  - `Certificado`: novos campos `certificadoAnteriorId`
+    (`@unique`, self-relation `RenovacaoCertificado`),
+    `motivoNaoRenovacao`/`naoRenovadoEm`/`naoRenovadoPorId`,
+    `motivoRevogacao`/`revogadoEm`/`revogadoPorId`, e índice
+    `(clienteId, modeloId, status)`.
+  - Novos enums `StatusRenovacaoManual` (`PROSPECT`/`CONVERTIDA`/`DESCARTADA`)
+    e `OrigemRenovacaoManual` (`MANUAL`/`IMPORTADO`/`CERTIFICADO`).
+  - Novo model `RenovacaoManual` (tabela `renovacoes_manuais`): cadastro de
+    vencimentos de certificados emitidos fora da V&G, com `origem`,
+    `responsavelId` (FK `Usuario`), `criadoPorId`, `encerradoEm` e índices
+    `(cpfCnpj, status)` e `(status)`.
+  - `Lancamento.bonificado` (`Boolean @default(false)`) para lançamentos de
+    cortesia/bonificação.
+  - `Usuario`/`Cliente`: novas back-relations correspondentes
+    (`certificadosNaoRenovadosPor`, `certificadosRevogadosPor`,
+    `renovacoesManuaisCriadas`, `renovacoesManuaisResponsavel`,
+    `renovacoesManuais`).
+- **Ajuste necessário**: `statusBadge` em
+  `src/app/(dashboard)/certificados/page.tsx` passou a cobrir
+  `NAO_RENOVADO`/`REVOGADO` (mapa exaustivo por `StatusCertificado`,
+  necessário para o build com TypeScript).
+- **Fora do escopo desta etapa**: backfill de dados existentes (migração
+  `VENCIDO`→`NAO_RENOVADO`/`CANCELADO`→`REVOGADO`, vínculo retroativo de
+  `certificadoAnteriorId`), auto-linking de renovação, conversão automática,
+  unificação de `/renovacoes`, CRUD de `RenovacaoManual`, timeline da ficha
+  do cliente e UI de bonificação — todos planejados para fases seguintes
+  (seção 8 da especificação), cada uma com aprovação própria.
+- **Validação**: `npx prisma generate` e `npx next build` executados com
+  sucesso. Nenhuma query de `UPDATE`/backfill incluída no `migrate.js`.
+
+### docs: especificação da Frente D — Histórico Inteligente de Certificados e Controle de Renovações
+- **Contexto**: revisão funcional do módulo de Clientes e Controle de
+  Vencimentos identificou que (1) a renovação de certificados não é
+  detectada automaticamente nem encadeada na ficha do cliente, (2) o status
+  `VENCIDO` está sobrecarregado (usado tanto para "passou da data" quanto
+  para a decisão manual "Não Renovou"), e (3) não existe forma de
+  acompanhar vencimentos de certificados emitidos fora da V&G que o cliente
+  pretende renovar conosco.
+- **Entregável**: novo documento
+  `docs/ESPECIFICACAO_HISTORICO_CERTIFICADOS_RENOVACOES.md`, com a análise
+  estrutural completa, riscos e plano de execução em 10 fases. Cobre:
+  novos campos em `Certificado` (`certificadoAnteriorId`,
+  `motivoNaoRenovacao`, `naoRenovadoEm`, `naoRenovadoPorId`,
+  `motivoRevogacao`, `revogadoEm`, `revogadoPorId`), novos status
+  `NAO_RENOVADO`/`REVOGADO`, novo model `RenovacaoManual` (cadastro manual
+  de vencimentos externos com conversão automática por CPF/CNPJ ao
+  efetivar a venda), e `Lancamento.bonificado` (lançamentos de
+  cortesia/bonificação visíveis nos relatórios sem somar na receita).
+- **Status**: apenas documentação — nenhuma alteração de schema ou código
+  realizada nesta etapa. Aguardando aprovação para iniciar a Fase 2
+  (migração de schema aditiva).
+
 ### fix(lgpd): redução de exposição de PII no diagnóstico de protocolo e nos audit logs de Cliente/Parceiro (ONDA 3 / P1.3)
 - **Contexto**: levantamento da ONDA 3 (P1.3) identificou que
   `/api/admin/diagnostico-protocolo` retornava CPF, CNPJ, DDD, celular,
