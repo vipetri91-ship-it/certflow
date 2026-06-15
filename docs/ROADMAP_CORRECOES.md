@@ -268,10 +268,26 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
   (`select`) ou mascarar CPF/data de nascimento, sem alterar a finalidade
   de diagnóstico. Requer confirmação do Vinicius sobre o uso real do
   endpoint antes de qualquer mudança.
-- **Status**: pendente — nenhuma análise iniciada.
+- **Status**: ✅ concluído na ONDA 3 (15/06/2026), conforme decisão do
+  Vinicius:
+  1. `/api/admin/diagnostico-protocolo` — `select` do `cliente` reduzido a
+     `{ tipoPessoa: true }` (removidos CPF, CNPJ, DDD, celular, data de
+     nascimento e endereço completo).
+  2. `audit_logs` de `Cliente` e `Parceiro` (UPDATE) — passam a gravar
+     apenas `camposAlterados` (nomes dos campos que mudaram), nunca mais
+     o snapshot completo (`antes`/`depois`) com CPF/CNPJ/RG/endereço/dados
+     bancários. Nova função `camposAlterados()` em `src/lib/audit.ts`,
+     com testes (`src/lib/audit.test.ts`).
+  3. `senhaParceiro` — removida explicitamente da auditoria (correção de
+     vazamento: o hash bcrypt era gravado em `audit_logs` a cada edição de
+     parceiro).
+  4. Expurgo/anonimização do histórico de `audit_logs` já gravado **não
+     foi feito nesta etapa** — fica para levantamento e decisão separada
+     (correção vale a partir de agora, "daqui para frente").
+  Resultado item a item em `docs/changelog.md`.
 - **Dependências**: nenhuma técnica, mas depende de decisão de negócio
-  (manter, restringir campos ou aposentar o endpoint).
-- **Onda**: ONDA 3.
+  (manter, restringir campos ou aposentar o endpoint) — decisão tomada.
+- **Onda**: ONDA 3 — concluída.
 
 ---
 
@@ -400,7 +416,7 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 |---|---|---|
 | ONDA 1 | ✅ Concluída (10/06/2026) | 3 itens críticos de segurança (test-db, cnpj sem auth, chave diagnóstico hardcoded) |
 | ONDA 2 | ✅ Concluída (12/06/2026) | P1.1 — vazamento de dados entre formulários (isolamento `mergeDados*` no wizard e telas de cadastro), 12 itens analisados/corrigidos |
-| ONDA 3 | P0.1 ✅, P1.2 ✅, P3.1 ✅ (parcial), P1.3 (pendente) | P0.1: endpoints de teste restantes removidos. P1.2: correção sistêmica de race conditions em buscas de CNPJ/CPF (5 pontos) + testes. P1.3 (revisão LGPD do diagnóstico/audit_logs) aguarda decisão de negócio do Vinicius — não bloqueia o encerramento dos demais itens da onda |
+| ONDA 3 | P0.1 ✅, P1.2 ✅, P1.3 ✅, P3.1 ✅ (parcial) | P0.1: endpoints de teste restantes removidos. P1.2: correção sistêmica de race conditions em buscas de CNPJ/CPF (5 pontos) + testes. P1.3: diagnóstico de protocolo sem PII + audit logs de Cliente/Parceiro só com `camposAlterados` + remoção de `senhaParceiro` da auditoria — **ONDA 3 concluída** |
 | ONDA 4 | P2.1 a P2.5 | Duplicação de código, log com PII, feedback de erros, documentação, revisão widget RFB |
 | ONDA 5 | P3.2 | Consolidação da lista de AGRs |
 

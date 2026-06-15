@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { registrarAuditoria } from '@/lib/audit'
+import { registrarAuditoria, camposAlterados } from '@/lib/audit'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -97,12 +97,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const parceiro = await prisma.parceiro.update({ where: { id }, data })
 
+  // senhaParceiro nunca entra na auditoria (nem o nome do campo nem o hash) —
+  // alteração de senha não deve aparecer no histórico de auditoria.
+  const camposAuditados = Object.keys(parsed.data).filter(c => c !== 'senhaParceiro')
+
   await registrarAuditoria({
     usuarioId: session.user.id,
     acao: 'UPDATE',
     entidade: 'Parceiro',
     entidadeId: id,
-    dados: { antes: antigo, depois: parceiro },
+    dados: { camposAlterados: camposAlterados(antigo, parceiro, camposAuditados) },
     ip: req.headers.get('x-forwarded-for') ?? undefined,
   })
 

@@ -38,8 +38,7 @@ export async function GET(_req: NextRequest) {
       },
       cliente: {
         select: {
-          tipoPessoa: true, cpf: true, cnpj: true, ddd: true, celular: true, dataNascimento: true,
-          cep: true, logradouro: true, numero: true, bairro: true, cidade: true, estado: true,
+          tipoPessoa: true,
         },
       },
     },

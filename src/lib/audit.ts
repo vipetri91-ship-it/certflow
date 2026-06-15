@@ -25,3 +25,19 @@ export async function registrarAuditoria(params: AuditParams) {
     // nunca deixar falha de auditoria derrubar a operação principal
   }
 }
+
+function normalizarValor(v: unknown): string {
+  if (v instanceof Date) return v.toISOString()
+  if (v === null || v === undefined) return ''
+  return String(v)
+}
+
+// Compara `antes` e `depois` apenas nos campos informados e retorna os nomes
+// dos campos cujo valor mudou — sem expor os valores em si (LGPD/auditoria).
+export function camposAlterados(
+  antes: Record<string, unknown>,
+  depois: Record<string, unknown>,
+  campos: string[],
+): string[] {
+  return campos.filter(campo => normalizarValor(antes[campo]) !== normalizarValor(depois[campo]))
+}

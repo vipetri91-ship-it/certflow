@@ -7,6 +7,47 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 15/06/2026
 
+### fix(lgpd): redução de exposição de PII no diagnóstico de protocolo e nos audit logs de Cliente/Parceiro (ONDA 3 / P1.3)
+- **Contexto**: levantamento da ONDA 3 (P1.3) identificou que
+  `/api/admin/diagnostico-protocolo` retornava CPF, CNPJ, DDD, celular,
+  data de nascimento e endereço completo de até 30 clientes sem
+  necessidade — nenhum desses campos influencia o diagnóstico de geração
+  de protocolo Safeweb (que depende apenas de `tipoPessoa` e dos dados do
+  pedido/modelo). Também identificou que os audit logs de `Cliente` e
+  `Parceiro` gravavam snapshots completos (`antes`/`depois`) a cada
+  edição, incluindo CPF/CNPJ/RG/endereço/dados bancários e, no caso de
+  `Parceiro`, o hash bcrypt de `senhaParceiro` — visível para ADMIN e
+  GERENTE na tela `/configuracoes/auditoria`.
+- **Decisão do Vinicius**: reduzir exposição "daqui para frente"; o
+  expurgo/anonimização do histórico já gravado fica para um levantamento e
+  decisão separados (não realizado nesta etapa).
+- **Arquivos alterados**:
+  1. `src/app/api/admin/diagnostico-protocolo/route.ts` — `select` do
+     `cliente` reduzido a `{ tipoPessoa: true }` (removidos cpf, cnpj,
+     ddd, celular, dataNascimento, cep, logradouro, numero, bairro,
+     cidade, estado).
+  2. `src/lib/audit.ts` — nova função `camposAlterados(antes, depois,
+     campos)`, que retorna apenas os **nomes** dos campos cujo valor
+     mudou (datas comparadas por valor, não por referência).
+  3. `src/app/api/clientes/[id]/route.ts` — PATCH grava
+     `dados: { camposAlterados: [...] }` em vez de `{ antes, depois }`.
+  4. `src/app/api/parceiros/[id]/route.ts` — mesmo padrão;
+     `senhaParceiro` é explicitamente excluído da lista de campos
+     auditados (nem o nome do campo nem o hash entram no log a partir de
+     agora).
+- **Testes novos**: `src/lib/audit.test.ts` (5 testes para
+  `camposAlterados`, incluindo comparação de datas e detecção de mudança
+  null → valor).
+- **Impacto**: nenhuma mudança na resposta das APIs para o frontend
+  (Editar Cliente/Parceiro retornam o mesmo JSON). Na tela
+  `/configuracoes/auditoria`, o painel de detalhes de UPDATE de
+  Cliente/Parceiro passa a mostrar `camposAlterados: [...]` em vez do
+  snapshot completo — ajustes cosméticos nessa tela ficam fora do escopo
+  desta etapa.
+- **Testes/build**: `npx vitest run` (54/54 passou, +5 novos) e
+  `npx next build` concluído com sucesso.
+- **Onda**: ONDA 3 (P1.3 ✅ concluído — ONDA 3 encerrada).
+
 ### fix(security): remoção dos endpoints de teste test-auth, test-email e test-whatsapp (ONDA 3 / P0.1)
 - **Arquivos removidos**: `src/app/api/test-auth/route.ts`,
   `src/app/api/test-email/route.ts`, `src/app/api/test-whatsapp/route.ts`.

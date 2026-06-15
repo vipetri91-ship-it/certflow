@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { registrarAuditoria } from '@/lib/audit'
+import { registrarAuditoria, camposAlterados } from '@/lib/audit'
 import { z } from 'zod'
 
 const schemaUpdate = z.object({
@@ -84,7 +84,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     acao: 'UPDATE',
     entidade: 'Cliente',
     entidadeId: id,
-    dados: { antes: antigo, depois: cliente },
+    dados: { camposAlterados: camposAlterados(antigo, cliente, Object.keys(parsed.data)) },
     ip: req.headers.get('x-forwarded-for') ?? undefined,
   })
 
