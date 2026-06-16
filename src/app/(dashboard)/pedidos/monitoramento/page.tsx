@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Video, MapPin, Globe } from 'lucide-react'
 import { formatarData, formatarHora, formatarMoeda, formatarCPF, formatarCNPJ } from '@/lib/utils'
 import { MonitoramentoAcoes } from './acoes'
+import { BotaoReconciliar } from './botao-reconciliar'
 
 interface SearchParams {
   agr?: string
@@ -123,11 +124,14 @@ export default async function MonitoramentoPage({ searchParams }: Props) {
           </div>
         </form>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-gray-500">{filtrados.length} atendimento{filtrados.length !== 1 ? 's' : ''}</p>
-          <Link href="/pedidos/nova-venda" className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition">
-            + Nova Venda
-          </Link>
+          <div className="flex items-start gap-3">
+            {(session.user as any).role === 'ADMIN' && <BotaoReconciliar />}
+            <Link href="/pedidos/nova-venda" className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition">
+              + Nova Venda
+            </Link>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">

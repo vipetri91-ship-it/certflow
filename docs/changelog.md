@@ -5,7 +5,103 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 16/06/2026
+
+### feat: reconciliação automática de protocolos Safeweb presos em VERIFICADO
+- **Contexto**: investigação revelou que 3 protocolos de videoconferência
+  (1010813157, 1010810289, 1010810219) estavam aprovados/emitidos na Safeweb
+  mas permaneciam em `status=VERIFICADO` no CertFlow porque o webhook
+  de "emissao" nunca foi entregue (falha de rede/timeout no momento da
+  emissão). O campo `safewebStatus` armazena apenas o último evento recebido
+  e não há histórico de eventos — impossível saber quantos eventos anteriores
+  se perderam.
+- **Causa raiz confirmada**: webhook do evento "emissao" não chegou ao
+  CertFlow. Safeweb já havia emitido os certificados. Status manual "Finalizar"
+  resolvia o caso mas exigia intervenção humana para cada protocolo.
+- **Solução**: job de reconciliação ativa que consulta a Safeweb via
+  `consultarProtocolo()` e avança pedidos presos automaticamente.
+- **Arquivos criados**:
+  - `src/app/api/jobs/reconciliar-protocolos/route.ts` — job POST+GET;
+    autentica via `AUTH_SECRET` (cron) ou sessão ADMIN (manual); consulta
+    `consultarProtocolo()`; se emissão confirmada: atualiza `status=EMITIDO`,
+    cria `Certificado` e `Lancamento` (replicando a lógica do
+    `PATCH /api/pedidos/[id]`), chama `registrarAuditoria`
+  - `src/app/(dashboard)/pedidos/monitoramento/botao-reconciliar.tsx` —
+    botão client-component "Reconciliar Safeweb" visível só para ADMIN
+    no painel de monitoramento; exibe resumo inline (total/emitidos/erros)
+    com painel de detalhes por protocolo expansível
+- **Arquivos modificados**:
+  - `vercel.json` — cron `*/30 * * * *` adicionado para
+    `/api/jobs/reconciliar-protocolos`
+  - `src/app/(dashboard)/pedidos/monitoramento/page.tsx` — importa e
+    renderiza `<BotaoReconciliar />` condicionalmente para `role=ADMIN`
+- **Efeito colateral zero**: pedidos já em `EMITIDO`/`CANCELADO` são
+  ignorados pelo filtro (`status=VERIFICADO` + `updatedAt < now-2h`).
+  Lançamentos e certificados duplicados são protegidos por `findFirst`
+  antes de criar.
+- **Autor**: Claude Code (solicitado por Vinicius)
+
+---
+
 ## 15/06/2026
+
+### docs: divisão da Fase 8 em 8A (vínculo manual) e 8B (sugestões automáticas)
+- **Contexto**: revisão de premissa do Vinicius — um cliente pode ter
+  múltiplos certificados válidos simultâneos (mesmo modelo ou diferentes:
+  vários tokens A3, contingência, responsáveis diferentes, certificado
+  novo emitido antes do vencimento do antigo). A existência de um
+  certificado novo **não implica** substituição de outro, então
+  "Cliente + Modelo + proximidade de datas" não é critério válido para
+  vincular automaticamente uma renovação.
+- **Decisão**: nenhum vínculo `certificadoAnteriorId` é criado
+  automaticamente. Toda renovação passa a depender de confirmação humana.
+  A Fase 8 foi dividida em:
+  - **Fase 8A** (próxima etapa): redesenho da ficha (já especificado) +
+    ação "🔗 Marcar como renovado por..." na timeline, com seletor que
+    lista **qualquer** certificado do cliente (sem filtro por modelo —
+    cobre A1→A3, Token→Nuvem, 12→24/36 meses), confirmação, aplicação da
+    regra de status já aprovada (seção 3) e ação de desfazer.
+  - **Fase 8B** (futura, sem data): motor de sugestões automáticas
+    (heurísticas, candidatos, busca inteligente) — apenas sugere, nunca
+    grava.
+- **Entregável**: seção 10 (nova) do documento
+  `docs/ESPECIFICACAO_FICHA_CLIENTE_CERTIFICADOS.md`, detalhando fluxo de
+  seleção, efeitos transacionais, validações, desfazer e permissões da
+  Fase 8A.
+- **Status**: apenas documentação — nenhuma alteração de schema, banco ou
+  código realizada nesta etapa. Próximo passo: análise de impacto da
+  implementação da Fase 8A.
+- **Autor**: Vinicius (via Claude Code).
+
+### docs: especificação consolidada da Fase 8 — Ficha do Cliente Centrada em Certificados
+- **Contexto**: após a primeira proposta funcional para a Fase 8 (ficha do
+  cliente baseada em certificados, validada com o cadastro do Vinicius como
+  caso real), o Vinicius solicitou 6 ajustes conceituais antes de qualquer
+  implementação.
+- **Entregável**: novo documento
+  `docs/ESPECIFICACAO_FICHA_CLIENTE_CERTIFICADOS.md`, consolidando:
+  1. Regra de exclusividade mútua entre os estados finais `RENOVADO`,
+     `NAO_RENOVADO` e `REVOGADO` (vínculo de renovação sempre sobrescreve
+     `NAO_RENOVADO`).
+  2. Nova hierarquia visual do card de certificado (Modelo/Validade/
+     Emissão/Vencimento/Status/AGR em destaque; Pedido/Protocolo/
+     Atendimento/Número da compra em área secundária).
+  3. Necessidade de "Valor Comercial" vs. "Valor Cobrado" em bonificações —
+     identificada lacuna no schema atual (`Lancamento.valor` +
+     `bonificado`), com proposta de campo adicional `valorComercial` para a
+     Fase 9 (não implementado agora).
+  4. Arquitetura formal da "fonte da verdade": Certificado → Controle de
+     Vencimentos (visão derivada) → Renovação (relação entre certificados).
+  5. Decisão de integrar `RenovacaoManual` ao histórico cronológico único do
+     cliente (timeline única, com diferenciação visual por tipo de card),
+     em vez de seção separada de "Acompanhamento de Renovação".
+  6. Nova seção obrigatória "Caso Real Validado — Vinicius Antonio Silveira
+     Petri", cobrindo ficha, histórico, financeiro, controle de vencimentos
+     e compatibilidade com a futura importação do legado.
+- **Status**: apenas documentação — nenhuma alteração de schema, banco ou
+  código realizada nesta etapa. Aguardando revisão final do Vinicius antes
+  de iniciar a análise de impacto da implementação da Fase 8.
+- **Autor**: Vinicius (via Claude Code).
 
 ### feat(schema): Frente D — Fase 2 (schema aditivo, sem backfill)
 - **Contexto**: implementação da Fase 2 da especificação

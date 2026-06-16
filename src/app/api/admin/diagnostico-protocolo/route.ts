@@ -26,8 +26,12 @@ export async function GET(_req: NextRequest) {
       safewebProtocolo: true,
       safewebStatus: true,
       numeroCompra: true,
-      observacoes: true,
+      hopeUrlDocumentos: true,
+      emitidoEm: true,
+      verificadoEm: true,
       createdAt: true,
+      updatedAt: true,
+      observacoes: true,
       usuario: { select: { nome: true, role: true } },
       itens: {
         select: {
@@ -44,5 +48,12 @@ export async function GET(_req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ pedidos })
+  // Auditoria relacionada a cada pedido (ex.: alterações manuais de status via PATCH)
+  const auditLogs = await prisma.auditLog.findMany({
+    where: { entidade: 'Pedido', entidadeId: { in: pedidos.map(p => p.id) } },
+    orderBy: { createdAt: 'asc' },
+    select: { entidadeId: true, acao: true, dados: true, createdAt: true, usuario: { select: { nome: true } } },
+  })
+
+  return NextResponse.json({ pedidos, auditLogs })
 }
