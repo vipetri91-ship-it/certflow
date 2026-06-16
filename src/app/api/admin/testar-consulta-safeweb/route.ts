@@ -21,14 +21,14 @@ export async function GET(req: NextRequest) {
   const baseUrl = process.env.SAFEWEB_BASE_URL ?? 'https://pss.safewebpss.com.br/Service/Microservice'
   const cnpjAR  = process.env.SAFEWEB_CNPJ_AR ?? ''
 
-  // Candidatos de endpoint para consulta de status
+  // Candidatos de endpoint para consulta de status — HOPE API
   const paths = [
-    `/Shared/Partner/api/ConsultarSolicitacao/${protocolo}`,
-    `/Shared/Partner/api/Solicitacao/${protocolo}`,
-    `/Shared/Partner/api/BuscarSolicitacao/${protocolo}`,
-    `/api/solicitacao/${protocolo}`,
-    `/Shared/Partner/api/ConsultarSolicitacao/${protocolo}/${cnpjAR}`,
-    `/Shared/Partner/api/Solicitacao/${protocolo}/${cnpjAR}`,
+    `/Hope/Shared/api/integration/solicitation/${protocolo}`,
+    `/Hope/Shared/api/solicitation/${protocolo}`,
+    `/Hope/Shared/api/integration/solicitation/status/${protocolo}`,
+    `/Hope/Shared/api/integration/protocol/${protocolo}`,
+    `/Shared/Partner/api/Add/status/${protocolo}`,
+    `/Shared/Partner/api/StatusSolicitacao/${protocolo}`,
   ]
 
   let token: string
