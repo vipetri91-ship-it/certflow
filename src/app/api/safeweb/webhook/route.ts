@@ -1,19 +1,21 @@
 export const preferredRegion = 'gru1' // São Paulo — IP brasileiro para a Safeweb
 
-// Webhook da Safeweb — recebe notificações automáticas sobre o ciclo de vida dos protocolos
-// Configurado via tag "UrlSolicitacao" em cada requisição POST à API Safeweb
-// Para configuração global (todos os protocolos), abrir chamado na AC Safeweb
+// Webhook da Safeweb — recebe notificações automáticas sobre o ciclo de vida dos protocolos.
+// Configurado via tag "UrlSolicitacao" em cada requisição POST à API Safeweb.
+// Além de atualizar o status, cria Certificado e Lançamento financeiro quando o evento
+// é "emissao" — garantindo que o fluxo seja idêntico ao do botão manual "Finalizar".
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { registrarAuditoria } from '@/lib/audit'
 
 // A Safeweb envia o nome do evento com grafias inconsistentes — confirmado na
 // documentação oficial de Notifica Eventos (acentos e maiúsculas variam conforme
 // o tipo, ex.: "emissao", "Cancelamento", "Confirmação de Cadastro", "Solicitação").
 // Por isso comparamos a versão normalizada (sem acento, minúscula) em vez de um enum fixo.
 interface PayloadWebhook {
-  evento:        string  // nome do evento, grafia variável — normalizar antes de comparar
-  protocolo:     string  // número do protocolo Safeweb
+  evento:        string
+  protocolo:     string
   acao?:         string  // presente em Verificação/Confirmação de Cadastro: "aprovado" | "Reprovado" etc.
   motivoRecusa?: string
   [key: string]: unknown
@@ -24,9 +26,6 @@ function normalizar(s: string): string {
 }
 
 // Mapeamento de evento Safeweb → status no CertFlow.
-// Verificação e Confirmação de Cadastro trazem um campo "acao" (aprovado/recusado) —
-// só avançam o status quando aprovados; quando recusados mantemos o status atual e
-// apenas registramos o motivo em safewebStatus para o time acompanhar.
 function eventoParaStatus(evento: string, acao?: string): string | null {
   const ev = normalizar(evento)
   const aprovado = !acao || normalizar(acao).startsWith('aprovad')
@@ -54,11 +53,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Protocolo não informado' }, { status: 400 })
   }
 
-  // Busca o pedido pelo número do protocolo — aceita tanto numeroCompra quanto
-  // safewebProtocolo, pois nem todo pedido antigo teve os dois campos sincronizados
   const pedido = await prisma.pedido.findFirst({
     where: { OR: [{ numeroCompra: protocolo }, { safewebProtocolo: protocolo } as any] },
-    select: { id: true, status: true, clienteId: true },
+    select: {
+      id:             true,
+      numero:         true,
+      status:         true,
+      clienteId:      true,
+      parceiroId:     true,
+      numeroCompra:   true,
+      valorFinal:     true,
+      formaPagamento: true,
+      itens: {
+        select: {
+          modeloId: true,
+          modelo:   { select: { validadeMeses: true } },
+        },
+      },
+      cliente: { select: { nome: true } },
+    },
   })
 
   if (!pedido) {
@@ -67,39 +80,91 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, aviso: 'Protocolo não encontrado' })
   }
 
-  // Texto registrado em safewebStatus — inclui motivo quando o evento foi recusado/rejeitado
-  const statusEvento = motivoRecusa ? `${evento}: ${motivoRecusa}` : (acao ? `${evento} (${acao})` : evento)
+  const statusEvento = motivoRecusa
+    ? `${evento}: ${motivoRecusa}`
+    : acao ? `${evento} (${acao})` : evento
 
-  // Atualiza status do pedido conforme o evento
   const novoStatus = eventoParaStatus(evento, acao)
 
   if (novoStatus && novoStatus !== pedido.status) {
-    const atualizacao: Record<string, unknown> = {
-      safewebStatus: statusEvento,
-    }
+    const agora = new Date()
+    const atualizacao: Record<string, unknown> = { safewebStatus: statusEvento }
 
     if (novoStatus === 'EMITIDO') {
-      atualizacao.status    = 'EMITIDO'
-      atualizacao.emitidoEm = new Date()
+      atualizacao.status               = 'EMITIDO'
+      atualizacao.emitidoEm            = agora
+      atualizacao.popupNotificacaoVisto = false // garante que o popup dispara para o AGR
     } else if (novoStatus === 'VERIFICADO') {
-      atualizacao.status      = 'VERIFICADO'
-      atualizacao.verificadoEm = new Date()
+      atualizacao.status       = 'VERIFICADO'
+      atualizacao.verificadoEm = agora
     } else if (novoStatus === 'CANCELADO') {
       atualizacao.status = 'CANCELADO'
     }
 
     await prisma.pedido.update({
       where: { id: pedido.id },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data:  atualizacao as any,
     })
 
-    console.log(`[Safeweb Webhook] Pedido ${pedido.id} atualizado: ${pedido.status} → ${novoStatus} (evento: ${evento})`)
+    // Quando emitido: cria Certificado e Lançamento financeiro,
+    // replicando a mesma lógica do PATCH /api/pedidos/[id] (botão "Finalizar").
+    if (novoStatus === 'EMITIDO') {
+      const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: pedido.id } })
+      if (!certExistente && pedido.itens[0]) {
+        const item = pedido.itens[0]
+        const dataVencimento = new Date(agora)
+        dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
+        await prisma.certificado.create({
+          data: {
+            clienteId:     pedido.clienteId,
+            modeloId:      item.modeloId,
+            pedidoId:      pedido.id,
+            dataEmissao:   agora,
+            dataVencimento,
+            status:        'ATIVO',
+            numeroSerie:   pedido.numeroCompra ?? undefined,
+          },
+        })
+      }
+
+      const lancExistente = await prisma.lancamento.findFirst({ where: { pedidoId: pedido.id } })
+      if (!lancExistente) {
+        await prisma.lancamento.create({
+          data: {
+            tipo:           'RECEBER',
+            descricao:      `${pedido.cliente.nome} — Pedido ${pedido.numero}`,
+            valor:          pedido.valorFinal as any,
+            dataVencimento: agora,
+            status:         'PENDENTE',
+            pedidoId:       pedido.id,
+            tipoConta:      'Certificado',
+            referencia:     pedido.numero,
+            formaPagamento: pedido.formaPagamento ?? undefined,
+            ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
+          },
+        })
+      }
+
+      await registrarAuditoria({
+        acao:       'UPDATE',
+        entidade:   'Pedido',
+        entidadeId: pedido.id,
+        dados: {
+          numero:            pedido.numero,
+          'Status (antes)':  pedido.status,
+          'Status (depois)': 'EMITIDO',
+          origem:            'webhook-safeweb',
+          evento,
+          protocolo,
+        },
+      })
+    }
+
+    console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → ${novoStatus} (${evento})`)
   } else {
-    // Evento informativo, ou recusa que não avança o status — só registra para acompanhamento
+    // Evento informativo ou recusa — registra sem mudar status
     await prisma.pedido.update({
       where: { id: pedido.id },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data:  { safewebStatus: statusEvento } as any,
     })
   }
