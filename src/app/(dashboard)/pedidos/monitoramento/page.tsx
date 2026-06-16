@@ -7,7 +7,6 @@ import { Video, MapPin, Globe } from 'lucide-react'
 import { formatarData, formatarHora, formatarMoeda, formatarCPF, formatarCNPJ } from '@/lib/utils'
 import { MonitoramentoAcoes } from './acoes'
 import { BotaoReconciliar } from './botao-reconciliar'
-import { ReconciliadorAutomatico } from './reconciliador-automatico'
 
 interface SearchParams {
   agr?: string
@@ -78,13 +77,8 @@ export default async function MonitoramentoPage({ searchParams }: Props) {
       )
     : pedidos
 
-  const temPendentes = filtrados.some(
-    p => p.status === 'VERIFICADO' && p.safewebProtocolo
-  )
-
   return (
     <div>
-      <ReconciliadorAutomatico temPendentes={temPendentes} />
       <Header titulo="Monitoramento Interno" />
       <div className="p-4 lg:p-6 space-y-4">
 

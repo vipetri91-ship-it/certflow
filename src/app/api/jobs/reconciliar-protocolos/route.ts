@@ -16,7 +16,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { registrarAuditoria } from '@/lib/audit'
 import { consultarProtocolo } from '@/lib/safeweb'
-import { subHours } from 'date-fns'
+import { subMinutes } from 'date-fns'
 
 function verificarToken(req: NextRequest): boolean {
   const token = req.headers.get('x-job-token') ?? req.nextUrl.searchParams.get('token')
@@ -148,7 +148,9 @@ const PEDIDO_SELECT = {
 } as const
 
 async function executarReconciliacaoLote(usuarioId?: string) {
-  const limiar = subHours(new Date(), 2)
+  // 5 minutos: tempo mínimo para dar ao webhook Safeweb a chance de chegar
+  // antes de começarmos a consultar ativamente. Evita corrida webhook × polling.
+  const limiar = subMinutes(new Date(), 5)
   const pedidos = await prisma.pedido.findMany({
     where: {
       status: 'VERIFICADO',
