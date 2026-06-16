@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/jobs/reconciliar-protocolos",
-      "schedule": "*/30 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }
