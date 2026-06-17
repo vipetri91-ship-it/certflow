@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Award, RefreshCw, Building2, User, Phone, Mail, MapPin } from 'lucide-react'
+import { ArrowLeft, Edit, Award, Building2, User, Phone, Mail, MapPin } from 'lucide-react'
 import { formatarData, formatarMoeda, formatarCPF, formatarCNPJ, formatarTelefone, diasParaVencimento } from '@/lib/utils'
 import { RenovarButton } from './renovar-button'
 import { CadastrarCertificado } from './cadastrar-certificado'
@@ -191,13 +191,25 @@ export default async function ClienteDetalhePage({ params }: Props) {
                           {cert.pedido?.agr ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            cert.status === 'ATIVO' ? 'bg-green-100 text-green-700' :
-                            cert.status === 'VENCIDO' ? 'bg-red-100 text-red-700' :
-                            cert.status === 'RENOVADO' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
-                            {cert.status}
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-default ${
+                              cert.status === 'ATIVO'         ? 'bg-green-100 text-green-700' :
+                              cert.status === 'VENCIDO'       ? 'bg-red-100 text-red-700' :
+                              cert.status === 'RENOVADO'      ? 'bg-blue-100 text-blue-700' :
+                              cert.status === 'NAO_RENOVADO'  ? 'bg-orange-100 text-orange-700' :
+                              cert.status === 'CANCELADO'     ? 'bg-red-100 text-red-700' :
+                              cert.status === 'REVOGADO'      ? 'bg-gray-200 text-gray-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}
+                            title={cert.status === 'NAO_RENOVADO' && cert.motivoNaoRenovacao ? cert.motivoNaoRenovacao : undefined}
+                          >
+                            {cert.status === 'ATIVO'        ? 'Ativo' :
+                             cert.status === 'VENCIDO'      ? 'Vencido' :
+                             cert.status === 'RENOVADO'     ? 'Renovado' :
+                             cert.status === 'NAO_RENOVADO' ? 'Não Renovado ⓘ' :
+                             cert.status === 'CANCELADO'    ? 'Cancelado' :
+                             cert.status === 'REVOGADO'     ? 'Revogado' :
+                             cert.status}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -205,6 +217,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
                             <RenovarButton certificadoId={cert.id} />
                           ) : cert.status === 'RENOVADO' ? (
                             <span className="text-xs text-blue-500">✓ Renovado</span>
+                          ) : cert.status === 'NAO_RENOVADO' ? (
+                            <span className="text-xs text-orange-500">— Não renovado</span>
                           ) : null}
                         </td>
                         {isAdmin && (
