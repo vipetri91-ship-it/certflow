@@ -3,6 +3,16 @@ import { auth } from '@/lib/auth'
 import { enviarWhatsApp } from '@/lib/digisac'
 import { transporte } from '@/lib/email/transporte'
 import { resolve4 } from 'node:dns/promises'
+import { connect } from 'node:net'
+
+function testarPortaTcp(host: string, porta: number, timeoutMs = 5000): Promise<{ ok: boolean; erro?: string }> {
+  return new Promise((resolve) => {
+    const socket = connect({ host, port: porta, timeout: timeoutMs })
+    socket.once('connect', () => { socket.destroy(); resolve({ ok: true }) })
+    socket.once('timeout', () => { socket.destroy(); resolve({ ok: false, erro: 'timeout' }) })
+    socket.once('error', (e) => { socket.destroy(); resolve({ ok: false, erro: e.message }) })
+  })
+}
 
 // Endpoint de diagnóstico — somente ADMIN (ou x-job-token). Testa os dois
 // canais usados pelo alerta crítico de emissão (WhatsApp via Digisac e
@@ -31,6 +41,15 @@ export async function GET(req: NextRequest) {
     (e) => ({ ok: false, erro: (e as Error).message }),
   )
 
+  const dnsBrevo = await resolve4('smtp-relay.brevo.com').then(
+    (ips) => ({ ok: true, ips }),
+    (e) => ({ ok: false, erro: (e as Error).message }),
+  )
+
+  const portaBrevo587 = await testarPortaTcp('smtp-relay.brevo.com', 587)
+  const portaBrevo465 = await testarPortaTcp('smtp-relay.brevo.com', 465)
+  const portaBrevo2525 = await testarPortaTcp('smtp-relay.brevo.com', 2525)
+
   const whatsapp = await enviarWhatsApp({ telefone: numero, mensagem })
 
   const email = await transporte.sendMail({
@@ -43,5 +62,5 @@ export async function GET(req: NextRequest) {
     (e) => ({ ok: false, erro: (e as Error).message }),
   )
 
-  return NextResponse.json({ dnsDigisac, whatsapp, email })
+  return NextResponse.json({ dnsDigisac, dnsBrevo, portaBrevo587, portaBrevo465, portaBrevo2525, whatsapp, email })
 }
