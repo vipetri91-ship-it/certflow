@@ -109,40 +109,51 @@ export async function POST(req: NextRequest) {
     // Quando emitido: cria Certificado e Lançamento financeiro,
     // replicando a mesma lógica do PATCH /api/pedidos/[id] (botão "Finalizar").
     if (novoStatus === 'EMITIDO') {
-      const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: pedido.id } })
-      if (!certExistente && pedido.itens[0]) {
-        const item = pedido.itens[0]
-        const dataVencimento = new Date(agora)
-        dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
-        await prisma.certificado.create({
-          data: {
-            clienteId:     pedido.clienteId,
-            modeloId:      item.modeloId,
-            pedidoId:      pedido.id,
-            dataEmissao:   agora,
-            dataVencimento,
-            status:        'ATIVO',
-            numeroSerie:   pedido.numeroCompra ?? undefined,
-          },
-        })
+      try {
+        const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: pedido.id } })
+        if (!certExistente && pedido.itens[0]) {
+          const item = pedido.itens[0]
+          const dataVencimento = new Date(agora)
+          dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
+          await prisma.certificado.create({
+            data: {
+              clienteId:     pedido.clienteId,
+              modeloId:      item.modeloId,
+              pedidoId:      pedido.id,
+              dataEmissao:   agora,
+              dataVencimento,
+              status:        'ATIVO',
+              numeroSerie:   pedido.numeroCompra ?? undefined,
+            },
+          })
+        }
+      } catch (e) {
+        // Não bloqueia o webhook. O cron de reconciliação (30 min) vai criar o certificado.
+        console.error(`[Webhook Safeweb] ${pedido.numero}: falha ao criar certificado:`, (e as Error).message)
       }
 
-      const lancExistente = await prisma.lancamento.findFirst({ where: { pedidoId: pedido.id } })
-      if (!lancExistente) {
-        await prisma.lancamento.create({
-          data: {
-            tipo:           'RECEBER',
-            descricao:      `${pedido.cliente.nome} — Pedido ${pedido.numero}`,
-            valor:          pedido.valorFinal as any,
-            dataVencimento: agora,
-            status:         'PENDENTE',
-            pedidoId:       pedido.id,
-            tipoConta:      'Certificado',
-            referencia:     pedido.numero,
-            formaPagamento: pedido.formaPagamento ?? undefined,
-            ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
-          },
-        })
+      try {
+        const valorNumerico = Number(pedido.valorFinal)
+        const lancExistente = await prisma.lancamento.findFirst({ where: { pedidoId: pedido.id } })
+        if (!lancExistente && valorNumerico > 0) {
+          await prisma.lancamento.create({
+            data: {
+              tipo:           'RECEBER',
+              descricao:      `${pedido.cliente.nome} — Pedido ${pedido.numero}`,
+              valor:          pedido.valorFinal as any,
+              dataVencimento: agora,
+              status:         'PENDENTE',
+              pedidoId:       pedido.id,
+              tipoConta:      'Certificado',
+              referencia:     pedido.numero,
+              formaPagamento: pedido.formaPagamento ?? undefined,
+              ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
+            },
+          })
+        }
+      } catch (e) {
+        // Não bloqueia o webhook. O cron de reconciliação vai criar o lançamento.
+        console.error(`[Webhook Safeweb] ${pedido.numero}: falha ao criar lançamento:`, (e as Error).message)
       }
 
       await registrarAuditoria({

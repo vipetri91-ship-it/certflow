@@ -102,32 +102,40 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
           })
         }
       }
-    } catch { /* não bloqueia a atualização do pedido */ }
+    } catch (e) {
+      // Não bloqueia o pedido, mas loga para aparecer nos monitores do Railway.
+      // O cron de reconciliação (30 min) vai criar o certificado na próxima rodada.
+      console.error(`[PATCH /pedidos/${id}] Falha ao criar certificado:`, (e as Error).message)
+    }
 
-    // Lançamento financeiro nasce na emissão (ver
-    // docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md). Idempotente: não cria
-    // se já existir lançamento vinculado a este pedido (ex.: lançamento
-    // manual antecipado criado pelo Financeiro).
+    // Lançamento nasce na emissão. Idempotente: não cria se já existe
+    // (ex.: lançamento manual antecipado pelo Financeiro). Ignorado se valor = 0.
     try {
-      const lancamentoExistente = await prisma.lancamento.findFirst({ where: { pedidoId: id } })
-      if (!lancamentoExistente) {
-        const cliente = await prisma.cliente.findUnique({ where: { id: antigo.clienteId }, select: { nome: true } })
-        await prisma.lancamento.create({
-          data: {
-            tipo:           'RECEBER',
-            descricao:      `${cliente?.nome ?? 'Cliente'} — Pedido ${pedido.numero}`,
-            valor:          pedido.valorFinal,
-            dataVencimento: new Date(),
-            status:         'PENDENTE',
-            pedidoId:       id,
-            tipoConta:      'Certificado',
-            referencia:     pedido.numero,
-            formaPagamento: pedido.formaPagamento ?? undefined,
-            ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
-          },
-        })
+      const valorNumerico = Number(pedido.valorFinal)
+      if (valorNumerico > 0) {
+        const lancamentoExistente = await prisma.lancamento.findFirst({ where: { pedidoId: id } })
+        if (!lancamentoExistente) {
+          const cliente = await prisma.cliente.findUnique({ where: { id: antigo.clienteId }, select: { nome: true } })
+          await prisma.lancamento.create({
+            data: {
+              tipo:           'RECEBER',
+              descricao:      `${cliente?.nome ?? 'Cliente'} — Pedido ${pedido.numero}`,
+              valor:          pedido.valorFinal,
+              dataVencimento: new Date(),
+              status:         'PENDENTE',
+              pedidoId:       id,
+              tipoConta:      'Certificado',
+              referencia:     pedido.numero,
+              formaPagamento: pedido.formaPagamento ?? undefined,
+              ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
+            },
+          })
+        }
       }
-    } catch { /* não bloqueia a atualização do pedido */ }
+    } catch (e) {
+      // Não bloqueia o pedido, mas loga. O cron de reconciliação vai corrigir.
+      console.error(`[PATCH /pedidos/${id}] Falha ao criar lançamento:`, (e as Error).message)
+    }
   }
 
   // Monta diff dos campos alterados
