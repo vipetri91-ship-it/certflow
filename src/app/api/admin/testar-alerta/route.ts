@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { enviarWhatsApp } from '@/lib/digisac'
 import { transporte } from '@/lib/email/transporte'
+import { enviarTelegram } from '@/lib/telegram'
 import { resolve4 } from 'node:dns/promises'
 import { connect } from 'node:net'
 
@@ -14,14 +15,17 @@ function testarPortaTcp(host: string, porta: number, timeoutMs = 5000): Promise<
   })
 }
 
-// Endpoint de diagnóstico — somente ADMIN (ou x-job-token). Testa os dois
-// canais usados pelo alerta crítico de emissão (WhatsApp via Digisac e
-// e-mail via SMTP), de forma independente, para confirmar que a rede de
-// segurança funciona de fato em produção sem precisar esperar uma falha real.
+// Endpoint de diagnóstico — somente ADMIN (ou x-job-token). Testa os três
+// canais usados pelo alerta crítico de emissão (WhatsApp via Digisac,
+// e-mail via SMTP, Telegram), de forma independente, para confirmar que a
+// rede de segurança funciona de fato em produção sem precisar esperar uma
+// falha real.
 //
-// Em 17/06/2026 descobrimos que api.digisac.com.br pode entrar em NXDOMAIN
-// (confirmado via DNS público, não é problema de rede do Railway) — por
-// isso o alerta crítico manda os dois canais sempre, nunca só um.
+// Em 17/06/2026 descobrimos dois problemas simultâneos: api.digisac.com.br
+// está em NXDOMAIN (DNS público confirma — falha do lado do Digisac) e o
+// Railway bloqueia as portas SMTP de saída (587/465/2525 todas com timeout,
+// mesmo com DNS resolvendo). Por isso o Telegram (HTTPS/443) entrou como
+// terceiro canal.
 export async function GET(req: NextRequest) {
   const tokenJob = req.headers.get('x-job-token') ?? req.nextUrl.searchParams.get('token')
   const autorizadoPorToken = tokenJob === process.env.AUTH_SECRET
@@ -47,8 +51,6 @@ export async function GET(req: NextRequest) {
   )
 
   const portaBrevo587 = await testarPortaTcp('smtp-relay.brevo.com', 587)
-  const portaBrevo465 = await testarPortaTcp('smtp-relay.brevo.com', 465)
-  const portaBrevo2525 = await testarPortaTcp('smtp-relay.brevo.com', 2525)
 
   const whatsapp = await enviarWhatsApp({ telefone: numero, mensagem })
 
@@ -62,5 +64,7 @@ export async function GET(req: NextRequest) {
     (e) => ({ ok: false, erro: (e as Error).message }),
   )
 
-  return NextResponse.json({ dnsDigisac, dnsBrevo, portaBrevo587, portaBrevo465, portaBrevo2525, whatsapp, email })
+  const telegram = await enviarTelegram(mensagem)
+
+  return NextResponse.json({ dnsDigisac, dnsBrevo, portaBrevo587, whatsapp, email, telegram })
 }

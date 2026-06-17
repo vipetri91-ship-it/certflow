@@ -15,11 +15,14 @@ import { prisma } from '@/lib/prisma'
 import { registrarAuditoria } from '@/lib/audit'
 import { enviarWhatsApp } from '@/lib/digisac'
 import { transporte } from '@/lib/email/transporte'
+import { enviarTelegram } from '@/lib/telegram'
 
-// Alerta crítico em dois canais independentes (WhatsApp + e-mail). Em
-// 17/06/2026 descobrimos que api.digisac.com.br pode ficar fora do ar (DNS)
-// sem aviso — se o único canal de alerta depender do Digisac, uma falha ali
-// torna o alerta crítico mudo justamente quando mais se precisa dele.
+// Alerta crítico em três canais independentes (WhatsApp, e-mail, Telegram).
+// Em 17/06/2026 descobrimos que dois dos três podem estar fora do ar ao
+// mesmo tempo sem aviso nenhum: api.digisac.com.br não resolve (DNS, falha
+// do lado do Digisac) e o Railway bloqueia as portas SMTP de saída (e-mail
+// via Brevo dá timeout). Telegram usa HTTPS/443, não sujeito a esse
+// bloqueio — por isso entra como terceira via independente.
 async function alertarFalhaCritica(mensagem: string) {
   await Promise.allSettled([
     enviarWhatsApp({ telefone: process.env.BOT_ADMIN_NUMERO ?? '11943156015', mensagem }),
@@ -29,6 +32,7 @@ async function alertarFalhaCritica(mensagem: string) {
       subject: '🚨 FALHA CRÍTICA — CertFlow (emissão de certificado)',
       text: mensagem,
     }),
+    enviarTelegram(mensagem),
   ])
 }
 
