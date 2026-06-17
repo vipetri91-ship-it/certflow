@@ -14,6 +14,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { registrarAuditoria } from '@/lib/audit'
 import { enviarWhatsApp } from '@/lib/digisac'
+import { transporte } from '@/lib/email/transporte'
+
+// Alerta crítico em dois canais independentes (WhatsApp + e-mail). Em
+// 17/06/2026 descobrimos que api.digisac.com.br pode ficar fora do ar (DNS)
+// sem aviso — se o único canal de alerta depender do Digisac, uma falha ali
+// torna o alerta crítico mudo justamente quando mais se precisa dele.
+async function alertarFalhaCritica(mensagem: string) {
+  await Promise.allSettled([
+    enviarWhatsApp({ telefone: process.env.BOT_ADMIN_NUMERO ?? '11943156015', mensagem }),
+    transporte.sendMail({
+      from: process.env.SMTP_FROM,
+      to: 'vipetri91@gmail.com',
+      subject: '🚨 FALHA CRÍTICA — CertFlow (emissão de certificado)',
+      text: mensagem,
+    }),
+  ])
+}
 
 async function comRetentativas<T>(fn: () => Promise<T>, tentativas = 3): Promise<T> {
   let ultimoErro: unknown
@@ -190,10 +207,9 @@ export async function POST(req: NextRequest) {
           dados: { numero: pedido.numero, erro: msg, origem: 'webhook-safeweb-falha-critica', protocolo, evento },
         })
 
-        enviarWhatsApp({
-          telefone: process.env.BOT_ADMIN_NUMERO ?? '11943156015',
-          mensagem: `🚨 *FALHA CRÍTICA — CertFlow*\n\nPedido ${pedido.numero} (${pedido.cliente.nome}) foi EMITIDO pela Safeweb (protocolo ${protocolo}) mas o sistema NÃO conseguiu gravar certificado/lançamento após 3 tentativas.\n\nVerifique manualmente o quanto antes.`,
-        }).catch(() => {})
+        await alertarFalhaCritica(
+          `🚨 FALHA CRÍTICA — CertFlow\n\nPedido ${pedido.numero} (${pedido.cliente.nome}) foi EMITIDO pela Safeweb (protocolo ${protocolo}) mas o sistema NÃO conseguiu gravar certificado/lançamento após 3 tentativas.\n\nVerifique manualmente o quanto antes.`,
+        )
 
         return NextResponse.json({ ok: false, erro: 'Falha crítica ao processar emissão' }, { status: 500 })
       }
