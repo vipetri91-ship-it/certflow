@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { enviarWhatsApp } from '@/lib/digisac'
+import { Resolver } from 'node:dns/promises'
 
 // Endpoint de diagnóstico — somente ADMIN. Dispara o mesmo caminho de código
 // usado pelo alerta crítico do webhook Safeweb (enviarWhatsApp para
@@ -18,6 +19,23 @@ export async function GET(req: NextRequest) {
   }
 
   const numero = process.env.BOT_ADMIN_NUMERO ?? '11943156015'
+
+  // Teste 0: resolver DNS com servidor padrão do container vs. DNS público (8.8.8.8),
+  // para saber se é o resolver do Railway que está com problema ou o domínio mesmo.
+  const dnsResultado: Record<string, unknown> = {}
+  try {
+    const padrao = new Resolver()
+    dnsResultado.padrao = await padrao.resolve4('api.digisac.com.br')
+  } catch (e) {
+    dnsResultado.padrao = `erro: ${(e as Error).message}`
+  }
+  try {
+    const google = new Resolver()
+    google.setServers(['8.8.8.8'])
+    dnsResultado.google = await google.resolve4('api.digisac.com.br')
+  } catch (e) {
+    dnsResultado.google = `erro: ${(e as Error).message}`
+  }
 
   // Teste 1: fetch bruto direto à API do Digisac, para isolar a causa real
   // (DNS, SSL, timeout) sem passar pela abstração de digisac.ts.
@@ -41,6 +59,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     numeroTestado: numero,
     digisacConfigurado: !!(process.env.DIGISAC_URL && process.env.DIGISAC_TOKEN && process.env.DIGISAC_CHANNEL_ID),
+    dnsResultado,
     testeBruto,
     resultado,
   })
