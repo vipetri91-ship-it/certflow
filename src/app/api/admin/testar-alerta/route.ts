@@ -52,6 +52,21 @@ export async function GET(req: NextRequest) {
 
   const portaBrevo587 = await testarPortaTcp('smtp-relay.brevo.com', 587)
 
+  // Diagnóstico bruto da busca de contato — para ver a resposta exata da API
+  // nova (vegcertificados.digisac.biz) quando a função de alto nível falha.
+  let digisacContatoBruto: Record<string, unknown>
+  try {
+    const numeroLimpo = '55' + numero.replace(/\D/g, '').replace(/^55/, '')
+    const url = process.env.DIGISAC_URL
+    const res = await fetch(`${url}/contacts?number=${numeroLimpo}&serviceId=${process.env.DIGISAC_CHANNEL_ID}`, {
+      headers: { 'Authorization': `Bearer ${process.env.DIGISAC_TOKEN}` },
+    })
+    const data = await res.json().catch(() => ({}))
+    digisacContatoBruto = { status: res.status, ok: res.ok, data }
+  } catch (e) {
+    digisacContatoBruto = { erro: (e as Error).message }
+  }
+
   const whatsapp = await enviarWhatsApp({ telefone: numero, mensagem })
 
   const email = await transporte.sendMail({
@@ -66,5 +81,5 @@ export async function GET(req: NextRequest) {
 
   const telegram = await enviarTelegram(mensagem)
 
-  return NextResponse.json({ dnsDigisac, dnsBrevo, portaBrevo587, whatsapp, email, telegram })
+  return NextResponse.json({ dnsDigisac, dnsBrevo, portaBrevo587, digisacContatoBruto, whatsapp, email, telegram })
 }
