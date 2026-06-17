@@ -36,6 +36,20 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     dnsResultado.google = `erro: ${(e as Error).message}`
   }
+  try {
+    const google2 = new Resolver()
+    google2.setServers(['8.8.8.8'])
+    dnsResultado.googleRaiz = await google2.resolve4('digisac.com.br')
+  } catch (e) {
+    dnsResultado.googleRaiz = `erro: ${(e as Error).message}`
+  }
+  try {
+    const google3 = new Resolver()
+    google3.setServers(['8.8.8.8'])
+    dnsResultado.googleNs = await google3.resolveNs('digisac.com.br')
+  } catch (e) {
+    dnsResultado.googleNs = `erro: ${(e as Error).message}`
+  }
 
   // Teste 1: fetch bruto direto à API do Digisac, para isolar a causa real
   // (DNS, SSL, timeout) sem passar pela abstração de digisac.ts.
