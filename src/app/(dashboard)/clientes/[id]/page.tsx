@@ -36,11 +36,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
         },
         orderBy: { dataEmissao: 'desc' },
       },
-      pedidos: {
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-        select: { id: true, numero: true, valorFinal: true, status: true, createdAt: true, agr: true },
-      },
     },
   })
 
@@ -234,34 +229,6 @@ export default async function ClienteDetalhePage({ params }: Props) {
             </div>
           )}
         </div>
-
-        {/* Últimos pedidos */}
-        {cliente.pedidos.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-900">Últimos Pedidos</h2>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {cliente.pedidos.map(p => (
-                <div key={p.id} className="flex items-center justify-between px-5 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 font-mono">{p.numero}</p>
-                    <p className="text-xs text-gray-400">{formatarData(p.createdAt)} · {p.agr ?? '—'}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">{formatarMoeda(Number(p.valorFinal))}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      p.status === 'EMITIDO' ? 'bg-green-100 text-green-700' :
-                      p.status === 'VERIFICADO' ? 'bg-yellow-100 text-yellow-700' :
-                      p.status === 'GERADO' ? 'bg-blue-100 text-blue-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>{p.status}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
