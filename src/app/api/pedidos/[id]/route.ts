@@ -76,65 +76,54 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   // Ao marcar como EMITIDO, cria o certificado automaticamente no cliente
   if (status === 'EMITIDO' && antigo.status !== 'EMITIDO') {
-    try {
-      const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: id } })
-      if (!certExistente) {
-        const pedidoCompleto = await prisma.pedido.findUnique({
-          where: { id },
-          include: { itens: { include: { modelo: true } } },
-        })
-        const item = pedidoCompleto?.itens[0]
-        if (item) {
-          const dataEmissao    = new Date()
-          const dataVencimento = new Date()
-          dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
+    // Certificado — criação síncrona e obrigatória junto com a emissão.
+    const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: id } })
+    if (!certExistente) {
+      const pedidoCompleto = await prisma.pedido.findUnique({
+        where: { id },
+        include: { itens: { include: { modelo: true } } },
+      })
+      const item = pedidoCompleto?.itens[0]
+      if (item) {
+        const dataEmissao    = new Date()
+        const dataVencimento = new Date()
+        dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
 
-          await prisma.certificado.create({
-            data: {
-              clienteId:     pedidoCompleto!.clienteId,
-              modeloId:      item.modeloId,
-              pedidoId:      id,
-              dataEmissao,
-              dataVencimento,
-              status:        'ATIVO',
-              numeroSerie:   antigo.numeroCompra ?? undefined,
-            },
-          })
-        }
+        await prisma.certificado.create({
+          data: {
+            clienteId:     pedidoCompleto!.clienteId,
+            modeloId:      item.modeloId,
+            pedidoId:      id,
+            dataEmissao,
+            dataVencimento,
+            status:        'ATIVO',
+            numeroSerie:   antigo.numeroCompra ?? undefined,
+          },
+        })
       }
-    } catch (e) {
-      // Não bloqueia o pedido, mas loga para aparecer nos monitores do Railway.
-      // O cron de reconciliação (30 min) vai criar o certificado na próxima rodada.
-      console.error(`[PATCH /pedidos/${id}] Falha ao criar certificado:`, (e as Error).message)
     }
 
-    // Lançamento nasce na emissão. Idempotente: não cria se já existe
-    // (ex.: lançamento manual antecipado pelo Financeiro). Ignorado se valor = 0.
-    try {
-      const valorNumerico = Number(pedido.valorFinal)
-      if (valorNumerico > 0) {
-        const lancamentoExistente = await prisma.lancamento.findFirst({ where: { pedidoId: id } })
-        if (!lancamentoExistente) {
-          const cliente = await prisma.cliente.findUnique({ where: { id: antigo.clienteId }, select: { nome: true } })
-          await prisma.lancamento.create({
-            data: {
-              tipo:           'RECEBER',
-              descricao:      `${cliente?.nome ?? 'Cliente'} — Pedido ${pedido.numero}`,
-              valor:          pedido.valorFinal,
-              dataVencimento: new Date(),
-              status:         'PENDENTE',
-              pedidoId:       id,
-              tipoConta:      'Certificado',
-              referencia:     pedido.numero,
-              formaPagamento: pedido.formaPagamento ?? undefined,
-              ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
-            },
-          })
-        }
-      }
-    } catch (e) {
-      // Não bloqueia o pedido, mas loga. O cron de reconciliação vai corrigir.
-      console.error(`[PATCH /pedidos/${id}] Falha ao criar lançamento:`, (e as Error).message)
+    // Lançamento financeiro — criação síncrona. Inclui bonificados (valor = 0)
+    // para controle mensal. Idempotente: ignorado se já existir lançamento.
+    const lancamentoExistente = await prisma.lancamento.findFirst({ where: { pedidoId: id } })
+    if (!lancamentoExistente) {
+      const isBonificado = Number(pedido.valorFinal) === 0
+      const cliente = await prisma.cliente.findUnique({ where: { id: antigo.clienteId }, select: { nome: true } })
+      await prisma.lancamento.create({
+        data: {
+          tipo:           'RECEBER',
+          descricao:      `${cliente?.nome ?? 'Cliente'} — Pedido ${pedido.numero}`,
+          valor:          pedido.valorFinal,
+          dataVencimento: new Date(),
+          status:         isBonificado ? 'PAGO' : 'PENDENTE',
+          pedidoId:       id,
+          tipoConta:      'Certificado',
+          referencia:     pedido.numero,
+          formaPagamento: isBonificado ? 'Bonificado' : (pedido.formaPagamento ?? undefined),
+          bonificado:     isBonificado,
+          ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
+        },
+      })
     }
   }
 

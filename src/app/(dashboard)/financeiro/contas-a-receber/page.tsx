@@ -4,7 +4,7 @@ import { hasPermission } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, TrendingUp, AlertCircle, DollarSign, ExternalLink } from 'lucide-react'
+import { Plus, TrendingUp, AlertCircle, DollarSign, ExternalLink, Gift } from 'lucide-react'
 import { formatarMoeda, formatarData } from '@/lib/utils'
 import { STATUS_BADGE } from '@/lib/financeiro-config'
 import { FiltroStatus } from '@/components/filtro-status'
@@ -62,14 +62,16 @@ export default async function ContasReceberPage({ searchParams }: Props) {
     orderBy: { dataVencimento: 'desc' },
   })
 
-  const totalPendente = contas
+  const bonificados   = contas.filter(c => c.bonificado)
+  const contasReais   = contas.filter(c => !c.bonificado)
+  const totalPendente = contasReais
     .filter(c => c.status !== 'PAGO' && c.status !== 'CANCELADO')
     .reduce((s, c) => s + Number(c.valor), 0)
-  const totalRecebido = contas
+  const totalRecebido = contasReais
     .filter(c => c.status === 'PAGO')
     .reduce((s, c) => s + Number(c.valor), 0)
   const totalMes      = totalPendente + totalRecebido
-  const vencidos      = contas.filter(c => c.status === 'PENDENTE' && new Date(c.dataVencimento) < hoje)
+  const vencidos      = contasReais.filter(c => c.status === 'PENDENTE' && new Date(c.dataVencimento) < hoje)
 
   const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -102,19 +104,23 @@ export default async function ContasReceberPage({ searchParams }: Props) {
       <div className="p-4 lg:p-6 space-y-4">
 
         {/* ── Resumo ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
-            { label: 'Total do Mês',   valor: totalMes,      cor: 'text-blue-600',   icon: DollarSign },
-            { label: 'A Receber',      valor: totalPendente, cor: 'text-green-600',  icon: TrendingUp },
-            { label: 'Já Recebido',    valor: totalRecebido, cor: 'text-teal-600',   icon: TrendingUp },
-            { label: `Vencidos (${vencidos.length})`, valor: vencidos.reduce((s, c) => s + Number(c.valor), 0), cor: 'text-red-500', icon: AlertCircle },
+            { label: 'Total do Mês',   valor: totalMes,      cor: 'text-blue-600',   icon: DollarSign,  extra: null },
+            { label: 'A Receber',      valor: totalPendente, cor: 'text-green-600',  icon: TrendingUp,  extra: null },
+            { label: 'Já Recebido',    valor: totalRecebido, cor: 'text-teal-600',   icon: TrendingUp,  extra: null },
+            { label: `Vencidos (${vencidos.length})`, valor: vencidos.reduce((s, c) => s + Number(c.valor), 0), cor: 'text-red-500', icon: AlertCircle, extra: null },
+            { label: `Bonificados (${bonificados.length})`, valor: null, cor: 'text-purple-600', icon: Gift, extra: `${bonificados.length} cert.` },
           ].map(card => (
             <div key={card.label} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4">
               <div className={`flex items-center gap-2 mb-2 ${card.cor}`}>
                 <card.icon className="w-4 h-4" />
                 <span className="text-xs font-medium uppercase">{card.label}</span>
               </div>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">{formatarMoeda(card.valor)}</p>
+              {card.extra !== null
+                ? <p className="text-lg font-bold text-gray-900 dark:text-white">{card.extra}</p>
+                : <p className="text-lg font-bold text-gray-900 dark:text-white">{formatarMoeda(card.valor!)}</p>
+              }
             </div>
           ))}
         </div>
@@ -199,7 +205,10 @@ export default async function ContasReceberPage({ searchParams }: Props) {
 
                       {/* Forma de pagamento */}
                       <td className="px-3 py-3 text-xs text-gray-600 dark:text-slate-300">
-                        {formaPgto(c)}
+                        {c.bonificado
+                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium"><Gift className="w-3 h-3" />Bonificado</span>
+                          : formaPgto(c)
+                        }
                       </td>
 
                       {/* AGR */}
@@ -243,10 +252,10 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                       {/* Ação */}
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1 flex-wrap">
-                          {(c.status === 'PENDENTE' || c.status === 'VENCIDO') && (
+                          {!c.bonificado && (c.status === 'PENDENTE' || c.status === 'VENCIDO') && (
                             <BaixaButton id={c.id} />
                           )}
-                          {(c.status === 'PENDENTE' || c.status === 'VENCIDO') && c.pedido && (
+                          {!c.bonificado && (c.status === 'PENDENTE' || c.status === 'VENCIDO') && c.pedido && (
                             <InterCobrancaButton
                               lancamentoId={c.id}
                               jaTemCobranca={!!c.interCobrancaId}
@@ -254,7 +263,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                               pixCopiaECola={c.pixCopiaECola}
                             />
                           )}
-                          {(c.status === 'PENDENTE' || c.status === 'VENCIDO') && (
+                          {!c.bonificado && (c.status === 'PENDENTE' || c.status === 'VENCIDO') && (
                             <CancelarButton id={c.id} />
                           )}
                           {c.status === 'PAGO' && c.comprovante && (

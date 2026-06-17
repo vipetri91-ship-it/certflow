@@ -60,12 +60,11 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
     }
   }
 
-  // 2. Pedidos EMITIDOS sem lançamento (apenas valor > 0)
+  // 2. Pedidos EMITIDOS sem lançamento (todos — incluindo bonificados)
   const semLancamento = await prisma.pedido.findMany({
     where: {
       status: 'EMITIDO',
       lancamentos: { none: {} },
-      valorFinal: { gt: 0 },
     },
     include: {
       cliente: { select: { nome: true } },
@@ -73,6 +72,7 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
   })
 
   for (const pedido of semLancamento) {
+    const isBonificado = Number(pedido.valorFinal) === 0
     try {
       await prisma.lancamento.create({
         data: {
@@ -80,11 +80,12 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
           descricao:      `${pedido.cliente.nome} — Pedido ${pedido.numero}`,
           valor:          pedido.valorFinal as any,
           dataVencimento: pedido.emitidoEm ?? new Date(),
-          status:         'PENDENTE',
+          status:         isBonificado ? 'PAGO' : 'PENDENTE',
           pedidoId:       pedido.id,
           tipoConta:      'Certificado',
           referencia:     pedido.numero,
-          formaPagamento: pedido.formaPagamento ?? undefined,
+          formaPagamento: isBonificado ? 'Bonificado' : (pedido.formaPagamento ?? undefined),
+          bonificado:     isBonificado,
           ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
         },
       })

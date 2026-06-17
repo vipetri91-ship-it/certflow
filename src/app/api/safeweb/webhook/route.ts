@@ -133,26 +133,26 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const valorNumerico = Number(pedido.valorFinal)
+        const isBonificado  = Number(pedido.valorFinal) === 0
         const lancExistente = await prisma.lancamento.findFirst({ where: { pedidoId: pedido.id } })
-        if (!lancExistente && valorNumerico > 0) {
+        if (!lancExistente) {
           await prisma.lancamento.create({
             data: {
               tipo:           'RECEBER',
               descricao:      `${pedido.cliente.nome} — Pedido ${pedido.numero}`,
               valor:          pedido.valorFinal as any,
               dataVencimento: agora,
-              status:         'PENDENTE',
+              status:         isBonificado ? 'PAGO' : 'PENDENTE',
               pedidoId:       pedido.id,
               tipoConta:      'Certificado',
               referencia:     pedido.numero,
-              formaPagamento: pedido.formaPagamento ?? undefined,
+              formaPagamento: isBonificado ? 'Bonificado' : (pedido.formaPagamento ?? undefined),
+              bonificado:     isBonificado,
               ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
             },
           })
         }
       } catch (e) {
-        // Não bloqueia o webhook. O cron de reconciliação vai criar o lançamento.
         console.error(`[Webhook Safeweb] ${pedido.numero}: falha ao criar lançamento:`, (e as Error).message)
       }
 
