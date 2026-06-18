@@ -64,6 +64,19 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const { boletoVencimento, status, ...rest } = parsed.data
 
+  // Marcar como EMITIDO sem protocolo real da Safeweb cria um certificado
+  // fictício (já aconteceu em 18/06/2026 — ver memória feedback_safeweb_sagrado).
+  // Exige que o pedido já tenha um protocolo (gerado automaticamente na
+  // venda) antes de permitir essa transição por aqui.
+  if (status === 'EMITIDO' && antigo.status !== 'EMITIDO') {
+    const numeroProtocolo = antigo.numeroCompra || (antigo as Record<string, unknown>).safewebProtocolo || rest.numeroCompra
+    if (!numeroProtocolo) {
+      return NextResponse.json({
+        erro: 'Não é possível marcar como EMITIDO sem um protocolo Safeweb real. Este pedido não tem safewebProtocolo nem numeroCompra preenchido.',
+      }, { status: 422 })
+    }
+  }
+
   const data: Record<string, unknown> = { ...rest }
   if (boletoVencimento) data.boletoVencimento = new Date(boletoVencimento)
   if (status) {
