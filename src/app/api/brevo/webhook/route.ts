@@ -62,6 +62,7 @@ async function processarEvento(ev: EventoBrevo) {
 
 export async function POST(req: NextRequest) {
   if (!autorizado(req)) {
+    console.warn('[Brevo Webhook] Token inválido ou ausente na query')
     return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
   }
 
@@ -71,6 +72,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ erro: 'Payload inválido' }, { status: 400 })
   }
+
+  console.log('[Brevo Webhook] Payload recebido:', JSON.stringify(payload).slice(0, 500))
 
   const eventos = Array.isArray(payload) ? payload : [payload]
   await Promise.allSettled(eventos.map(ev => processarEvento(ev as EventoBrevo)))
