@@ -5,6 +5,187 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 18/06/2026
+
+### fix: migrar envio de e-mail de SMTP para API HTTP do Brevo
+- **Contexto**: Vinicius pediu sistema de monitoramento de e-mails automáticos
+  e, ao testar o canal de alerta crítico (configurado em 17/06), o e-mail
+  falhava com "Connection timeout".
+- **Causa raiz confirmada**: Railway bloqueia as portas SMTP de saída
+  (587/465/2525 — todas davam timeout de conexão TCP, mesmo com o DNS de
+  `smtp-relay.brevo.com` resolvendo normalmente). Confirmado via teste de
+  conectividade TCP direto nas 3 portas.
+- **Solução**: `src/lib/email/transporte.ts` reescrito para usar
+  `api.brevo.com/v3/smtp/email` (HTTPS/443, não sujeito ao bloqueio) em vez
+  de nodemailer/SMTP, mantendo a mesma assinatura `sendMail()` — nenhum dos
+  5 pontos de chamada existentes precisou ser alterado.
+- **Nova variável**: `BREVO_API_KEY` no Railway (chave de API gerada no
+  painel Brevo, diferente das credenciais SMTP antigas que ficaram sem uso).
+
+### feat: monitoramento de notificações automáticas (e-mail + WhatsApp)
+- **Contexto**: Vinicius precisa garantir que os e-mails automáticos de
+  vencimento (60/30/15/7 dias, pós-emissão, nutrição 3/6/9 meses) estão
+  sendo enviados e abertos — "não posso quebrar esse fluxo".
+- **Solução**:
+  - `EmailLog` ganhou campos `entregueEm`, `abertoEm`, `clicadoEm`,
+    `motivoFalha`
+  - `transporte.sendMail()` aceita `tag` (= id do EmailLog) — repassada ao
+    Brevo via `tags: [tag]` para religar o evento do webhook ao log de origem
+  - Novo webhook `/api/brevo/webhook` recebe eventos (entregue, aberto,
+    clicado, bounce) e atualiza o `EmailLog` correspondente
+  - **Bug encontrado e corrigido**: o Brevo manda dois campos no payload —
+    `tags` (array correto, ex. `["abc123"]`) e `tag` (string contendo o
+    array serializado, ex. `'["abc123"]'`) — o código priorizava `tag`
+    (sempre truthy mesmo malformado), então a busca por esse ID nunca batia
+    com nenhum `EmailLog`. Corrigido para priorizar `tags[0]`.
+  - Webhook registrado via API do Brevo (`POST /v3/webhooks`, id 2043410) —
+    sem precisar configuração manual no painel
+  - Página Configurações > E-mails mostra, por tipo, enviados/taxa de
+    abertura/falhas (últimos 90 dias)
+  - Novo widget "Notificações Automáticas" no dashboard do ADMIN
+    (substitui o widget de Taxa de Deslocamento só para esse role)
+  - Calculadora de Deslocamento ganhou rota própria
+    (`/pedidos/calculadora-deslocamento`) no sidebar — continua no
+    dashboard para os demais perfis (AGRs usam no dia a dia)
+- **Arquivos**: `prisma/schema.prisma`, `scripts/migrate.js`,
+  `src/lib/email/{enviar,tipos,transporte}.ts`,
+  `src/app/api/brevo/webhook/route.ts`,
+  `src/app/(dashboard)/dashboard/{page,widget-monitoramento-notificacoes}.tsx`,
+  `src/app/(dashboard)/configuracoes/emails/{editor,page}.tsx`,
+  `src/components/sidebar.tsx`
+
+### fix: botão "Não Renovou" gravava status errado e perdia o motivo
+- **Contexto**: Vinicius marcou um certificado seu como "não renovado" via
+  UI em 11/06 com um motivo específico; em 18/06, a aba "Não Renovados" em
+  `/renovacoes` aparecia vazia e o motivo mostrado na tela de cliente não
+  era o que ele tinha digitado.
+- **Causa raiz**: o botão "Não Renovou" enviava
+  `{status: 'VENCIDO', observacao}` para `PATCH /api/certificados/[id]`.
+  A API só aceitava status `['ATIVO','VENCIDO','CANCELADO','RENOVADO']` e
+  nunca escrevia em `Certificado.motivoNaoRenovacao` — só em
+  `HistoricoContato`. A aba "Não Renovados" consultava `status='VENCIDO'`.
+  Quando uma correção manual anterior (17/06) mudou esse certificado para
+  `NAO_RENOVADO` com um motivo genérico, ele desapareceu da aba (que olhava
+  só para `VENCIDO`) e o motivo real do usuário ficou perdido, visível só
+  no `HistoricoContato`.
+- **Solução**: `PATCH /api/certificados/[id]` aceita `status=NAO_RENOVADO`
+  e grava `motivoNaoRenovacao`/`naoRenovadoEm`/`naoRenovadoPorId`;
+  `detalhe.tsx` envia `status: 'NAO_RENOVADO'`; `/renovacoes` consulta
+  `status='NAO_RENOVADO'`; listagem mostra o motivo resumido na linha.
+  Restaurado o motivo real do certificado de Vinicius ("Não será
+  necessário renovar esse certificado pois é o token que fica com a
+  Laryssa", 11/06/2026).
+
+### Incidente Safeweb — auditoria completa + mudanças de regra de negócio
+- **Contexto**: pedido do cliente Renato Santos Araújo saiu sem protocolo
+  automático da Safeweb, exigindo conclusão manual via Hope Portal.
+  Vinicius citou a regra de governança "Safeweb é sagrado" e exigiu
+  auditoria com evidências antes de qualquer explicação.
+- **Auditoria (evidência objetiva, não inferência)**: `src/lib/safeweb.ts`
+  não era alterado desde 16/06; `nova-venda/route.ts` desde 11/06 — nenhum
+  tocado nesta sessão. Safeweb respondia normalmente no teste
+  (`?modo=basico`). 1 falha em 7 pedidos em 14 dias — caso isolado, não
+  regressão. Nenhum deploy em andamento no momento do atendimento.
+- **Mudança de regra autorizada (ponto a ponto, via confirmação explícita)**:
+  - `src/app/api/pedidos/nova-venda/route.ts`: a chamada à Safeweb agora
+    roda **antes** de criar o Pedido (não mais em paralelo com um timeout
+    de 40s que silenciosamente seguia adiante). Se falhar/der timeout,
+    retorna erro e **nenhum pedido é criado** — vale para presencial,
+    videoconferência e emissão online. Payload/lógica de chamada à Safeweb
+    em si não foi alterado, só a ordem de persistência.
+  - `src/app/api/pedidos/[id]/route.ts`: transição manual para `EMITIDO`
+    agora exige `safewebProtocolo`/`numeroCompra` preenchido — descoberto
+    porque clicar "Finalizar" num pedido sem protocolo criava um
+    certificado "ativo" fictício (reproduzido com o pedido de teste do
+    Renato).
+  - `src/app/(dashboard)/pedidos/monitoramento/acoes.tsx`: removidos os
+    botões "Verificar"/"Finalizar"/"+ Protocolo" — pedidos em
+    GERADO/VERIFICADO agora só mostram "Aguardando", sem ação manual
+    disponível. Mantidos "Liberar" (emissão online — checkpoint de
+    pagamento) e "Notificar" (envio de mensagem), que não são "aprovação
+    de certificado".
+  - Excluídos do banco: pedido/certificado/lançamento fictícios criados
+    durante o teste (cliente Renato) — certificado real dele foi cadastrado
+    manualmente depois (ver próximo item).
+
+### feat: editar certificado manual + corrigir valor que não persistia
+- **Contexto**: ao cadastrar manualmente o certificado real do Renato
+  (emitido fora do CertFlow, via Safeweb direto — "Controller"), o valor
+  digitado (R$ 60,00) aparecia como R$ 0,00 na tela, e não havia como
+  editar um certificado já cadastrado sem excluir e recriar.
+- **Causa raiz**: o formulário de "Cadastrar Certificado" mandava o valor
+  só como texto dentro de `observacoes` — nunca virava um número de fato;
+  a tela de cliente exibe `Pedido.valorFinal`, que não existe para
+  certificado sem pedido vinculado.
+- **Solução**: novo campo `Certificado.valorManual` (Decimal), usado como
+  fallback de exibição quando não há Pedido; `POST /api/certificados`
+  grava o valor digitado nesse campo; `PATCH /api/certificados/[id]`
+  passa a aceitar edição completa (modelo, datas, protocolo, valor); novo
+  botão "Editar" (lápis) na tela de cliente abre modal pré-preenchido.
+  Confirmado: esse fluxo manual nunca cria `Lancamento` financeiro —
+  é só um registro de controle de vencimento, como pedido pelo Vinicius.
+
+### chore: cancelado cron de teste do Telegram que disparava a cada 30min
+- **Contexto**: Vinicius reportou receber repetidamente no Telegram a
+  mensagem de teste do sistema de alerta.
+- **Causa raiz**: um `ScheduleWakeup` usado durante a investigação do canal
+  de alerta (17/06) foi registrado como cron diário recorrente em vez de
+  disparo único, e parte do prompt agendado chamava o endpoint de teste.
+- **Solução**: cron cancelado (`CronDelete`). Confirmado que não há nenhum
+  agendamento automático real chamando o endpoint de teste — ele só roda
+  quando chamado manualmente para diagnóstico.
+
+---
+
+## 17/06/2026
+
+### fix: webhook Safeweb atômico com retry e alerta — emissão 100% automática
+- **Contexto**: encontrados pedidos `EMITIDO` sem `Certificado` e/ou sem
+  `Lancamento` (2 certificados COOPER e o certificado do próprio Vinicius)
+  — o webhook fazia múltiplas escritas separadas, cada uma com try/catch
+  silencioso, deixando estado parcial possível.
+- **Solução**: toda a escrita do evento "emissao" (status, popup,
+  Certificado, Lancamento) roda dentro de uma única `prisma.$transaction`
+  — tudo ou nada. Retry automático (3 tentativas, backoff 500ms/1500ms).
+  Se as 3 falharem: alerta crítico e registra `AuditLog`.
+- **Regra de negócio confirmada**: emissão é 100% automática via webhook,
+  nunca depende de clique manual do AGR (ver também correções de 18/06
+  sobre os botões manuais que ainda existiam na UI).
+
+### feat: bonificado no financeiro + emissão síncrona em tempo real
+- Pedidos com `valorFinal = 0` geram `Lancamento` com `bonificado: true`,
+  `status: 'PAGO'`, `formaPagamento: 'Bonificado'` — aparecem na tela
+  Contas a Receber com badge roxo e contador "Bonificados (N)", sem entrar
+  nos totais de "A Receber"/"Vencidos".
+- `PATCH /api/pedidos/[id]`: Certificado e Lançamento criados de forma
+  síncrona ao marcar EMITIDO (antes era assíncrono com `Promise.race`).
+
+### fix: investigação e correção dos 3 canais de alerta crítico
+- **Contexto**: testando o alerta crítico recém-criado, nenhum dos canais
+  funcionava em produção.
+- **Causa raiz #1 (WhatsApp/Digisac)**: `api.digisac.com.br` (URL antiga)
+  estava em NXDOMAIN — confirmado por 3 métodos DNS independentes
+  (resolver padrão do Railway, Google 8.8.8.8, DNS-over-HTTPS). Falha do
+  lado do Digisac, não do Railway. Conta migrou para
+  `https://vegcertificados.digisac.biz/api/v1`; token também precisou ser
+  renovado no painel Digisac.
+- **Causa raiz #2 (E-mail)**: na época, ainda via SMTP — Railway bloqueia
+  portas SMTP de saída (ver correção definitiva em 18/06, migração para
+  API do Brevo).
+- **Solução temporária**: adicionado Telegram como terceiro canal
+  (`src/lib/telegram.ts`, HTTPS/443, não sujeito a bloqueio de porta) —
+  já configurado no projeto via `TELEGRAM_BOT_TOKEN`/`TELEGRAM_ADMIN_CHAT_ID`.
+- **Correção de dados**: certificado/lançamento faltantes recriados para
+  2 pedidos da COOPER e para o certificado do próprio Vinicius (que também
+  teve o status corrigido de `VENCIDO` para `NAO_RENOVADO`, posteriormente
+  ajustado de novo em 18/06 com o motivo real do usuário).
+
+### chore: remover seção "Últimos Pedidos" da tela de cliente
+- A pedido do Vinicius, removida a listagem de pedidos recentes da tela
+  de informações do cliente — fica só a tabela de certificados.
+
+---
+
 ## 16/06/2026
 
 ### feat: reconciliação automática de protocolos Safeweb presos em VERIFICADO
