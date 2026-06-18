@@ -7,10 +7,11 @@ import { prisma } from '@/lib/prisma'
 // permitindo religar a notificação ao registro de origem para alimentar o
 // widget de monitoramento do dashboard.
 //
-// Configuração necessária no painel do Brevo (Transactional → Settings →
-// Webhook): URL = https://<dominio>/api/brevo/webhook?token=AUTH_SECRET,
-// eventos: delivered, opened, click, hard_bounce, soft_bounce, blocked,
-// invalid_email, spam, unsubscribed.
+// Webhook registrado via API do Brevo (POST /v3/webhooks, id 2043410) —
+// não precisa configuração manual no painel. Confirmado em produção em
+// 18/06/2026 que o Brevo demora alguns minutos para entregar o evento e
+// que manda "tags" (array correto) e "tag" (string com o array
+// serializado, ex.: '["abc123"]') — sempre priorizar "tags[0]".
 
 interface EventoBrevo {
   event?: string
@@ -74,8 +75,6 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ erro: 'Payload inválido' }, { status: 400 })
   }
-
-  console.log('[Brevo Webhook] Payload recebido:', JSON.stringify(payload).slice(0, 500))
 
   const eventos = Array.isArray(payload) ? payload : [payload]
   await Promise.allSettled(eventos.map(ev => processarEvento(ev as EventoBrevo)))
