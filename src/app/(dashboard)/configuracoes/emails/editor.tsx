@@ -13,6 +13,9 @@ interface TemplateData {
   corpo: string
   ativo: boolean
   existe: boolean
+  enviados?: number
+  erros?: number
+  taxaAbertura?: number | null
 }
 
 interface Props {
@@ -84,6 +87,15 @@ export function EmailEditor({ template }: Props) {
               <p className="text-xs text-gray-500 mt-0.5 truncate">
                 Assunto: <span className="text-gray-700">{assunto}</span>
               </p>
+            )}
+            {template.enviados !== undefined && (
+              <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+                <span>📤 {template.enviados} enviado{template.enviados !== 1 ? 's' : ''}</span>
+                <span>👁️ {template.taxaAbertura !== null && template.taxaAbertura !== undefined ? `${template.taxaAbertura}% abertura` : '—'}</span>
+                {!!template.erros && (
+                  <span className="text-red-500 font-medium">⚠️ {template.erros} {template.erros !== 1 ? 'falharam' : 'falhou'}</span>
+                )}
+              </div>
             )}
           </div>
         </div>

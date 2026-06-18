@@ -62,14 +62,7 @@ export default async function EmailsPage() {
 
         <div className="grid gap-4">
           {dados.map(d => (
-            <div key={d.tipo}>
-              <EmailEditor template={d} />
-              <div className="flex items-center gap-4 px-4 -mt-2 mb-2 text-xs text-gray-500">
-                <span>📤 {d.enviados} enviados</span>
-                <span>👁️ {d.taxaAbertura !== null ? `${d.taxaAbertura}% abertura` : '—'}</span>
-                {d.erros > 0 && <span className="text-red-500 font-medium">⚠️ {d.erros} falharam</span>}
-              </div>
-            </div>
+            <EmailEditor key={d.tipo} template={d} />
           ))}
         </div>
       </div>
