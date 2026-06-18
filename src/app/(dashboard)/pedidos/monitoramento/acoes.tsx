@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, FileCheck, Loader2, Send, Unlock } from 'lucide-react'
+import { Clock, Loader2, Send, Unlock } from 'lucide-react'
 import { PopupCertificadoEmitido } from '@/components/popup-certificado-emitido'
 
 interface Props {
@@ -12,29 +12,15 @@ interface Props {
   tipoAtendimento?: string | null
 }
 
+// REGRA (18/06/2026): emissão é 100% automática via webhook Safeweb. Não
+// existe mais botão manual "Verificar"/"Finalizar" nem entrada manual de
+// protocolo aqui — isso criava certificados fictícios sem protocolo real
+// (ver memória feedback_safeweb_sagrado) e confundia os AGRs, que pensavam
+// precisar "aprovar" algo que o sistema já resolve sozinho.
 export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendimento }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [protocolo, setProtocolo] = useState('')
-  const [editando, setEditando] = useState(false)
   const [mostrarPopup, setMostrarPopup] = useState(false)
-
-  async function avancar() {
-    const proximo = statusAtual === 'GERADO' ? 'VERIFICADO' : statusAtual === 'VERIFICADO' ? 'EMITIDO' : null
-    if (!proximo) return
-    setLoading(true)
-    await fetch(`/api/pedidos/${pedidoId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: proximo }),
-    })
-    setLoading(false)
-    if (proximo === 'EMITIDO') {
-      setMostrarPopup(true)
-    } else {
-      router.refresh()
-    }
-  }
 
   async function liberarEmissaoOnline() {
     setLoading(true)
@@ -45,42 +31,10 @@ export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendiment
     }
   }
 
-  async function salvarProtocolo() {
-    if (!protocolo.trim()) return
-    setLoading(true)
-    await fetch(`/api/pedidos/${pedidoId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ numeroCompra: protocolo.trim(), status: 'VERIFICADO' }),
-    })
-    setEditando(false)
-    router.refresh()
-    setLoading(false)
-  }
-
   if (tipo === 'protocolo') {
-    if (editando) {
-      return (
-        <div className="flex items-center gap-1">
-          <input
-            value={protocolo}
-            onChange={e => setProtocolo(e.target.value)}
-            placeholder="Protocolo"
-            className="w-24 px-2 py-1 border border-gray-200 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-            onKeyDown={e => e.key === 'Enter' && salvarProtocolo()}
-            autoFocus
-          />
-          <button onClick={salvarProtocolo} disabled={loading} className="p-1 text-green-600 hover:text-green-700">
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-          </button>
-        </div>
-      )
-    }
-    return (
-      <button onClick={() => setEditando(true)} className="text-xs text-blue-600 hover:underline">
-        + Protocolo
-      </button>
-    )
+    // Pedido sem protocolo só pode existir aqui se foi criado antes da
+    // regra de 18/06/2026 (protocolo automático obrigatório na venda).
+    return <span className="text-xs text-gray-400 italic">Aguardando Safeweb</span>
   }
 
   // tipo = 'status'
@@ -107,7 +61,9 @@ export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendiment
     )
   }
 
-  // Emissão Online: substitui "Finalizar" pelo botão "Liberar" (chama UpdateLiberacao na Safeweb)
+  // Emissão Online: único caso com checkpoint humano legítimo — confirmar
+  // pagamento antes de liberar a emissão na Safeweb (não é "aprovar
+  // certificado", é liberar o processamento financeiro).
   if (tipoAtendimento === 'emissao-online' && (statusAtual === 'GERADO' || statusAtual === 'VERIFICADO')) {
     return (
       <button onClick={liberarEmissaoOnline} disabled={loading}
@@ -119,19 +75,10 @@ export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendiment
     )
   }
 
+  // GERADO/VERIFICADO em presencial/videoconferência: só esperar o webhook.
   return (
-    <>
-      <button onClick={avancar} disabled={loading}
-        className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition disabled:opacity-50 bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700">
-        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileCheck className="w-3 h-3" />}
-        {statusAtual === 'GERADO' ? 'Verificar' : 'Finalizar'}
-      </button>
-      {mostrarPopup && (
-        <PopupCertificadoEmitido
-          pedidoId={pedidoId}
-          onFechar={() => { setMostrarPopup(false); router.refresh() }}
-        />
-      )}
-    </>
+    <span className="flex items-center justify-center gap-1 text-xs text-gray-400" title="Aguardando confirmação automática da Safeweb">
+      <Clock className="w-3 h-3" /> Aguardando
+    </span>
   )
 }
