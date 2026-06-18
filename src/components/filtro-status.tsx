@@ -34,6 +34,7 @@ export function FiltroStatus({ basePath, mes, ano, statusAtual, outrosParams }: 
       <option value="PAGO">Pago</option>
       <option value="VENCIDO">Vencido</option>
       <option value="CANCELADO">Cancelado</option>
+      <option value="BONIFICADO">Bonificados</option>
     </select>
   )
 }

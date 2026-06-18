@@ -14,7 +14,7 @@ import { BaixaButton, CancelarButton } from '@/components/financeiro-baixa-butto
 import { InterCobrancaButton } from '@/components/inter-cobranca-button'
 
 interface Props {
-  searchParams: Promise<{ mes?: string; ano?: string; status?: string; agr?: string; busca?: string; bonificado?: string }>
+  searchParams: Promise<{ mes?: string; ano?: string; status?: string; agr?: string; busca?: string }>
 }
 
 const AGR_LABEL: Record<string, string> = {
@@ -34,19 +34,22 @@ export default async function ContasReceberPage({ searchParams }: Props) {
   const hoje   = new Date()
   const mes    = Number(params.mes ?? hoje.getMonth() + 1)
   const ano    = Number(params.ano ?? hoje.getFullYear())
-  const status     = params.status     ?? ''
-  const agr        = params.agr        ?? ''
-  const busca       = params.busca      ?? ''
-  const bonificadoAtivo = params.bonificado === 'true'
+  const status = params.status ?? ''
+  const agr    = params.agr    ?? ''
+  const busca  = params.busca  ?? ''
+
+  // "Bonificados" é uma opção dentro do próprio filtro de Status — não é
+  // um valor real de StatusLancamento, então tratamos separadamente.
+  const filtrandoBonificados = status === 'BONIFICADO'
 
   const inicio = new Date(ano, mes - 1, 1)
   const fim    = new Date(ano, mes, 0)
 
   // Constrói a querystring completa com os filtros atuais, permitindo
-  // sobrescrever um deles — usado pelos links de mês e pelo card clicável
-  // de Bonificados, pra nenhum filtro se perder ao trocar outro.
+  // sobrescrever um deles — usado pelos links de mês, pra nenhum outro
+  // filtro se perder ao trocar de mês.
   function paramsCompletos(overrides: Record<string, string | undefined> = {}) {
-    const valores: Record<string, string> = { mes: String(mes), ano: String(ano), status, agr, busca, bonificado: bonificadoAtivo ? 'true' : '' }
+    const valores: Record<string, string> = { mes: String(mes), ano: String(ano), status, agr, busca }
     Object.assign(valores, overrides)
     const sp = new URLSearchParams()
     for (const [k, v] of Object.entries(valores)) if (v) sp.set(k, v)
@@ -57,9 +60,10 @@ export default async function ContasReceberPage({ searchParams }: Props) {
     where: {
       tipo: 'RECEBER',
       dataVencimento: { gte: inicio, lte: fim },
-      ...(status ? { status: status as 'PENDENTE' | 'PAGO' | 'VENCIDO' | 'CANCELADO' } : {}),
-      ...(agr    ? { pedido: { agr } } : {}),
-      ...(bonificadoAtivo ? { bonificado: true } : {}),
+      ...(filtrandoBonificados
+        ? { bonificado: true }
+        : status ? { status: status as 'PENDENTE' | 'PAGO' | 'VENCIDO' | 'CANCELADO', bonificado: false } : {}),
+      ...(agr ? { pedido: { agr } } : {}),
       ...(busca ? {
         OR: [
           { pedido: { cliente: { nome:        { contains: busca, mode: 'insensitive' } } } },
@@ -136,39 +140,23 @@ export default async function ContasReceberPage({ searchParams }: Props) {
         {/* ── Resumo ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
-            { label: 'Total do Mês',   valor: totalMes,      cor: 'text-blue-600',   icon: DollarSign,  extra: null, clicavel: false },
-            { label: 'A Receber',      valor: totalPendente, cor: 'text-green-600',  icon: TrendingUp,  extra: null, clicavel: false },
-            { label: 'Já Recebido',    valor: totalRecebido, cor: 'text-teal-600',   icon: TrendingUp,  extra: null, clicavel: false },
-            { label: `Vencidos (${vencidos.length})`, valor: vencidos.reduce((s, c) => s + Number(c.valor), 0), cor: 'text-red-500', icon: AlertCircle, extra: null, clicavel: false },
-            { label: `Bonificados (${bonificados.length})`, valor: null, cor: 'text-purple-600', icon: Gift, extra: `${bonificados.length} cert.`, clicavel: true },
-          ].map(card => {
-            const conteudo = (
-              <>
-                <div className={`flex items-center gap-2 mb-2 ${card.cor}`}>
-                  <card.icon className="w-4 h-4" />
-                  <span className="text-xs font-medium uppercase">{card.label}</span>
-                </div>
-                {card.extra !== null
-                  ? <p className="text-lg font-bold text-gray-900 dark:text-white">{card.extra}</p>
-                  : <p className="text-lg font-bold text-gray-900 dark:text-white">{formatarMoeda(card.valor!)}</p>
-                }
-              </>
-            )
-            const classeBase = `bg-white dark:bg-slate-800 rounded-xl border shadow-sm p-4 ${
-              card.clicavel && bonificadoAtivo
-                ? 'border-purple-400 ring-2 ring-purple-200 dark:border-purple-500'
-                : 'border-gray-100 dark:border-slate-700'
-            } ${card.clicavel ? 'hover:border-purple-300 transition cursor-pointer' : ''}`
-
-            return card.clicavel ? (
-              <Link key={card.label} href={`/financeiro/contas-a-receber?${paramsCompletos({ bonificado: bonificadoAtivo ? '' : 'true' })}`}
-                className={classeBase} title={bonificadoAtivo ? 'Clique para ver todos os lançamentos' : 'Clique para ver só os bonificados'}>
-                {conteudo}
-              </Link>
-            ) : (
-              <div key={card.label} className={classeBase}>{conteudo}</div>
-            )
-          })}
+            { label: 'Total do Mês',   valor: totalMes,      cor: 'text-blue-600',   icon: DollarSign,  extra: null },
+            { label: 'A Receber',      valor: totalPendente, cor: 'text-green-600',  icon: TrendingUp,  extra: null },
+            { label: 'Já Recebido',    valor: totalRecebido, cor: 'text-teal-600',   icon: TrendingUp,  extra: null },
+            { label: `Vencidos (${vencidos.length})`, valor: vencidos.reduce((s, c) => s + Number(c.valor), 0), cor: 'text-red-500', icon: AlertCircle, extra: null },
+            { label: `Bonificados (${bonificados.length})`, valor: null, cor: 'text-purple-600', icon: Gift, extra: `${bonificados.length} cert.` },
+          ].map(card => (
+            <div key={card.label} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4">
+              <div className={`flex items-center gap-2 mb-2 ${card.cor}`}>
+                <card.icon className="w-4 h-4" />
+                <span className="text-xs font-medium uppercase">{card.label}</span>
+              </div>
+              {card.extra !== null
+                ? <p className="text-lg font-bold text-gray-900 dark:text-white">{card.extra}</p>
+                : <p className="text-lg font-bold text-gray-900 dark:text-white">{formatarMoeda(card.valor!)}</p>
+              }
+            </div>
+          ))}
         </div>
 
         {/* ── Filtros ─────────────────────────────────────────────────── */}
