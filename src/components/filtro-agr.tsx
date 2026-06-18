@@ -8,6 +8,8 @@ interface Props {
   ano:        number
   statusAtual: string
   agrAtual:   string
+  // demais filtros já aplicados (busca, bonificado), para não se perderem
+  outrosParams?: string
 }
 
 const AGR_OPTIONS = [
@@ -18,15 +20,17 @@ const AGR_OPTIONS = [
   { value: 'laryssa',    label: 'Laryssa' },
 ]
 
-export function FiltroAgr({ basePath, mes, ano, statusAtual, agrAtual }: Props) {
+export function FiltroAgr({ basePath, mes, ano, statusAtual, agrAtual, outrosParams }: Props) {
   const router = useRouter()
 
   function navegar(agr: string) {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams(outrosParams)
     params.set('mes',    String(mes))
     params.set('ano',    String(ano))
     if (statusAtual) params.set('status', statusAtual)
-    if (agr)         params.set('agr',    agr)
+    else params.delete('status')
+    if (agr) params.set('agr', agr)
+    else params.delete('agr')
     router.push(`${basePath}?${params.toString()}`)
   }
 
