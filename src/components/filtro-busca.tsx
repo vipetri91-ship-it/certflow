@@ -34,7 +34,7 @@ export function FiltroBusca({ basePath, buscaAtual, outrosParams }: Props) {
         value={valor}
         onChange={e => setValor(e.target.value)}
         placeholder="Buscar cliente, responsável..."
-        className="text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white w-48"
+        className="text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white w-36 shrink-0"
       />
     </div>
   )

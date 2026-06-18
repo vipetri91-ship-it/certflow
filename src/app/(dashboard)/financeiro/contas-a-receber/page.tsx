@@ -160,15 +160,15 @@ export default async function ContasReceberPage({ searchParams }: Props) {
         </div>
 
         {/* ── Filtros ─────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm px-4 py-3">
+        <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm px-4 py-3 overflow-x-auto">
           {/* Meses */}
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 shrink-0">
             {meses.map((nome, i) => {
               const m = i + 1
               const href = `/financeiro/contas-a-receber?${paramsCompletos({ mes: String(m) })}`
               return (
                 <Link key={m} href={href}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition ${m === mes ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap ${m === mes ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
                   {nome}
                 </Link>
               )
@@ -176,7 +176,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
           </div>
 
           {/* Controles direita */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
             <FiltroBusca
               basePath="/financeiro/contas-a-receber"
               buscaAtual={busca}
@@ -194,7 +194,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
             />
             {!isFinanceiro && (
               <Link href="/financeiro/contas-a-receber/novo"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition whitespace-nowrap">
                 <Plus className="w-4 h-4" /> Nova Conta
               </Link>
             )}
