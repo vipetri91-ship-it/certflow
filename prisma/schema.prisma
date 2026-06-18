@@ -327,6 +327,10 @@ model Certificado {
   status         StatusCertificado @default(ATIVO)
   safewebId      String?
   observacoes    String?
+  // Valor para certificados cadastrados manualmente (sem Pedido vinculado —
+  // ex.: emitido em outro lugar, só anotado aqui para lembrete de vencimento).
+  // Quando há Pedido, o valor exibido vem de Pedido.valorFinal, não daqui.
+  valorManual    Decimal?          @db.Decimal(10, 2)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 

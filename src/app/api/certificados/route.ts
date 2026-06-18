@@ -86,9 +86,8 @@ export async function POST(req: NextRequest) {
     let observacoes = parsed.data.observacoes ?? ''
     if (parsed.data.origemManual) {
       const extras = [
-        parsed.data.agr        && `AGR: ${parsed.data.agr}`,
-        parsed.data.valorFinal && `Valor: R$ ${parsed.data.valorFinal.toFixed(2)}`,
-        'Cadastro manual',
+        parsed.data.agr && `AGR: ${parsed.data.agr}`,
+        'Cadastro manual — emitido fora do CertFlow, só anotado para controle de vencimento',
       ].filter(Boolean).join(' | ')
       observacoes = extras + (observacoes ? ` | ${observacoes}` : '')
     }
@@ -104,6 +103,7 @@ export async function POST(req: NextRequest) {
         status:       parsed.data.status ?? 'ATIVO',
         safewebId:    parsed.data.safewebId,
         observacoes:  observacoes || undefined,
+        valorManual:  parsed.data.valorFinal,
       },
       include: { cliente: true, modelo: true },
     })

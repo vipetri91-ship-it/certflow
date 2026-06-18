@@ -7,6 +7,7 @@ import { ArrowLeft, Edit, Award, Building2, User, Phone, Mail, MapPin } from 'lu
 import { formatarData, formatarMoeda, formatarCPF, formatarCNPJ, formatarTelefone, diasParaVencimento } from '@/lib/utils'
 import { RenovarButton } from './renovar-button'
 import { CadastrarCertificado } from './cadastrar-certificado'
+import { EditarCertificado } from './editar-certificado'
 import { DeletarClienteButton } from './deletar-button'
 import { DeletarCertificadoButton } from './deletar-certificado-button'
 
@@ -146,6 +147,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                     <th className="text-left px-4 py-3 font-medium text-gray-600">AGR</th>
                     <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
                     <th className="text-center px-4 py-3 font-medium text-gray-600">Renovação</th>
+                    <th className="w-8 px-2 py-3"></th>
                     {isAdmin && <th className="w-8 px-2 py-3"></th>}
                   </tr>
                 </thead>
@@ -177,7 +179,7 @@ export default async function ClienteDetalhePage({ params }: Props) {
                           {dias < 0 && <div className="text-xs font-medium">Vencido</div>}
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                          {formatarMoeda(Number(cert.pedido?.valorFinal ?? 0))}
+                          {formatarMoeda(Number(cert.pedido?.valorFinal ?? cert.valorManual ?? 0))}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-500">
                           {cert.numeroSerie ?? '—'}
@@ -215,6 +217,19 @@ export default async function ClienteDetalhePage({ params }: Props) {
                           ) : cert.status === 'NAO_RENOVADO' ? (
                             <span className="text-xs text-orange-500">— Não renovado</span>
                           ) : null}
+                        </td>
+                        <td className="px-2 py-3 text-center">
+                          <EditarCertificado
+                            cert={{
+                              id: cert.id,
+                              modeloId: cert.modeloId,
+                              dataEmissao: cert.dataEmissao.toISOString(),
+                              dataVencimento: cert.dataVencimento.toISOString(),
+                              numeroSerie: cert.numeroSerie,
+                              valorManual: cert.valorManual !== null ? Number(cert.valorManual) : null,
+                            }}
+                            modelos={modelos}
+                          />
                         </td>
                         {isAdmin && (
                           <td className="px-2 py-3 text-center">

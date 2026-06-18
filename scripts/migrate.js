@@ -280,6 +280,7 @@ async function migrate() {
     `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "abertoEm" TIMESTAMP(3)`,
     `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "clicadoEm" TIMESTAMP(3)`,
     `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "motivoFalha" TEXT`,
+    `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "valorManual" DECIMAL(10,2)`,
   ]
 
   for (const q of queries) {
