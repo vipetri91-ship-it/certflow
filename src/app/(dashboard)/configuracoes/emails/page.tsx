@@ -1,25 +1,34 @@
 import { Header } from '@/components/header'
 import { prisma } from '@/lib/prisma'
 import { EmailEditor } from './editor'
-
-const TIPO_LABELS: Record<string, { label: string; desc: string; icone: string }> = {
-  VENCIMENTO_60: { label: '60 dias antes do vencimento', desc: 'Aviso antecipado para planejar renovação', icone: '📅' },
-  VENCIMENTO_30: { label: '30 dias antes do vencimento', desc: 'Lembrete de renovação próxima', icone: '⏰' },
-  VENCIMENTO_15: { label: '15 dias antes do vencimento', desc: 'Alerta urgente de vencimento', icone: '⚠️' },
-  VENCIMENTO_7:  { label: '7 dias antes do vencimento',  desc: 'Aviso crítico — último chamado', icone: '🚨' },
-  POS_EMISSAO:   { label: 'Após emissão do certificado', desc: 'Boas-vindas e orientações de uso', icone: '✅' },
-  NUTRICAO_3M:   { label: '3 meses após emissão',        desc: 'Dicas e benefícios do certificado digital', icone: '💡' },
-  NUTRICAO_6M:   { label: '6 meses após emissão',        desc: 'Segurança e boas práticas', icone: '🔒' },
-  NUTRICAO_9M:   { label: '9 meses após emissão',        desc: 'Planejamento de renovação', icone: '🔄' },
-}
+import { TIPO_EMAIL_LABELS } from '@/lib/email/tipos'
 
 export default async function EmailsPage() {
-  const templates = await prisma.templateEmail.findMany({ orderBy: { tipo: 'asc' } })
+  const desde90d = new Date(Date.now() - 90 * 86_400_000)
+
+  const [templates, statsPorTipo] = await Promise.all([
+    prisma.templateEmail.findMany({ orderBy: { tipo: 'asc' } }),
+    prisma.emailLog.groupBy({
+      by: ['tipo', 'status'],
+      where: { createdAt: { gte: desde90d } },
+      _count: { _all: true },
+    }),
+  ])
+
+  const abertosPorTipo = await prisma.emailLog.groupBy({
+    by: ['tipo'],
+    where: { createdAt: { gte: desde90d }, abertoEm: { not: null } },
+    _count: { _all: true },
+  })
+  const mapAbertos = Object.fromEntries(abertosPorTipo.map(a => [a.tipo, a._count._all]))
 
   const templateMap = Object.fromEntries(templates.map(t => [t.tipo, t]))
 
-  const dados = Object.entries(TIPO_LABELS).map(([tipo, info]) => {
+  const dados = Object.entries(TIPO_EMAIL_LABELS).map(([tipo, info]) => {
     const t = templateMap[tipo]
+    const enviados = statsPorTipo.filter(s => s.tipo === tipo && s.status === 'ENVIADO').reduce((s, r) => s + r._count._all, 0)
+    const erros    = statsPorTipo.filter(s => s.tipo === tipo && s.status === 'ERRO').reduce((s, r) => s + r._count._all, 0)
+    const abertos  = mapAbertos[tipo] ?? 0
     return {
       tipo,
       label: info.label,
@@ -29,6 +38,10 @@ export default async function EmailsPage() {
       corpo: t?.corpo ?? '',
       ativo: t?.ativo ?? false,
       existe: !!t,
+      enviados,
+      erros,
+      abertos,
+      taxaAbertura: enviados > 0 ? Math.round((abertos / enviados) * 100) : null,
     }
   })
 
@@ -43,12 +56,20 @@ export default async function EmailsPage() {
           <p className="text-sm text-blue-800">
             <strong>{ativos} de {dados.length}</strong> templates ativos.
             O job <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs font-mono">/api/jobs/processar-emails</code> processa os envios diariamente.
+            Estatísticas dos últimos 90 dias.
           </p>
         </div>
 
         <div className="grid gap-4">
           {dados.map(d => (
-            <EmailEditor key={d.tipo} template={d} />
+            <div key={d.tipo}>
+              <EmailEditor template={d} />
+              <div className="flex items-center gap-4 px-4 -mt-2 mb-2 text-xs text-gray-500">
+                <span>📤 {d.enviados} enviados</span>
+                <span>👁️ {d.taxaAbertura !== null ? `${d.taxaAbertura}% abertura` : '—'}</span>
+                {d.erros > 0 && <span className="text-red-500 font-medium">⚠️ {d.erros} falharam</span>}
+              </div>
+            </div>
           ))}
         </div>
       </div>

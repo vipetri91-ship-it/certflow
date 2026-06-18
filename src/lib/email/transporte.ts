@@ -9,6 +9,9 @@ interface OpcoesEnvio {
   subject: string
   html?: string
   text?: string
+  // Etiqueta devolvida pelo Brevo nos eventos de webhook (entregue, aberto,
+  // clicado, bounce) — usada para religar o evento ao EmailLog de origem.
+  tag?: string
 }
 
 export const transporte = {
@@ -32,6 +35,7 @@ export const transporte = {
         subject: opcoes.subject,
         ...(opcoes.html ? { htmlContent: opcoes.html } : {}),
         ...(opcoes.text ? { textContent: opcoes.text } : {}),
+        ...(opcoes.tag ? { tags: [opcoes.tag] } : {}),
       }),
     })
 

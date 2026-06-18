@@ -276,6 +276,10 @@ async function migrate() {
     )`,
     `CREATE INDEX IF NOT EXISTS "renovacoes_manuais_cpfcnpj_status_idx" ON "renovacoes_manuais" ("cpfCnpj", "status")`,
     `CREATE INDEX IF NOT EXISTS "renovacoes_manuais_status_idx" ON "renovacoes_manuais" ("status")`,
+    `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "entregueEm" TIMESTAMP(3)`,
+    `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "abertoEm" TIMESTAMP(3)`,
+    `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "clicadoEm" TIMESTAMP(3)`,
+    `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "motivoFalha" TEXT`,
   ]
 
   for (const q of queries) {

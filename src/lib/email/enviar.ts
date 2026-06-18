@@ -29,6 +29,7 @@ export async function enviarEmail(params: EnvioParams): Promise<void> {
       to: params.destinatario,
       subject: params.assunto,
       html: params.html,
+      tag: log.id,
     })
 
     await prisma.emailLog.update({
@@ -38,7 +39,7 @@ export async function enviarEmail(params: EnvioParams): Promise<void> {
   } catch (err) {
     await prisma.emailLog.update({
       where: { id: log.id },
-      data: { status: 'ERRO', erro: String(err) },
+      data: { status: 'ERRO', erro: String(err), motivoFalha: String(err) },
     })
     throw err
   }

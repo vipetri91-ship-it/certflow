@@ -11,6 +11,7 @@ import { WidgetFinanceiro } from './widget-financeiro'
 import { WidgetFinanceiroPagar } from './widget-financeiro-pagar'
 import { WidgetRFB } from './widget-rfb'
 import { WidgetCalculadora } from './widget-calculadora'
+import { WidgetMonitoramentoNotificacoes } from './widget-monitoramento-notificacoes'
 import { WidgetMetaVendas } from './widget-meta-vendas'
 import { WidgetEmail } from './widget-email'
 import { Header } from '@/components/header'
@@ -289,8 +290,10 @@ export default async function DashboardPage({ searchParams }: Props) {
               {isAdmin
                 ? <WidgetMetaVendas vendasMes={dados.vendasMes} mesNome={mesNome} />
                 : <WidgetRFB />}
-              {/* 6 — Calculadora de deslocamento */}
-              <WidgetCalculadora />
+              {/* 6 — Monitoramento de notificações (admin) ou Calculadora de deslocamento (outros) */}
+              {session.user.role === 'ADMIN'
+                ? <WidgetMonitoramentoNotificacoes />
+                : <WidgetCalculadora />}
             </div>
           </div>
 

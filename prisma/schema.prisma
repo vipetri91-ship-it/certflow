@@ -531,6 +531,10 @@ model EmailLog {
   erro          String?
   enviadoEm     DateTime?
   agendadoPara  DateTime?
+  entregueEm    DateTime?
+  abertoEm      DateTime?
+  clicadoEm     DateTime?
+  motivoFalha   String?
   createdAt     DateTime            @default(now())
 
   cliente     Cliente      @relation(fields: [clienteId], references: [id])
