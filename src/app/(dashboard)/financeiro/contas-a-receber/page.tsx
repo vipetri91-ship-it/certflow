@@ -53,7 +53,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
           agr: true,
           formaPagamento: true,
           unidadeAtendimento: true,
-          cliente: { select: { nome: true, razaoSocial: true } },
+          cliente: { select: { nome: true, razaoSocial: true, responsavel: true } },
           itens:   { select: { modelo: { select: { nome: true } } }, take: 1 },
         },
       },
@@ -79,6 +79,12 @@ export default async function ContasReceberPage({ searchParams }: Props) {
     if (c.pedido?.cliente) return c.pedido.cliente.razaoSocial ?? c.pedido.cliente.nome
     if (c.parceiro)        return c.parceiro.nome
     return c.descricao
+  }
+
+  // Nome da pessoa física responsável pela empresa — ajuda a localizar a
+  // conta quando o Pix chega no nome da PF em vez do nome da empresa.
+  function responsavelCliente(c: typeof contas[0]) {
+    return c.pedido?.cliente?.responsavel ?? null
   }
 
   function nomeCertificado(c: typeof contas[0]) {
@@ -190,11 +196,10 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                         <p className="font-medium text-gray-900 dark:text-white text-sm leading-tight truncate max-w-[180px]">
                           {nomeCliente(c)}
                         </p>
-                        {c.pedido && (
-                          <Link href={`/pedidos/${c.pedido.numero}`}
-                            className="text-xs text-blue-500 hover:underline">
-                            {c.pedido.numero}
-                          </Link>
+                        {responsavelCliente(c) && (
+                          <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[180px]">
+                            {responsavelCliente(c)}
+                          </p>
                         )}
                       </td>
 
