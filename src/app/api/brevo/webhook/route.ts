@@ -37,7 +37,9 @@ const EVENTOS_FALHA_DEFINITIVA = new Set(['hardbounce', 'blocked', 'invalidemail
 const EVENTOS_FALHA_REGISTRO   = new Set(['hardbounce', 'blocked', 'invalidemail', 'invalid', 'softbounce', 'spam', 'unsubscribed', 'deferred', 'error'])
 
 async function processarEvento(ev: EventoBrevo) {
-  const logId = ev.tag ?? ev.tags?.[0]
+  // O Brevo manda os dois campos: "tags" (array correto) e "tag" (string
+  // contendo o array serializado, ex.: '["abc123"]') — usar "tags" primeiro.
+  const logId = ev.tags?.[0] ?? ev.tag?.replace(/^\["?|"?\]$/g, '')
   if (!logId) return
 
   const evento = normalizar(ev.event ?? '')
