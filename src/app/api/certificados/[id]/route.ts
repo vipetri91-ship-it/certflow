@@ -37,14 +37,25 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const { status, observacao } = body
 
-  const statusValidos = ['ATIVO', 'VENCIDO', 'CANCELADO', 'RENOVADO']
+  const statusValidos = ['ATIVO', 'VENCIDO', 'CANCELADO', 'RENOVADO', 'NAO_RENOVADO']
   if (status && !statusValidos.includes(status)) {
     return NextResponse.json({ erro: 'Status inválido' }, { status: 422 })
   }
 
+  const dadosAtualizacao: Record<string, unknown> = { ...(status ? { status } : {}) }
+
+  // Marcar como não renovado grava o motivo no próprio certificado — é o
+  // que alimenta o tooltip na tela de cliente e a aba "Não Renovados" em
+  // /renovacoes (ambos leem Certificado.status/motivoNaoRenovacao).
+  if (status === 'NAO_RENOVADO') {
+    dadosAtualizacao.motivoNaoRenovacao = observacao?.trim() || 'Marcado como Não Renovado.'
+    dadosAtualizacao.naoRenovadoEm = new Date()
+    dadosAtualizacao.naoRenovadoPorId = session.user.id
+  }
+
   const atualizado = await prisma.certificado.update({
     where: { id },
-    data: { ...(status ? { status } : {}) },
+    data: dadosAtualizacao,
   })
 
   // Registra nota no histórico se fornecida

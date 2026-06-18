@@ -158,7 +158,7 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
       const res = await fetch(`/api/certificados/${cert.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'VENCIDO', observacao: obs }),
+        body: JSON.stringify({ status: 'NAO_RENOVADO', observacao: obs }),
       })
       if (res.ok) {
         onFechar()

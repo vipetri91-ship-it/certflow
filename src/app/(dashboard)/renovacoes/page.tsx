@@ -53,9 +53,9 @@ export default async function RenovacoesPage({ searchParams }: Props) {
       include,
       orderBy: { dataVencimento: 'asc' },
     }),
-    // Não renovados: status VENCIDO com vencimento no mês
+    // Não renovados: status NAO_RENOVADO com vencimento no mês
     prisma.certificado.findMany({
-      where: { status: 'VENCIDO', dataVencimento: { gte: inicioMes, lte: fimMes } },
+      where: { status: 'NAO_RENOVADO', dataVencimento: { gte: inicioMes, lte: fimMes } },
       include,
       orderBy: { dataVencimento: 'asc' },
     }),

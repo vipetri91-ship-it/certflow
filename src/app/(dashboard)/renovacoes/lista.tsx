@@ -9,6 +9,7 @@ interface Cert {
   id: string
   dataVencimento: string
   diasRestantes: number
+  motivoNaoRenovacao?: string | null
   modelo: { nome: string; tipoPessoa: string; tipoCertificado: string }
   pedido?: { agr: string | null; numero: string } | null
   cliente: {
@@ -137,6 +138,11 @@ function LinhaHistorico({ cert, tipo, onAbrirDetalhe }: { cert: Cert; tipo: 'ren
       <td className="px-3 py-3 max-w-[200px]">
         <p className="text-sm font-semibold text-gray-900 truncate">{cert.cliente.nome}</p>
         <p className="text-xs font-mono text-gray-400">{fmtDoc(cert.cliente)}</p>
+        {tipo === 'nao' && cert.motivoNaoRenovacao && (
+          <p className="text-xs text-red-500 truncate mt-0.5" title={cert.motivoNaoRenovacao}>
+            {cert.motivoNaoRenovacao}
+          </p>
+        )}
       </td>
       <td className="px-3 py-3 hidden md:table-cell">
         <div className="space-y-0.5">
