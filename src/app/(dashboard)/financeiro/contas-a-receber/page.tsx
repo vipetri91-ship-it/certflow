@@ -12,6 +12,7 @@ import { FiltroAgr } from '@/components/filtro-agr'
 import { FiltroBusca } from '@/components/filtro-busca'
 import { BaixaButton, CancelarButton } from '@/components/financeiro-baixa-button'
 import { InterCobrancaButton } from '@/components/inter-cobranca-button'
+import { EditarValorLancamento } from '@/components/editar-valor-lancamento'
 
 interface Props {
   searchParams: Promise<{ mes?: string; ano?: string; status?: string; agr?: string; busca?: string }>
@@ -275,8 +276,14 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                       </td>
 
                       {/* Valor */}
-                      <td className="px-3 py-3 font-bold text-green-700 dark:text-green-400 text-sm">
-                        {formatarMoeda(Number(c.valor))}
+                      <td className="px-3 py-3">
+                        {!c.bonificado && (c.status === 'PENDENTE' || c.status === 'VENCIDO') ? (
+                          <EditarValorLancamento id={c.id} valor={Number(c.valor)} />
+                        ) : (
+                          <span className="font-bold text-green-700 dark:text-green-400 text-sm">
+                            {formatarMoeda(Number(c.valor))}
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
