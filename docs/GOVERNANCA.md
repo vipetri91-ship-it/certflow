@@ -115,3 +115,35 @@ Assuma que qualquer alteração pode impactar:
 - Integrações Safeweb
 
 Agir com máxima cautela.
+
+## REGRA 11 — Área protegida: Safeweb
+
+> Registrada formalmente em 18/06/2026, a pedido explícito de Vinicius,
+> após incidente real de pedido sem protocolo automático (ver
+> `docs/AUDITORIA_2026-06-18.md`, seção 3).
+
+**É proibido alterar qualquer coisa relacionada à Safeweb sem
+autorização explícita.** Isso inclui, sem se limitar a:
+
+- `src/lib/safeweb.ts`
+- Geração de protocolos (presencial, videoconferência, emissão online)
+- Emissão e webhook (`src/app/api/safeweb/webhook/route.ts`)
+- Integração Hope
+- Monitoramento de pedidos (`src/app/(dashboard)/pedidos/monitoramento/`)
+- Eventos da Safeweb e qualquer payload trocado com a API deles
+- Qualquer lógica que leia ou escreva `safewebProtocolo`, `numeroCompra`,
+  `safewebStatus`
+
+Qualquer alteração futura nessa área deve, antes de qualquer linha de
+código:
+
+1. Ser previamente aprovada por Vinicius, de forma explícita.
+2. Ser documentada antes da execução (motivo, arquivos, comportamento
+   esperado).
+3. Ter plano de rollback descrito.
+4. Informar exatamente quais arquivos serão alterados.
+5. Explicar o impacto esperado.
+
+Sem essa autorização explícita, **nenhuma alteração deve ser realizada**
+— nem mesmo correções aparentemente pequenas, de log ou de
+observabilidade.
