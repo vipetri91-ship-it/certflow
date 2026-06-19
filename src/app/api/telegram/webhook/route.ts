@@ -61,6 +61,29 @@ const TOOLS: Anthropic.Messages.Tool[] = [
       status:  { type: 'string', description: 'Status: GERADO, VERIFICADO, EMITIDO, CANCELADO' },
     }},
   },
+  {
+    name: 'adicionar_pendencia',
+    description: 'Adiciona um item na lista de pendências/backlog de desenvolvimento do próprio CertFlow (não confundir com pedidos de clientes). Use quando o Vinicius mandar uma ideia, tarefa ou lembrete sobre o desenvolvimento do sistema — ex.: "anota aí que precisamos implementar X", "lembra de ajustar Y depois".',
+    input_schema: { type: 'object' as const, properties: {
+      titulo:    { type: 'string', description: 'Resumo curto da pendência' },
+      descricao: { type: 'string', description: 'Detalhes adicionais, se houver (opcional)' },
+    }, required: ['titulo'] },
+  },
+  {
+    name: 'listar_pendencias',
+    description: 'Lista o que está pendente, em andamento ou já concluído no desenvolvimento do CertFlow. Use para perguntas como "o que temos pendente pra implantar", "quais são os próximos passos", "em que pé está o projeto".',
+    input_schema: { type: 'object' as const, properties: {
+      status: { type: 'string', enum: ['PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO', 'TODAS'], description: 'Filtrar por status (padrão: PENDENTE + EM_ANDAMENTO)' },
+    }},
+  },
+  {
+    name: 'atualizar_status_pendencia',
+    description: 'Marca uma pendência como em andamento ou concluída. Identifique pelo título mais parecido com o que o Vinicius descreveu.',
+    input_schema: { type: 'object' as const, properties: {
+      titulo:     { type: 'string', description: 'Trecho do título da pendência a atualizar' },
+      novoStatus: { type: 'string', enum: ['PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO'] },
+    }, required: ['titulo', 'novoStatus'] },
+  },
 ]
 
 // ── Executar ferramenta ───────────────────────────────────────────────────────
@@ -235,6 +258,55 @@ async function executarFerramenta(nome: string, input: Record<string, unknown>):
     }).join('\n\n')
   }
 
+  if (nome === 'adicionar_pendencia') {
+    const titulo = String(input.titulo ?? '').trim()
+    if (!titulo) return 'Preciso de um título pra anotar a pendência.'
+    const descricao = input.descricao ? String(input.descricao) : undefined
+
+    const criada = await prisma.pendenciaProjeto.create({
+      data: { titulo, descricao, origem: 'telegram' },
+    })
+    return `✅ Anotado: "${criada.titulo}"${descricao ? `\n${descricao}` : ''}`
+  }
+
+  if (nome === 'listar_pendencias') {
+    const filtro = String(input.status ?? 'ATIVAS')
+    const where = filtro === 'TODAS' ? {} : filtro === 'ATIVAS'
+      ? { status: { in: ['PENDENTE', 'EM_ANDAMENTO'] as ('PENDENTE' | 'EM_ANDAMENTO')[] } }
+      : { status: filtro as 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' }
+
+    const itens = await prisma.pendenciaProjeto.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+    })
+
+    if (!itens.length) return 'Nenhuma pendência registrada com esse filtro.'
+
+    const icone = { PENDENTE: '⏳', EM_ANDAMENTO: '🔧', CONCLUIDO: '✅' }
+    return itens.map(p =>
+      `${icone[p.status]} *${p.titulo}*${p.descricao ? `\n   ${p.descricao}` : ''}\n   _${fmtData(p.createdAt)}_`
+    ).join('\n\n')
+  }
+
+  if (nome === 'atualizar_status_pendencia') {
+    const titulo     = String(input.titulo ?? '')
+    const novoStatus = input.novoStatus as 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO'
+    if (!titulo || !novoStatus) return 'Preciso do título e do novo status.'
+
+    const item = await prisma.pendenciaProjeto.findFirst({
+      where: { titulo: { contains: titulo, mode: 'insensitive' }, status: { not: 'CONCLUIDO' } },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (!item) return `Não achei nenhuma pendência ativa com "${titulo}" no título.`
+
+    await prisma.pendenciaProjeto.update({
+      where: { id: item.id },
+      data: { status: novoStatus, concluidoEm: novoStatus === 'CONCLUIDO' ? new Date() : null },
+    })
+    return `Atualizado: "${item.titulo}" → ${novoStatus}`
+  }
+
   return 'Ferramenta não reconhecida.'
 }
 
@@ -254,6 +326,16 @@ Hoje é ${hoje}.
 Seja direto, conciso e use emojis com moderação. Use *negrito* para destacar números e informações importantes.
 Você tem acesso ao sistema completo via ferramentas — use-as sempre que precisar buscar informações.
 Quando não souber algo, use a ferramenta adequada ao invés de dizer que não tem acesso.
+
+Além dos dados de clientes/financeiro/pedidos, você também ajuda Vinicius a
+acompanhar o DESENVOLVIMENTO do próprio CertFlow: quando ele mandar uma
+ideia/tarefa pra anotar, use adicionar_pendencia; quando perguntar o que
+falta implementar ou o andamento do projeto, use listar_pendencias; quando
+ele disser que algo foi feito ou começou a fazer, use
+atualizar_status_pendencia. Isso é só desenvolvimento de software (backlog
+de programação) — agenda/compromissos é fora do seu escopo, oriente a usar
+o Google Agenda.
+
 Limitações reais: não consegue gerar PDFs nem abrir o navegador. Para isso, oriente acessar https://certflow-nine.vercel.app`,
     messages,
   })

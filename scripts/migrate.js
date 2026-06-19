@@ -281,6 +281,20 @@ async function migrate() {
     `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "clicadoEm" TIMESTAMP(3)`,
     `ALTER TABLE "email_logs" ADD COLUMN IF NOT EXISTS "motivoFalha" TEXT`,
     `ALTER TABLE "certificados" ADD COLUMN IF NOT EXISTS "valorManual" DECIMAL(10,2)`,
+    `DO $$ BEGIN
+      CREATE TYPE "StatusPendenciaProjeto" AS ENUM ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO');
+     EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    `CREATE TABLE IF NOT EXISTS "pendencias_projeto" (
+      "id" TEXT NOT NULL,
+      "titulo" TEXT NOT NULL,
+      "descricao" TEXT,
+      "status" "StatusPendenciaProjeto" NOT NULL DEFAULT 'PENDENTE',
+      "origem" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "concluidoEm" TIMESTAMP(3),
+      CONSTRAINT "pendencias_projeto_pkey" PRIMARY KEY ("id")
+    )`,
   ]
 
   for (const q of queries) {

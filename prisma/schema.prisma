@@ -669,3 +669,24 @@ model SessaoAtividade {
   @@unique([usuarioId, data])
   @@map("sessao_atividade")
 }
+
+// ─── PENDÊNCIAS DO PROJETO (backlog conversado via Telegram) ──────────────────
+
+enum StatusPendenciaProjeto {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDO
+}
+
+model PendenciaProjeto {
+  id          String                  @id @default(cuid())
+  titulo      String
+  descricao   String?                 @db.Text
+  status      StatusPendenciaProjeto  @default(PENDENTE)
+  origem      String?                 // ex.: 'telegram', 'sessao-claude'
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  concluidoEm DateTime?
+
+  @@map("pendencias_projeto")
+}
