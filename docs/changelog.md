@@ -7,6 +7,37 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 22/06/2026
 
+### fix: escopo OAuth errado bloqueava toda a integração com o Banco Inter
+- **Arquivo**: `src/lib/inter.ts`.
+- **Contexto**: a integração de cobrança (Pix + boleto) via API do Banco
+  Inter já estava implementada (`src/lib/inter.ts`,
+  `src/app/api/inter/cobranca/route.ts`,
+  `src/app/api/inter/webhook/route.ts`,
+  `src/components/inter-cobranca-button.tsx`) mas nunca tinha sido
+  ativada em produção: faltavam as credenciais (`INTER_CLIENT_ID`,
+  `INTER_CLIENT_SECRET`, `INTER_CERT_B64`, `INTER_KEY_B64`) no Railway —
+  agora configuradas.
+- **Bug encontrado ao ativar**: o código pedia o escopo OAuth
+  `cobranças.read cobranças.write`, que a API do Inter rejeitava com
+  `401 — No registered scope value for this client has been requested`,
+  mesmo com a permissão de Cobrança corretamente habilitada na
+  integração do painel do Inter. O nome correto do escopo é
+  `boleto-cobranca.read boleto-cobranca.write` (confirmado testando
+  diretamente contra a API, já que a documentação oficial não lista os
+  nomes de escopo de forma acessível).
+- **Impacto**: sem essa correção, nenhuma cobrança poderia ser gerada —
+  toda chamada a `criarCobranca()`/`consultarCobranca()` falharia no
+  passo de autenticação. Não afeta nenhuma outra integração.
+- **Testes**: autenticação validada com token real obtido com sucesso
+  (`access_token` + `expires_in: 3600`) antes do commit; `npx vitest run`
+  (54/54) e `npx next build` limpos.
+- **Próximo passo, fora deste commit**: cadastrar o webhook
+  `https://www.vazcertflow.com.br/api/inter/webhook` no painel do Inter
+  (Cobranças → Webhooks) para a confirmação automática de pagamento
+  funcionar.
+- **Reversão**: commit único e isolado, revertível com `git revert`.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: redirect do callback do Google Agenda usava host interno do Railway
 - **Arquivo**: `src/app/api/google/callback/route.ts`.
 - **Causa raiz**: o domínio do CertFlow foi migrado de

@@ -43,7 +43,7 @@ async function getToken(): Promise<string> {
     client_id:     process.env.INTER_CLIENT_ID!,
     client_secret: process.env.INTER_CLIENT_SECRET!,
     grant_type:    'client_credentials',
-    scope:         'cobranças.read cobranças.write',
+    scope:         'boleto-cobranca.read boleto-cobranca.write',
   }).toString()
   const res = await req('POST', '/oauth/v2/token', body, {
     'Content-Type':   'application/x-www-form-urlencoded',
