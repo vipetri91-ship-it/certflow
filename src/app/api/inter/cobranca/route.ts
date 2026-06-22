@@ -32,6 +32,13 @@ export async function POST(req: NextRequest) {
     ? lancamento.dataVencimento
     : addDays(new Date(), 3)
 
+  // DDD + telefone — a API do Inter exige os dois separados. O cadastro do
+  // cliente guarda DDD próprio (campo `ddd`) ou número completo em
+  // `celular`/`telefone` (com DDD embutido).
+  const numeroBruto = (cliente.celular ?? cliente.telefone ?? '').replace(/\D/g, '')
+  const ddd = cliente.ddd?.replace(/\D/g, '') || numeroBruto.slice(0, 2)
+  const telefone = numeroBruto.length > 2 ? numeroBruto.slice(-9) : numeroBruto
+
   try {
     const resultado = await criarCobranca({
       pagador: {
@@ -45,6 +52,8 @@ export async function POST(req: NextRequest) {
         bairro:      cliente.bairro ?? undefined,
         cidade:      cliente.cidade ?? undefined,
         uf:          cliente.estado ?? undefined,
+        ddd:         ddd || undefined,
+        telefone:    telefone || undefined,
       },
       valorNominal:   Number(lancamento.valor),
       dataVencimento: format(vencimento, 'yyyy-MM-dd'),

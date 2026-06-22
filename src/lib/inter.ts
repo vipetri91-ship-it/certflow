@@ -66,6 +66,8 @@ export interface DadosPagador {
   bairro?:    string
   cidade?:    string
   uf?:        string
+  ddd?:       string
+  telefone?:  string
 }
 
 export interface ParamsCobranca {
@@ -76,23 +78,44 @@ export interface ParamsCobranca {
 }
 
 export interface ResultadoCobranca {
+  codigoSolicitacao: string
   nossoNumero:    string
   codigoBarras:   string
   linhaDigitavel: string
   pixCopiaECola?: string
 }
 
+// Payload real da API v3 (confirmado testando contra a API — a documentação
+// pública não lista os nomes de campo corretos). Pontos não óbvios:
+// - Endereço vai direto no pagador (campo "endereco" = logradouro), sem
+//   objeto aninhado.
+// - multa/mora/desconto devem ser OMITIDOS quando não há cobrança extra —
+//   não existe código tipo "sem multa", enviar o objeto vazio/zerado dá 400.
+// - A criação (POST) só retorna codigoSolicitacao; os dados do boleto/Pix
+//   só vêm consultando depois (GET) por esse código.
 export async function criarCobranca(params: ParamsCobranca): Promise<ResultadoCobranca> {
   const token = await getToken()
   const payload = JSON.stringify({
-    pagador:        params.pagador,
-    mensagem:       { linha1: params.descricao?.slice(0, 77) ?? 'CertFlow - Certificado Digital' },
-    dataVencimento: params.dataVencimento,
+    seuNumero:      `CF${Date.now()}`,
     valorNominal:   params.valorNominal,
+    dataVencimento: params.dataVencimento,
     numDiasAgenda:  60,
-    multa:          { codigoMulta: 'NAOTEMMULTA', taxa: 0, valor: 0 },
-    mora:           { codigoMora: 'ISENTO', taxa: 0, valor: 0 },
-    desconto:       { codigoDesconto: 'NAOTEMDESCONTO', taxa: 0, valor: 0, data: '' },
+    pagador: {
+      tipoPessoa: params.pagador.tipoPessoa,
+      nome:       params.pagador.nome,
+      cpfCnpj:    params.pagador.cpfCnpj,
+      endereco:   params.pagador.logradouro ?? '',
+      numero:     params.pagador.numero ?? 'SN',
+      complemento: '',
+      bairro:     params.pagador.bairro ?? '',
+      cidade:     params.pagador.cidade ?? '',
+      uf:         params.pagador.uf ?? '',
+      cep:        params.pagador.cep ?? '',
+      email:      params.pagador.email ?? '',
+      ddd:        params.pagador.ddd ?? '',
+      telefone:   params.pagador.telefone ?? '',
+    },
+    mensagem: { linha1: params.descricao?.slice(0, 77) ?? 'CertFlow - Certificado Digital' },
   })
   const res = await req('POST', '/cobranca/v3/cobrancas', payload, {
     'Content-Type':   'application/json',
@@ -102,13 +125,31 @@ export async function criarCobranca(params: ParamsCobranca): Promise<ResultadoCo
   if (res.status !== 200 && res.status !== 201) {
     throw new Error(`Inter cobrança error ${res.status}: ${JSON.stringify(res.data)}`)
   }
-  return res.data as ResultadoCobranca
+  const { codigoSolicitacao } = res.data as { codigoSolicitacao: string }
+
+  const detalhes = await consultarCobranca(codigoSolicitacao)
+  return {
+    codigoSolicitacao,
+    nossoNumero:    detalhes.boleto?.nossoNumero ?? '',
+    codigoBarras:   detalhes.boleto?.codigoBarras ?? '',
+    linhaDigitavel: detalhes.boleto?.linhaDigitavel ?? '',
+    pixCopiaECola:  detalhes.pix?.pixCopiaECola,
+  }
 }
 
-export async function consultarCobranca(nossoNumero: string): Promise<{ situacao: string; dataPagamento?: string }> {
+export interface DetalhesCobranca {
+  cobranca: { situacao: string; dataSituacao?: string }
+  boleto?:  { nossoNumero: string; codigoBarras: string; linhaDigitavel: string }
+  pix?:     { txid: string; pixCopiaECola: string }
+}
+
+export async function consultarCobranca(codigoSolicitacao: string): Promise<DetalhesCobranca> {
   const token = await getToken()
-  const res = await req('GET', `/cobranca/v3/cobrancas/${nossoNumero}`, undefined, {
+  const res = await req('GET', `/cobranca/v3/cobrancas/${codigoSolicitacao}`, undefined, {
     Authorization: `Bearer ${token}`,
   })
-  return res.data as { situacao: string; dataPagamento?: string }
+  if (res.status !== 200) {
+    throw new Error(`Inter consulta error ${res.status}: ${JSON.stringify(res.data)}`)
+  }
+  return res.data as DetalhesCobranca
 }

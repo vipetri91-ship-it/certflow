@@ -7,6 +7,48 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 22/06/2026
 
+### fix: estrutura real do payload de cobrança do Banco Inter (correção definitiva)
+- **Arquivos**: `src/lib/inter.ts`, `src/app/api/inter/cobranca/route.ts`.
+- **Contexto**: a correção anterior (entrada abaixo, "payload de
+  cobrança... rejeitava multa/mora/desconto sem valor") não foi
+  suficiente — testando contra a API real em produção, o mesmo erro
+  `400 — Não foi possível converter o valor (multa)` persistiu.
+- **Investigação**: a documentação pública do Inter
+  (developers.inter.co) é uma SPA que não expõe o schema real de forma
+  acessível. A estrutura correta foi confirmada testando diretamente
+  contra a API (`cdpj.partners.bancointer.com.br`) com variações de
+  payload, e depois validada contra o código-fonte de uma biblioteca de
+  terceiros publicada (pacote npm `@thiago.zampieri/bancointer`).
+- **Erros reais encontrados no payload anterior**:
+  1. `multa`/`mora`/`desconto` **devem ser omitidos** quando não há
+     cobrança extra — não existe código "sem multa" (`NAOTEMMULTA` não é
+     um valor válido); enviar esses objetos zerados causa erro 400.
+  2. Faltava o campo `seuNumero` (identificador da cobrança,
+     obrigatório).
+  3. O endereço do pagador vai **direto** no objeto `pagador` (sem
+     aninhar em `endereco`), mas o nome do campo do logradouro é
+     `endereco` (string), não `logradouro`.
+  4. Faltavam os campos `ddd` e `telefone` do pagador (obrigatórios).
+  5. A criação (`POST /cobranca/v3/cobrancas`) só retorna
+     `codigoSolicitacao` — os dados do boleto (`nossoNumero`,
+     `linhaDigitavel`) e do Pix (`pixCopiaECola`) só vêm consultando
+     depois (`GET /cobranca/v3/cobrancas/{codigoSolicitacao}`).
+- **Mudança**: `criarCobranca()` agora monta o payload correto, omite
+  multa/mora/desconto, e faz a consulta de detalhes automaticamente após
+  criar, retornando os dados completos numa única chamada para quem usa
+  a função. `consultarCobranca()` passou a receber `codigoSolicitacao`
+  (antes recebia, incorretamente, `nossoNumero`). A rota
+  `/api/inter/cobranca` agora monta `ddd`/`telefone` a partir do cadastro
+  do cliente (`celular`/`telefone`/`ddd`).
+- **Validação**: testado de ponta a ponta contra a API real (criação,
+  consulta de detalhes e cancelamento) com os dados de um cliente real —
+  a cobrança de teste foi cancelada após confirmação, sem deixar
+  pendência no painel do banco.
+- **Testes**: `npx vitest run` (54/54) e `npx next build` (compilação
+  TypeScript limpa).
+- **Reversão**: commit único, revertível com `git revert`.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: payload de cobrança do Banco Inter rejeitava multa/mora/desconto sem valor
 - **Arquivo**: `src/lib/inter.ts`.
 - **Erro**: ao gerar a primeira cobrança real, a API do Inter retornou
