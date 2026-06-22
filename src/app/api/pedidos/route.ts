@@ -37,10 +37,17 @@ export async function GET(req: NextRequest) {
   const limit = Number(searchParams.get('limit') ?? 20)
   const status = searchParams.get('status')
   const clienteId = searchParams.get('clienteId')
+  const q = searchParams.get('q')?.trim()
 
   const where = {
     ...(status ? { status: status as any } : {}),
     ...(clienteId ? { clienteId } : {}),
+    ...(q ? {
+      OR: [
+        { numero: { contains: q, mode: 'insensitive' as const } },
+        { cliente: { nome: { contains: q, mode: 'insensitive' as const } } },
+      ],
+    } : {}),
   }
 
   const [pedidos, total] = await Promise.all([

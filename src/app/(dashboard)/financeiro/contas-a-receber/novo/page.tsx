@@ -11,6 +11,12 @@ import {
 
 interface Categoria { id: string; nome: string; cor: string }
 interface Parceiro  { id: string; nome: string }
+interface PedidoBusca {
+  id: string
+  numero: string
+  valorFinal: number
+  cliente: { nome: string }
+}
 
 async function uploadArquivo(file: File): Promise<string> {
   const form = new FormData()
@@ -46,10 +52,45 @@ export default function NovaContaReceberPage() {
   const [fileNotaFiscal,  setFileNotaFiscal]  = useState<File | null>(null)
   const [fileComprovante, setFileComprovante] = useState<File | null>(null)
 
+  // Vínculo opcional com Pedido (cobrança antes da emissão do certificado)
+  const [pedidoBusca,       setPedidoBusca]       = useState('')
+  const [pedidoResultados,  setPedidoResultados]  = useState<PedidoBusca[]>([])
+  const [pedidoSelecionado, setPedidoSelecionado] = useState<PedidoBusca | null>(null)
+  const [buscandoPedido,    setBuscandoPedido]    = useState(false)
+
   useEffect(() => {
     fetch('/api/financeiro/categorias').then(r => r.json()).then(d => setCategorias(d.categorias ?? []))
     fetch('/api/parceiros').then(r => r.json()).then(d => setParceiros(d.parceiros ?? d ?? []))
   }, [])
+
+  useEffect(() => {
+    if (pedidoSelecionado || pedidoBusca.trim().length < 2) { setPedidoResultados([]); return }
+    const timer = setTimeout(() => {
+      setBuscandoPedido(true)
+      fetch(`/api/pedidos?q=${encodeURIComponent(pedidoBusca.trim())}&limit=8`)
+        .then(r => r.json())
+        .then(d => setPedidoResultados(d.pedidos ?? []))
+        .finally(() => setBuscandoPedido(false))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [pedidoBusca, pedidoSelecionado])
+
+  function selecionarPedido(p: PedidoBusca) {
+    setPedidoSelecionado(p)
+    setPedidoBusca('')
+    setPedidoResultados([])
+    if (!valor) setValor(String(p.valorFinal))
+    if (!descricao) setDescricao(`${p.cliente.nome} — Pedido ${p.numero}`)
+    if (!referencia) setReferencia(p.numero)
+    // Cobrança antecipada: vencimento padrão de 3 dias (ajustável)
+    const em3dias = new Date()
+    em3dias.setDate(em3dias.getDate() + 3)
+    setDataVencimento(em3dias.toISOString().slice(0, 10))
+  }
+
+  function removerPedidoVinculado() {
+    setPedidoSelecionado(null)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -74,6 +115,7 @@ export default function NovaContaReceberPage() {
           status:        recebido === 'Sim' ? 'PAGO' : 'PENDENTE',
           categoriaId:   categoriaId  || undefined,
           parceiroId:    parceiroId   || undefined,
+          pedidoId:      pedidoSelecionado?.id || undefined,
           centroCusto:   centroCusto  || undefined,
           tipoConta:     tipoConta    || undefined,
           referencia:    referencia   || undefined,
@@ -108,6 +150,45 @@ export default function NovaContaReceberPage() {
         </Link>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* Vínculo com Pedido — para cobrança antes da emissão do certificado */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-700">Vincular a um Pedido (opcional)</h2>
+            <p className="text-xs text-gray-500">
+              Use quando precisar cobrar o cliente antes da emissão do certificado.
+              Ao emitir o certificado depois, o sistema não duplica este lançamento.
+            </p>
+
+            {pedidoSelecionado ? (
+              <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2">
+                <span className="text-sm text-blue-800">
+                  Pedido <strong>{pedidoSelecionado.numero}</strong> — {pedidoSelecionado.cliente.nome}
+                </span>
+                <button type="button" onClick={removerPedidoVinculado}
+                  className="text-xs text-blue-700 hover:text-blue-900 underline">
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input type="text" value={pedidoBusca} onChange={e => setPedidoBusca(e.target.value)}
+                  placeholder="Buscar pedido por número ou nome do cliente..."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                {buscandoPedido && <p className="text-xs text-gray-400 mt-1">Buscando...</p>}
+                {pedidoResultados.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                    {pedidoResultados.map(p => (
+                      <button key={p.id} type="button" onClick={() => selecionarPedido(p)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                        <span className="font-medium">{p.numero}</span> — {p.cliente.nome}
+                        <span className="text-gray-400"> · R$ {Number(p.valorFinal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Identificação */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">

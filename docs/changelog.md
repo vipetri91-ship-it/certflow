@@ -7,6 +7,35 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 22/06/2026
 
+### feat: vincular Pedido ao criar Lançamento manual (cobrança antes da emissão)
+- **Arquivos**: `src/app/api/pedidos/route.ts` (busca `?q=` por número/cliente),
+  `src/app/(dashboard)/financeiro/contas-a-receber/novo/page.tsx`.
+- **Motivo**: Vinicius relatou que, para cobrar um cliente antes da emissão
+  do certificado (ex.: cobrança à vista no momento da venda), era preciso
+  emitir o certificado primeiro só para o Lançamento aparecer no
+  Financeiro e poder gerar o boleto/Pix do Inter — fluxo invertido.
+- **Investigação**: a regra de "Lançamento só nasce na emissão" é
+  deliberada (`docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md`, decisão de
+  11/06/2026) para manter a conciliação diária "certificados emitidos" x
+  "contas a receber" correta — **não foi revertida**. O próprio documento
+  já previa esse caso (seção 8.4) e indicava a criação manual de
+  Lançamento vinculado a `pedidoId` como mitigação — mas a tela nunca
+  ganhou um campo para isso (só havia um campo de texto livre
+  "Referência", sem vínculo real).
+- **Mudança**: adicionado campo "Vincular a um Pedido (opcional)" na tela
+  Nova Conta a Receber — busca por número/cliente
+  (`GET /api/pedidos?q=...`), preenche valor/descrição automaticamente e
+  define vencimento padrão de 3 dias. Ao emitir o certificado depois, a
+  checagem de idempotência já existente em `pedidos/[id]/route.ts` evita
+  duplicar o Lançamento.
+- **Impacto**: aditivo — campo novo e opcional. Não altera o
+  comportamento de criação automática de Lançamento na emissão, nem o
+  endpoint `GET /api/pedidos` quando `q` não é informado.
+- **Testes**: `npx vitest run` (54/54) e `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert` sem efeito em
+  dados (campo de UI/busca, sem migration).
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: escopo OAuth errado bloqueava toda a integração com o Banco Inter
 - **Arquivo**: `src/lib/inter.ts`.
 - **Contexto**: a integração de cobrança (Pix + boleto) via API do Banco
