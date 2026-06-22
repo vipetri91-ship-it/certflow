@@ -7,6 +7,22 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 22/06/2026
 
+### fix: payload de cobrança do Banco Inter rejeitava multa/mora/desconto sem valor
+- **Arquivo**: `src/lib/inter.ts`.
+- **Erro**: ao gerar a primeira cobrança real, a API do Inter retornou
+  `400 — Não foi possível converter o valor (propriedade: multa)`. Os
+  objetos `multa`, `mora` e `desconto` precisam sempre de `valor`/`taxa`
+  numéricos (mesmo quando o código é "sem multa/mora/desconto" — não
+  podem faltar). Também corrigido o código de `mora`, que era
+  `'NAOTEMMORA'` (inválido) e deveria ser `'ISENTO'`.
+- **Impacto**: sem essa correção, nenhuma cobrança poderia ser gerada de
+  fato — a chamada sempre falhava no Inter. Não afeta nenhuma outra
+  integração.
+- **Testes**: `npx vitest run` (54/54) e `npx next build` limpos.
+  Confirmação final feita gerando uma cobrança real em produção.
+- **Reversão**: commit único, revertível com `git revert`.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: vincular Pedido ao criar Lançamento manual (cobrança antes da emissão)
 - **Arquivos**: `src/app/api/pedidos/route.ts` (busca `?q=` por número/cliente),
   `src/app/(dashboard)/financeiro/contas-a-receber/novo/page.tsx`.

@@ -90,9 +90,9 @@ export async function criarCobranca(params: ParamsCobranca): Promise<ResultadoCo
     dataVencimento: params.dataVencimento,
     valorNominal:   params.valorNominal,
     numDiasAgenda:  60,
-    multa:          { codigoMulta: 'NAOTEMMULTA' },
-    mora:           { codigoMora: 'NAOTEMMORA' },
-    desconto:       { codigoDesconto: 'NAOTEMDESCONTO' },
+    multa:          { codigoMulta: 'NAOTEMMULTA', taxa: 0, valor: 0 },
+    mora:           { codigoMora: 'ISENTO', taxa: 0, valor: 0 },
+    desconto:       { codigoDesconto: 'NAOTEMDESCONTO', taxa: 0, valor: 0, data: '' },
   })
   const res = await req('POST', '/cobranca/v3/cobrancas', payload, {
     'Content-Type':   'application/json',
