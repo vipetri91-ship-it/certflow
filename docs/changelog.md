@@ -7,6 +7,35 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 22/06/2026
 
+### docs: fechamento do dia — domínio novo, Banco Inter e vínculo de Lançamento
+- **Arquivo**: `docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md` (seção 8,
+  item 4 — marcado como resolvido).
+- **Resumo consolidado do dia** (Regra 8 — `/docs` é a fonte da
+  verdade), para retomar com contexto completo:
+  1. Domínio `www.vazcertflow.com.br` ativado: DNS configurado na
+     HostGator, certificado SSL válido, `NEXTAUTH_URL`/`AUTH_URL`
+     atualizados no Railway, Google OAuth (origens/redirect) atualizado,
+     webhook do Telegram corrigido (estava apontando para a Vercel
+     antiga), webhook do Digisac criado pela primeira vez (nunca tinha
+     sido ativado).
+  2. Bug corrigido: callback do Google Agenda redirecionava para o host
+     interno do Railway (`localhost:8080`) em vez do domínio público
+     (commit `bdacb9b`).
+  3. Integração com o Banco Inter (cobrança Pix + boleto) ativada pela
+     primeira vez em produção: credenciais configuradas, escopo OAuth
+     corrigido, estrutura real do payload descoberta e corrigida
+     (commits `21fc50e`, `1468f82`, `ed12326`), webhook de pagamento
+     cadastrado, testado de ponta a ponta com uma cobrança real.
+  4. Lançamento financeiro agora pode ser vinculado manualmente a um
+     Pedido na tela Nova Conta a Receber, para cobrar antes da emissão
+     do certificado, sem alterar a regra de conciliação de 11/06/2026
+     (commit `c0abe1b`).
+- **Pendências para retomar**: testar o botão "Gerar cobrança Inter" em
+  produção após a correção definitiva do payload; considerar
+  redirecionamento da raiz `vazcertflow.com.br` (sem `www`) no painel da
+  HostGator (não bloqueante).
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: estrutura real do payload de cobrança do Banco Inter (correção definitiva)
 - **Arquivos**: `src/lib/inter.ts`, `src/app/api/inter/cobranca/route.ts`.
 - **Contexto**: a correção anterior (entrada abaixo, "payload de

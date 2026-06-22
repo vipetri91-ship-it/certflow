@@ -127,18 +127,21 @@ de enums.
    regra antiga) é mantido como está.
 3. **Pedidos novos** (criados após a mudança) só terão `Lancamento` a
    partir do momento `EMITIDO`.
-4. **Ponto em aberto — pagamento antecipado**: se a empresa cobrar o
-   cliente antes da emissão (à vista, no momento da venda), não haverá
-   `Lancamento` automático para registrar essa cobrança até a emissão.
-   **Mitigação já disponível no sistema, sem necessidade de código
-   novo**: a tela Financeiro (`/financeiro`) já permite **criar
-   lançamento manualmente** com `pedidoId` vinculado
-   (`POST /api/financeiro/lancamentos`, schema já aceita `pedidoId`
-   opcional) — disponível para `ADMIN` e `GERENTE` (`fin.criar: true`).
-   Ou seja, em caso de pagamento antecipado, o lançamento pode ser criado
-   manualmente pelo financeiro no momento do recebimento; quando o pedido
-   for emitido, a checagem de idempotência (item 2) detecta o lançamento
-   já existente e não cria um segundo.
+4. **Ponto em aberto — pagamento antecipado — RESOLVIDO em 22/06/2026
+   (commit `c0abe1b`)**: se a empresa cobrar o cliente antes da emissão
+   (ex.: para gerar boleto/Pix do Banco Inter no momento da venda), não
+   havia `Lancamento` automático até a emissão, e a API já aceitava
+   `pedidoId` opcional mas a **tela não tinha campo para isso** (só um
+   texto livre "Referência", sem vínculo real). Adicionado campo
+   "Vincular a um Pedido (opcional)" em
+   `src/app/(dashboard)/financeiro/contas-a-receber/novo/page.tsx` —
+   busca o pedido por número/cliente (`GET /api/pedidos?q=...`), preenche
+   valor/descrição automaticamente e sugere vencimento de 3 dias. Quando
+   o pedido for emitido depois, a checagem de idempotência (item 2)
+   detecta o lançamento já existente e não cria um segundo. Esta foi a
+   motivação real do caso de uso: ativar a cobrança via Banco Inter
+   (ver `docs/changelog.md`, 22/06/2026) exigia que o Lançamento
+   existisse antes da emissão.
 5. **Conciliação**: recomenda-se um período de acompanhamento (1-2
    semanas) comparando "certificados emitidos" x "novos lançamentos
    `RECEBER` criados" para validar que a conciliação diária bate.
