@@ -3,12 +3,16 @@ import { auth } from '@/lib/auth'
 import { trocarCodigoPorTokens } from '@/lib/google/calendar'
 import { prisma } from '@/lib/prisma'
 
+function baseUrl() {
+  return (process.env.NEXTAUTH_URL ?? '').trim().replace(/\/$/, '')
+}
+
 export async function GET(req: NextRequest) {
   const session = await auth()
-  if (!session) return NextResponse.redirect(new URL('/login', req.nextUrl))
+  if (!session) return NextResponse.redirect(new URL('/login', baseUrl()))
 
   const code = req.nextUrl.searchParams.get('code')
-  if (!code) return NextResponse.redirect(new URL('/configuracoes?erro=google', req.nextUrl))
+  if (!code) return NextResponse.redirect(new URL('/configuracoes?erro=google', baseUrl()))
 
   try {
     const tokens = await trocarCodigoPorTokens(code)
@@ -28,8 +32,8 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    return NextResponse.redirect(new URL('/configuracoes?google=conectado', req.nextUrl))
+    return NextResponse.redirect(new URL('/configuracoes?google=conectado', baseUrl()))
   } catch {
-    return NextResponse.redirect(new URL('/configuracoes?erro=google', req.nextUrl))
+    return NextResponse.redirect(new URL('/configuracoes?erro=google', baseUrl()))
   }
 }

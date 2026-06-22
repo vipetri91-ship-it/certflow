@@ -5,6 +5,32 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 22/06/2026
+
+### fix: redirect do callback do Google Agenda usava host interno do Railway
+- **Arquivo**: `src/app/api/google/callback/route.ts`.
+- **Causa raiz**: o domínio do CertFlow foi migrado de
+  `certflow-nine.vercel.app` para `www.vazcertflow.com.br` (Railway). Ao
+  testar a conexão com o Google Agenda, o fluxo OAuth completava
+  normalmente (token trocado com sucesso), mas o redirecionamento final
+  caía em `localhost:8080/configuracoes?google=conectado` — página em
+  branco/erro de conexão. Causa: a rota usava `new URL(path, req.nextUrl)`
+  para montar o redirect, e `req.nextUrl` reflete o host **interno** do
+  container no Railway (porta 8080), não o domínio público.
+- **Correção**: trocado `req.nextUrl` por uma URL base fixa lida de
+  `process.env.NEXTAUTH_URL` (mesmo padrão já usado em
+  `src/lib/google/calendar.ts` para montar o `redirect_uri` do OAuth).
+  Nenhuma outra rota do projeto tinha esse padrão (`new URL(_, req.nextUrl)`
+  para redirect absoluto) — confirmado por busca em todo `src/app`.
+- **Impacto**: corrige a tela de conexão com Google Agenda
+  (`/configuracoes`) em produção. Não afeta login (NextAuth já usa
+  `NEXTAUTH_URL` corretamente) nem nenhuma outra integração.
+- **Testes**: `npx vitest run` (54/54) e `npx next build` limpos antes do
+  commit.
+- **Reversão**: commit único e isolado, revertível com `git revert` sem
+  efeito colateral em outras áreas.
+- **Autor**: Vinicius (via Claude Code).
+
 ## 18/06/2026
 
 ### fix: migrar envio de e-mail de SMTP para API HTTP do Brevo
