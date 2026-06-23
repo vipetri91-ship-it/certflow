@@ -253,6 +253,7 @@ model Parceiro {
   pedidos          Pedido[]
   lancamentos      Lancamento[]
   contatosParceiro ContatoParceiro[]
+  comissoesFechamento ComissaoFechamento[]
 
   @@map("parceiros")
 }
@@ -290,6 +291,28 @@ model Comissao {
 
   @@unique([parceiroId, modeloId])
   @@map("comissoes")
+}
+
+// Fechamento mensal de comissão por parceiro — controla o que já foi
+// pago, para não calcular/pagar o mesmo período duas vezes.
+model ComissaoFechamento {
+  id           String    @id @default(cuid())
+  parceiroId   String
+  mes          Int       // 1-12
+  ano          Int
+  valorTotal   Decimal   @db.Decimal(10, 2)
+  qtdPedidos   Int
+  status       String    @default("PENDENTE") // PENDENTE | PAGO
+  lancamentoId String?   @unique
+  pagoEm       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  parceiro   Parceiro    @relation(fields: [parceiroId], references: [id])
+  lancamento Lancamento? @relation(fields: [lancamentoId], references: [id])
+
+  @@unique([parceiroId, mes, ano])
+  @@map("comissoes_fechamento")
 }
 
 // ─── MODELOS DE CERTIFICADO ───────────────────────────────────────────────────
@@ -509,6 +532,7 @@ model Lancamento {
   categoria CategoriaFinanceira? @relation(fields: [categoriaId], references: [id])
   pedido    Pedido?              @relation(fields: [pedidoId], references: [id])
   parceiro  Parceiro?            @relation(fields: [parceiroId], references: [id])
+  comissaoFechamento ComissaoFechamento?
 
   @@map("lancamentos")
 }

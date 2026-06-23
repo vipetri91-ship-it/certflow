@@ -7,6 +7,53 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 23/06/2026
 
+### feat: aba de Comissões de Parceiros no Financeiro
+- **Arquivos**: `prisma/schema.prisma` (novo model `ComissaoFechamento`),
+  `scripts/migrate.js`, `src/lib/comissoes.lib.ts` (fórmula pura,
+  testável), `src/lib/comissoes.lib.test.ts` (6 testes),
+  `src/lib/comissoes.ts` (cálculo agregando dados do banco),
+  `src/app/api/financeiro/comissoes/route.ts` (novo),
+  `src/app/api/financeiro/comissoes/[parceiroId]/pagar/route.ts` (novo),
+  `src/app/(dashboard)/financeiro/comissoes/page.tsx` (novo),
+  `src/components/comissao-pagar-button.tsx` (novo),
+  `src/components/sidebar.tsx` (item de menu novo).
+- **Regra de negócio confirmada com Vinicius** (não assumida): a
+  modalidade de comissão usada na prática hoje é "preço de custo x preço
+  de venda" — cada parceiro tem, por modelo de certificado, um valor de
+  custo (`Comissao.valorCusto`) e um valor de venda ao cliente final
+  (`Comissao.valorCliente`), já configuráveis na aba "Comissões" de
+  Parceiros. A comissão de cada pedido é `valorCliente - valorCusto`.
+  Os campos `percentual`/`valorFixo` existem no schema mas **não são
+  usados** nesse cálculo — não há fallback para eles (decisão explícita:
+  "não pretendo trabalhar com comissão por percentual" hoje).
+- **Quando conta**: só `Pedido.status === 'EMITIDO'` (mesma régua já
+  usada para o Lançamento financeiro — confirmado que pedidos emitidos
+  nunca são cancelados depois, então não há risco de reverter comissão
+  já contabilizada).
+- **Tela**: `/financeiro/comissoes`, por mês — lista cada parceiro com
+  pedidos emitidos no período, o detalhe de cada pedido (custo, venda,
+  diferença) e o total. Pedidos cujo modelo não tem
+  `valorCusto`/`valorCliente` configurados são sinalizados e excluídos
+  do total (não geram erro, só aviso).
+- **Marcar como pago**: cria um `Lancamento` `PAGAR` (categoria
+  "Comissões Parceiros", `cat02`, já existente) e um registro em
+  `ComissaoFechamento` (novo model) vinculado a esse Lançamento — evita
+  pagar a mesma comissão duas vezes (`@@unique([parceiroId, mes, ano])`,
+  e a API rejeita repagamento se já estiver `PAGO`).
+- **Validação contra produção** (somente leitura, sem gravar nada):
+  confirmado que existe 1 pedido `EMITIDO` com parceiro
+  (`P3 CONTABILIDADE LTDA`), mas nenhum parceiro tem ainda
+  `valorCusto`/`valorCliente` cadastrados — a tela aparece vazia até o
+  Vinicius cadastrar esses valores por parceiro. Comportamento esperado,
+  não é bug.
+- **Impacto**: aditivo. Não altera nenhuma rota/tela existente além do
+  item novo no menu.
+- **Testes**: `npx vitest run` (62/62, 8 novos), `npx prisma generate` e
+  `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert` (tabela nova
+  fica sem uso, sem efeito em dados existentes).
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: enviar cobrança Inter direto ao cliente por WhatsApp ou e-mail
 - **Arquivos**: `prisma/schema.prisma` (novo valor de enum
   `TipoEmailAutomatico.COBRANCA_FINANCEIRA`), `scripts/migrate.js`,

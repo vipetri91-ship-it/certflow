@@ -297,6 +297,24 @@ async function migrate() {
     )`,
     `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "interCodigoSolicitacao" TEXT`,
     `ALTER TYPE "TipoEmailAutomatico" ADD VALUE IF NOT EXISTS 'COBRANCA_FINANCEIRA'`,
+    `CREATE TABLE IF NOT EXISTS "comissoes_fechamento" (
+      "id" TEXT NOT NULL,
+      "parceiroId" TEXT NOT NULL,
+      "mes" INTEGER NOT NULL,
+      "ano" INTEGER NOT NULL,
+      "valorTotal" DECIMAL(10,2) NOT NULL,
+      "qtdPedidos" INTEGER NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'PENDENTE',
+      "lancamentoId" TEXT,
+      "pagoEm" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "comissoes_fechamento_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "comissoes_fechamento_lancamentoId_key" UNIQUE ("lancamentoId"),
+      CONSTRAINT "comissoes_fechamento_parceiroId_mes_ano_key" UNIQUE ("parceiroId", "mes", "ano"),
+      CONSTRAINT "comissoes_fechamento_parceiroId_fkey" FOREIGN KEY ("parceiroId") REFERENCES "parceiros"("id"),
+      CONSTRAINT "comissoes_fechamento_lancamentoId_fkey" FOREIGN KEY ("lancamentoId") REFERENCES "lancamentos"("id")
+    )`,
   ]
 
   for (const q of queries) {
