@@ -7,6 +7,23 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 23/06/2026
 
+### chore: limpeza de 7 lançamentos financeiros de cobrança feita fora do CertFlow
+- **Dados, não código**: operação de manutenção em produção, sem
+  alteração de arquivos do projeto. Detalhe completo em
+  `docs/LIMPEZA_EXECUTADA.md` (seção "Limpeza de lançamentos financeiros
+  — 23/06/2026").
+- **O que foi feito**: backup completo (7 pedidos + lançamentos,
+  `backups/limpeza-financeiro-2026-06-23-backup.json`, não versionado),
+  marcação dos 7 pedidos com `ignorarReconciliacaoFinanceira = true`
+  (ver entrada anterior, commit `aa0c3be`), e exclusão dos 7
+  `Lancamento` correspondentes.
+- **O que NÃO foi tocado**: `Pedido`, `Certificado` e protocolos
+  Safeweb — são certificados reais, já emitidos e finalizados,
+  cobrados pelo sistema antigo da empresa, não pelo CertFlow.
+- **Verificação**: `0` lançamentos restantes vinculados a esses 7
+  pedidos; os 7 confirmados com o flag de reconciliação ativo.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: marca de Pedido para excluir da reconciliação financeira automática
 - **Arquivos**: `prisma/schema.prisma` (novo campo
   `Pedido.ignorarReconciliacaoFinanceira`), `scripts/migrate.js`,

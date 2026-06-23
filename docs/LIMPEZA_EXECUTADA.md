@@ -204,3 +204,50 @@ com sucesso na Safeweb (`cancelamento.ok: true` em todos), nenhum é mais
 consultável (`"Protocolo não encontrado"`). Os e-mails diários de cobrança
 de documentos para esses protocolos devem parar. O endpoint administrativo
 temporário usado nesta validação será removido (ver `docs/changelog.md`).
+
+## Limpeza de lançamentos financeiros — 23/06/2026 (diferente das anteriores)
+
+**Diferença importante em relação às limpezas acima**: desta vez NÃO
+eram pedidos de teste "fictícios" sem consequência real — eram 7
+lançamentos no Financeiro referentes a pedidos cujo **certificado já foi
+emitido e finalizado de fato na Safeweb** (protocolos reais, status
+"Finalizado" no painel). A cobrança desses 7 clientes foi feita pelo
+**sistema antigo da empresa** (fora do CertFlow), então os lançamentos
+apareciam indevidamente como "em aberto" no Contas a Receber.
+
+**Escopo desta limpeza (confirmado explicitamente com o Vinicius antes de
+agir)**:
+- ❌ **NÃO** cancelar nada na Safeweb — protocolos reais e finalizados,
+  intocáveis.
+- ❌ **NÃO** apagar `Pedido` nem `Certificado` — são certificados reais
+  já emitidos para clientes reais.
+- ✅ Apagar **somente** os 7 `Lancamento` (Contas a Receber).
+
+**Pedidos afetados**: `PED-202606-16055`, `PED-202606-34852`,
+`PED-202606-99390`, `PED-202606-30377`, `PED-202606-32684`,
+`PED-202606-63016`, `PED-202606-60669`.
+
+**Risco identificado e resolvido antes de apagar**: a rotina
+`reconciliarEmitidos()` (`src/lib/reconciliar-emitidos.ts`) roda
+automaticamente a cada reinício do servidor (todo deploy) e recria um
+`Lancamento` para qualquer `Pedido` `EMITIDO` sem lançamento. Sem uma
+marca explícita, os 7 lançamentos teriam voltado sozinhos no próximo
+deploy. Resolvido adicionando o campo `Pedido.ignorarReconciliacaoFinanceira`
+(commit `aa0c3be`) e marcando os 7 pedidos com esse flag `true` antes de
+excluir os lançamentos — ver `docs/changelog.md` (23/06/2026).
+
+**Backup**: `backups/limpeza-financeiro-2026-06-23-backup.json` (7
+pedidos com seus lançamentos, não versionado — contém CPF/CNPJ).
+
+**Execução**:
+1. Backup completo dos 7 pedidos + lançamentos.
+2. `UPDATE pedidos SET ignorarReconciliacaoFinanceira = true` nos 7
+   pedidos (confirmado: 7 registros afetados).
+3. `DELETE` dos 7 `Lancamento` vinculados a esses pedidos.
+4. Verificação: `0` lançamentos restantes vinculados a esses números de
+   pedido; os 7 pedidos confirmados com o flag `true`.
+
+**Status final**: ✅ concluído. Contas a Receber não mostra mais esses
+7 lançamentos, e a reconciliação automática não vai recriá-los. Pedidos,
+Certificados e protocolos Safeweb permanecem intactos, como devem ser
+(certificados reais emitidos para clientes reais).
