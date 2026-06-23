@@ -153,3 +153,15 @@ export async function consultarCobranca(codigoSolicitacao: string): Promise<Deta
   }
   return res.data as DetalhesCobranca
 }
+
+// Retorna o PDF do boleto em base64 (campo "pdf" da resposta)
+export async function baixarPdfCobranca(codigoSolicitacao: string): Promise<string> {
+  const token = await getToken()
+  const res = await req('GET', `/cobranca/v3/cobrancas/${codigoSolicitacao}/pdf`, undefined, {
+    Authorization: `Bearer ${token}`,
+  })
+  if (res.status !== 200) {
+    throw new Error(`Inter PDF error ${res.status}: ${JSON.stringify(res.data)}`)
+  }
+  return (res.data as { pdf: string }).pdf
+}

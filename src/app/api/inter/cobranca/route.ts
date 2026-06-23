@@ -63,10 +63,11 @@ export async function POST(req: NextRequest) {
     await prisma.lancamento.update({
       where: { id: lancamentoId },
       data: {
-        boleto:          resultado.linhaDigitavel,
-        interCobrancaId: resultado.nossoNumero,
-        pixCopiaECola:   resultado.pixCopiaECola ?? null,
-        formaPagamento:  lancamento.formaPagamento ?? 'boleto',
+        boleto:                 resultado.linhaDigitavel,
+        interCobrancaId:        resultado.nossoNumero,
+        interCodigoSolicitacao: resultado.codigoSolicitacao,
+        pixCopiaECola:          resultado.pixCopiaECola ?? null,
+        formaPagamento:         lancamento.formaPagamento ?? 'boleto',
       },
     })
 

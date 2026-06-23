@@ -5,6 +5,38 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 23/06/2026
+
+### feat: baixar PDF do boleto gerado via Banco Inter
+- **Arquivos**: `prisma/schema.prisma`, `scripts/migrate.js` (campo novo
+  `Lancamento.interCodigoSolicitacao`), `src/lib/inter.ts` (nova função
+  `baixarPdfCobranca`), `src/app/api/inter/cobranca/route.ts` (passa a
+  salvar o `codigoSolicitacao` da cobrança), `src/app/api/inter/cobranca/pdf/route.ts`
+  (novo endpoint), `src/components/inter-cobranca-button.tsx` (novo link
+  "Ver PDF do boleto").
+- **Motivo**: ao testar a primeira cobrança real (commit `ed12326`), só
+  era possível copiar a linha digitável — sem PDF para enviar ao
+  cliente. A API do Inter expõe
+  `GET /cobranca/v3/cobrancas/{codigoSolicitacao}/pdf` (confirmado contra
+  o código-fonte do pacote `@thiago.zampieri/bancointer`, já usado para
+  validar a estrutura de cobrança), mas exige o `codigoSolicitacao` —
+  campo que não era salvo no `Lancamento` até agora.
+- **Migration**: `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS
+  "interCodigoSolicitacao" TEXT` — aditiva, sem impacto em dados
+  existentes.
+- **Dado retroativo**: o `Lancamento` de teste gerado em 22/06/2026 (R$
+  50, cliente Vinicius) não tinha esse campo — recuperado consultando a
+  API do Inter (`GET /cobranca/v3/cobrancas?cpfCnpjPessoaPagadora=...`)
+  e populado manualmente após o deploy, para o teste de PDF funcionar
+  também nesse caso já existente.
+- **Impacto**: aditivo. Não altera o fluxo de geração de cobrança nem a
+  estrutura de payload corrigida no dia anterior.
+- **Testes**: `npx vitest run` (54/54), `npx prisma generate` e
+  `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert` (a coluna nova
+  pode ficar no banco sem uso, sem efeito colateral).
+- **Autor**: Vinicius (via Claude Code).
+
 ## 22/06/2026
 
 ### docs: fechamento do dia — domínio novo, Banco Inter e vínculo de Lançamento

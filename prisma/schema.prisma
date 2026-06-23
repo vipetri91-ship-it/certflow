@@ -499,6 +499,7 @@ model Lancamento {
   formaPagamento   String?
   banco            String?
   interCobrancaId  String?    // nosso número Inter
+  interCodigoSolicitacao String?  // ID interno da cobrança no Inter (necessário para consultar/baixar PDF)
   pixCopiaECola    String?    // Pix copia e cola
   bonificado       Boolean          @default(false)
   createdAt        DateTime         @default(now())

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { QrCode, Copy, Check, Loader2, X, Barcode } from 'lucide-react'
+import { QrCode, Copy, Check, Loader2, X, Barcode, FileText } from 'lucide-react'
 
 interface Props {
   lancamentoId:    string
@@ -92,13 +92,24 @@ export function InterCobrancaButton({ lancamentoId, jaTemCobranca, linhaDigitave
                     <p className="font-mono text-xs text-gray-800 break-all leading-relaxed">
                       {resultado.linhaDigitavel}
                     </p>
-                    <button
-                      onClick={() => copiar(resultado.linhaDigitavel, 'boleto')}
-                      className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition"
-                    >
-                      {copiado === 'boleto' ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiado === 'boleto' ? 'Copiado!' : 'Copiar linha digitável'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => copiar(resultado.linhaDigitavel, 'boleto')}
+                        className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition"
+                      >
+                        {copiado === 'boleto' ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiado === 'boleto' ? 'Copiado!' : 'Copiar linha digitável'}
+                      </button>
+                      <a
+                        href={`/api/inter/cobranca/pdf?lancamentoId=${lancamentoId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Ver PDF do boleto
+                      </a>
+                    </div>
                   </div>
 
                   {/* Pix */}
