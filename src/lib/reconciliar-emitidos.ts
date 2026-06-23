@@ -60,11 +60,14 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
     }
   }
 
-  // 2. Pedidos EMITIDOS sem lançamento (todos — incluindo bonificados)
+  // 2. Pedidos EMITIDOS sem lançamento (todos — incluindo bonificados).
+  // Exclui pedidos marcados com ignorarReconciliacaoFinanceira (cobrança
+  // feita fora do CertFlow — ver docs/changelog.md 23/06/2026).
   const semLancamento = await prisma.pedido.findMany({
     where: {
       status: 'EMITIDO',
       lancamentos: { none: {} },
+      ignorarReconciliacaoFinanceira: false,
     },
     include: {
       cliente: { select: { nome: true } },

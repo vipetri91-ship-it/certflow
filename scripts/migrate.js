@@ -315,6 +315,7 @@ async function migrate() {
       CONSTRAINT "comissoes_fechamento_parceiroId_fkey" FOREIGN KEY ("parceiroId") REFERENCES "parceiros"("id"),
       CONSTRAINT "comissoes_fechamento_lancamentoId_fkey" FOREIGN KEY ("lancamentoId") REFERENCES "lancamentos"("id")
     )`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "ignorarReconciliacaoFinanceira" BOOLEAN NOT NULL DEFAULT false`,
   ]
 
   for (const q of queries) {

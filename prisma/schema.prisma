@@ -459,6 +459,7 @@ model Pedido {
   hopeUrlDocumentos    String?      // link do Hope Portal para anexar documentação ao dossiê
   popupNotificacaoVisto Boolean     @default(false) // marca se o AGR já viu/fechou o popup automático de "Certificado Emitido"
   safewebSerieA3       String?                     // número de série do certificado A3 PF usado na emissão online
+  ignorarReconciliacaoFinanceira Boolean @default(false) // true: cobrança feita fora do CertFlow, nunca deve gerar Lancamento automático
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

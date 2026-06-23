@@ -7,6 +7,39 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 23/06/2026
 
+### feat: marca de Pedido para excluir da reconciliação financeira automática
+- **Arquivos**: `prisma/schema.prisma` (novo campo
+  `Pedido.ignorarReconciliacaoFinanceira`), `scripts/migrate.js`,
+  `src/lib/reconciliar-emitidos.ts`.
+- **Motivo**: o Vinicius identificou 7 lançamentos de teste no Financeiro
+  (R$ 50 a R$ 215 cada) que precisam ser removidos para não poluir
+  Contas a Receber. **Investigação importante**: 6 desses 7 pedidos já
+  estão com certificado realmente **emitido e finalizado na Safeweb**
+  (protocolos reais, não simulados) — esses clientes foram cobrados pelo
+  sistema antigo da empresa, não pelo CertFlow. Ou seja, não são
+  "pedidos de teste" no sentido de nunca terem acontecido — são pedidos
+  reais cuja cobrança nunca deveria ter passado pelo CertFlow.
+- **Risco identificado antes de agir**: a rotina `reconciliarEmitidos()`
+  (roda automaticamente a cada reinício do servidor — todo deploy) cria
+  um `Lancamento` para qualquer `Pedido` `EMITIDO` sem lançamento. Sem
+  uma marca explícita, apagar os lançamentos desses pedidos faria a
+  rotina recriá-los no próximo deploy.
+- **Decisão (confirmada com o Vinicius)**: NÃO cancelar nada na Safeweb
+  (protocolos reais e finalizados — fora de questão), NÃO apagar
+  Pedido/Certificado (são certificados reais emitidos). Apenas marcar
+  esses 6 pedidos com `ignorarReconciliacaoFinanceira = true` e então
+  apagar os 7 `Lancamento` de uma vez por todas.
+- **Impacto**: aditivo. A rotina de reconciliação só muda de
+  comportamento para pedidos explicitamente marcados — nenhum pedido
+  existente tem esse flag até a próxima etapa (marcação manual dos 6
+  pedidos identificados).
+- **Testes**: `npx vitest run` (62/62) e `npx next build` limpos.
+- **Próximo passo, fora deste commit**: marcar os 6 pedidos e excluir os
+  7 lançamentos em produção, com backup prévio.
+- **Reversão**: commit único, revertível com `git revert` (o campo novo
+  fica sem uso, `default: false`, sem efeito em pedidos existentes).
+- **Autor**: Vinicius (via Claude Code).
+
 ### docs: confirma regra de negócio — parceiro sem Valor de Custo não é comissionado
 - **Arquivos**: `src/lib/comissoes.lib.ts` (comentário),
   `src/app/(dashboard)/financeiro/comissoes/page.tsx` (texto do aviso).
