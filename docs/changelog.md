@@ -7,6 +7,21 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 23/06/2026
 
+### docs: confirma regra de negócio — parceiro sem Valor de Custo não é comissionado
+- **Arquivos**: `src/lib/comissoes.lib.ts` (comentário),
+  `src/app/(dashboard)/financeiro/comissoes/page.tsx` (texto do aviso).
+- **Esclarecimento do Vinicius**: nem todo parceiro é comissionado —
+  alguns só indicam clientes sem cobrar nada em troca. A regra "comissão
+  só conta quando `valorCusto` E `valorCliente` estão preenchidos" (já
+  implementada no commit `59a7b3e`) já cobre isso corretamente: um
+  parceiro com só `valorCliente` cadastrado (sem `valorCusto`) já não
+  aparecia na lista. Esta entrada só ajusta o texto do aviso, que sugeria
+  "esqueci de configurar" quando na real pode ser "esse modelo não é
+  comissionado para esse parceiro, de propósito".
+- **Impacto**: nenhuma mudança de lógica/cálculo — só clareza de texto.
+- **Testes**: `npx vitest run` (62/62) e `npx next build` limpos.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: aba de Comissões de Parceiros no Financeiro
 - **Arquivos**: `prisma/schema.prisma` (novo model `ComissaoFechamento`),
   `scripts/migrate.js`, `src/lib/comissoes.lib.ts` (fórmula pura,

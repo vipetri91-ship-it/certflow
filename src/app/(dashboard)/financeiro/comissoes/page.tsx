@@ -85,9 +85,9 @@ export default async function ComissoesPage({ searchParams }: Props) {
                   <p className="font-semibold text-gray-900">{r.parceiroNome}</p>
                   <p className="text-xs text-gray-500">{r.qtdPedidos} certificado{r.qtdPedidos !== 1 ? 's' : ''} emitido{r.qtdPedidos !== 1 ? 's' : ''}</p>
                   {r.pedidosSemComissaoConfigurada > 0 && (
-                    <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                       <AlertTriangle className="w-3 h-3" />
-                      {r.pedidosSemComissaoConfigurada} pedido(s) sem valor de custo/cliente configurado — não entraram no total
+                      {r.pedidosSemComissaoConfigurada} pedido(s) de modelo(s) não comissionado(s) para este parceiro — não entram no total
                     </p>
                   )}
                 </div>
