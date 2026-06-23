@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { QrCode, Copy, Check, Loader2, X, Barcode, FileText } from 'lucide-react'
+import { QrCode, Copy, Check, Loader2, X, Barcode, FileText, MessageCircle, Mail } from 'lucide-react'
 
 interface Props {
   lancamentoId:    string
@@ -20,6 +20,26 @@ export function InterCobrancaButton({ lancamentoId, jaTemCobranca, linhaDigitave
     jaTemCobranca && linhaDigitavel ? { linhaDigitavel, pixCopiaECola: pixCopiaECola ?? undefined } : null
   )
   const [copiado, setCopiado] = useState<'boleto' | 'pix' | null>(null)
+  const [enviando, setEnviando] = useState<'whatsapp' | 'email' | null>(null)
+  const [envioOk,  setEnvioOk]  = useState<'whatsapp' | 'email' | null>(null)
+  const [erroEnvio, setErroEnvio] = useState('')
+
+  async function enviar(canal: 'whatsapp' | 'email') {
+    setEnviando(canal)
+    setErroEnvio('')
+    try {
+      const res = await fetch('/api/inter/cobranca/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lancamentoId, canal }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setErroEnvio(data.erro ?? 'Erro ao enviar'); return }
+      setEnvioOk(canal)
+      setTimeout(() => setEnvioOk(null), 3000)
+    } catch { setErroEnvio('Erro de conexão') }
+    finally { setEnviando(null) }
+  }
 
   async function gerar() {
     setCarregando(true)
@@ -129,6 +149,33 @@ export function InterCobrancaButton({ lancamentoId, jaTemCobranca, linhaDigitave
                         {copiado === 'pix' ? 'Copiado!' : 'Copiar Pix'}
                       </button>
                     </div>
+                  )}
+
+                  {/* Enviar direto ao cliente */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => enviar('whatsapp')}
+                      disabled={enviando !== null}
+                      className="flex items-center justify-center gap-1.5 py-2 bg-green-50 text-green-700 text-xs font-medium rounded-lg hover:bg-green-100 transition disabled:opacity-50"
+                    >
+                      {enviando === 'whatsapp' ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : envioOk === 'whatsapp' ? <Check className="w-3.5 h-3.5" />
+                        : <MessageCircle className="w-3.5 h-3.5" />}
+                      {envioOk === 'whatsapp' ? 'Enviado!' : 'Enviar por WhatsApp'}
+                    </button>
+                    <button
+                      onClick={() => enviar('email')}
+                      disabled={enviando !== null}
+                      className="flex items-center justify-center gap-1.5 py-2 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-100 transition disabled:opacity-50"
+                    >
+                      {enviando === 'email' ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : envioOk === 'email' ? <Check className="w-3.5 h-3.5" />
+                        : <Mail className="w-3.5 h-3.5" />}
+                      {envioOk === 'email' ? 'Enviado!' : 'Enviar por E-mail'}
+                    </button>
+                  </div>
+                  {erroEnvio && (
+                    <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{erroEnvio}</p>
                   )}
 
                   <p className="text-xs text-gray-400 text-center">

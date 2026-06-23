@@ -296,6 +296,7 @@ async function migrate() {
       CONSTRAINT "pendencias_projeto_pkey" PRIMARY KEY ("id")
     )`,
     `ALTER TABLE "lancamentos" ADD COLUMN IF NOT EXISTS "interCodigoSolicitacao" TEXT`,
+    `ALTER TYPE "TipoEmailAutomatico" ADD VALUE IF NOT EXISTS 'COBRANCA_FINANCEIRA'`,
   ]
 
   for (const q of queries) {

@@ -94,6 +94,7 @@ enum TipoEmailAutomatico {
   NUTRICAO_3M
   NUTRICAO_6M
   NUTRICAO_9M
+  COBRANCA_FINANCEIRA
 }
 
 // ─── USUÁRIOS ─────────────────────────────────────────────────────────────────

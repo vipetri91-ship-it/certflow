@@ -7,6 +7,40 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 23/06/2026
 
+### feat: enviar cobrança Inter direto ao cliente por WhatsApp ou e-mail
+- **Arquivos**: `prisma/schema.prisma` (novo valor de enum
+  `TipoEmailAutomatico.COBRANCA_FINANCEIRA`), `scripts/migrate.js`,
+  `src/lib/token-publico.ts` (novo), `src/lib/email/transporte.ts` e
+  `src/lib/email/enviar.ts` (suporte a anexo no envio via Brevo),
+  `src/app/api/inter/cobranca/pdf-publico/route.ts` (novo),
+  `src/app/api/inter/cobranca/enviar/route.ts` (novo),
+  `src/components/inter-cobranca-button.tsx` (2 novos botões).
+- **Motivo**: depois de gerar a cobrança Inter, era preciso baixar o
+  PDF, abrir a conversa com o cliente e anexar manualmente — Vinicius
+  pediu 2 botões ("Enviar por WhatsApp" e "Enviar por E-mail") para fazer
+  isso com um clique.
+- **WhatsApp**: manda mensagem de texto (via Digisac, mesma integração
+  já usada para avisos de vencimento) com valor, vencimento, Pix copia e
+  cola e um link para o PDF do boleto.
+- **E-mail**: manda e-mail (via Brevo) com o PDF do boleto **anexado**
+  (a API do Brevo já aceita anexos em base64 — adicionado suporte ao
+  `transporte.sendMail`).
+- **Link público do PDF**: como o cliente final não tem login no
+  CertFlow, criada uma rota pública nova (`/api/inter/cobranca/pdf-publico`)
+  protegida por um **token assinado** (HMAC com `NEXTAUTH_SECRET`, ver
+  `src/lib/token-publico.ts`) — sem o token correto o acesso é negado, e
+  não dá para adivinhar/enumerar `lancamentoId`. A rota autenticada
+  original (`/api/inter/cobranca/pdf`, usada internamente no CertFlow)
+  não foi alterada.
+- **Impacto**: aditivo. Não altera o fluxo de geração de cobrança nem
+  nenhuma rota existente de e-mail/WhatsApp automático (vencimentos,
+  pós-emissão etc.).
+- **Testes**: `npx vitest run` (54/54), `npx prisma generate` e
+  `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert` (o valor novo
+  do enum pode ficar sem uso, sem efeito colateral).
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: baixar PDF do boleto gerado via Banco Inter
 - **Arquivos**: `prisma/schema.prisma`, `scripts/migrate.js` (campo novo
   `Lancamento.interCodigoSolicitacao`), `src/lib/inter.ts` (nova função

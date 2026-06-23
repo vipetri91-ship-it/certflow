@@ -9,6 +9,7 @@ interface EnvioParams {
   destinatario: string
   assunto: string
   html: string
+  attachments?: { name: string; contentBase64: string }[]
 }
 
 export async function enviarEmail(params: EnvioParams): Promise<void> {
@@ -30,6 +31,7 @@ export async function enviarEmail(params: EnvioParams): Promise<void> {
       subject: params.assunto,
       html: params.html,
       tag: log.id,
+      attachments: params.attachments,
     })
 
     await prisma.emailLog.update({
