@@ -18,7 +18,7 @@ const AGR_COLORS: Record<string, { bg: string; light: string; darkLight: string;
 }
 
 interface AGRPerf {
-  agr: string; vendas: number; valorVendas: number; emissoes: number; mediadiaria: number
+  agr: string; vendas: number; valorVendas: number; emissoes: number; mediadiaria: number; vendasHoje: number
 }
 
 interface Props {
@@ -81,8 +81,8 @@ function CardAGR({ agr, onClose }: { agr: AGRPerf; onClose: () => void }) {
 
 const META_DIARIA = 10 // meta individual por dia
 
-function getEmoji(mediadiaria: number): { emoji: string; label: string; pct: number } {
-  const pct = Math.round((mediadiaria / META_DIARIA) * 100)
+function getEmoji(vendasHoje: number): { emoji: string; label: string; pct: number } {
+  const pct = Math.round((vendasHoje / META_DIARIA) * 100)
   if (pct === 0)   return { emoji: '😭', label: 'Sem vendas ainda', pct }
   if (pct <= 20)   return { emoji: '😢', label: 'Muito abaixo da meta', pct }
   if (pct <= 40)   return { emoji: '😔', label: 'Abaixo da meta', pct }
@@ -111,7 +111,7 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact 
 
   const cor = AGR_COLORS[agrAtual.agr] ?? AGR_COLORS.vinicius
   const maxVendas = Math.max(...performanceAgr.map(a => a.vendas), 1)
-  const humor = getEmoji(agrAtual.mediadiaria)
+  const humor = getEmoji(agrAtual.vendasHoje)
 
   function prev() { setIdx(i => (i - 1 + agrs.length) % agrs.length) }
   function next() { setIdx(i => (i + 1) % agrs.length) }

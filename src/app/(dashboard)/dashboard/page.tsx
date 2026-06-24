@@ -97,14 +97,20 @@ async function getDashboardData() {
     AGR_KEYS.map(async (agr) => {
       const pedidos = await prisma.pedido.findMany({
         where: { agr, createdAt: { gte: inicioMes, lte: fimMes }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false },
-        select: { valorFinal: true, emitidoEm: true },
+        select: { valorFinal: true, emitidoEm: true, createdAt: true },
       })
+      // Meta é DIÁRIA (10 certificados/dia) — o "humor"/emoji do AGR deve
+      // refletir só as vendas de HOJE, não uma média acumulada do mês
+      // (senão nunca zera no dia seguinte). mediadiaria continua sendo a
+      // média do mês, usada só como informação complementar na UI.
+      const vendasHoje = pedidos.filter(p => p.createdAt >= inicioDia && p.createdAt <= fimDia).length
       return {
         agr,
         vendas: pedidos.length,
         valorVendas: pedidos.reduce((acc, p) => acc + Number(p.valorFinal), 0),
         emissoes: pedidos.filter(p => p.emitidoEm).length,
         mediadiaria: pedidos.length / diasDecorridos,
+        vendasHoje,
       }
     })
   )

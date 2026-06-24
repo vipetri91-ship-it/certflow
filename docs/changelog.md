@@ -7,6 +7,30 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 24/06/2026
 
+### fix: emoji de meta do AGR usava média mensal em vez de vendas do dia
+- **Arquivos**: `src/app/(dashboard)/dashboard/page.tsx` (novo campo
+  `vendasHoje` em `performanceAgr`), `src/app/(dashboard)/dashboard/painel-agr.tsx`
+  (`getEmoji` passa a receber `vendasHoje` em vez de `mediadiaria`).
+- **Bug relatado pelo Vinicius**: a meta dos AGRs é **diária** (10
+  certificados/dia) — o emoji/barra de progresso do card deveria "zerar"
+  todo dia (começar em 😭 0%). Mas o cálculo usava `mediadiaria`
+  (total de vendas do MÊS ÷ dias decorridos), que é uma média
+  acumulada — por isso o card da Ana continuava com emoji mais animado
+  mesmo em dias sem nenhuma venda, só porque ela tinha vendido em outro
+  dia do mês.
+- **Correção**: o emoji e a barra de progresso agora usam `vendasHoje`
+  (contagem de pedidos criados hoje, já com o filtro
+  `ignorarMetricasVendas: false` da entrada anterior). `mediadiaria`
+  continua existindo e sendo exibida na UI (rodapé do card e modal de
+  detalhe) como informação complementar de desempenho médio do mês —
+  só o "humor"/meta diária mudou de base de cálculo.
+- **Impacto**: visual, sem migration. Não afeta nenhuma métrica
+  agregada (vendas do mês, faturamento) — só o emoji/% de meta diária
+  por AGR.
+- **Testes**: `npx vitest run` (62/62) e `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert`.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: excluir das métricas de vendas pedidos cobrados fora do CertFlow
 - **Arquivos**: `prisma/schema.prisma` (novo campo
   `Pedido.ignorarMetricasVendas`), `scripts/migrate.js`,
