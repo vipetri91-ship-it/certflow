@@ -486,7 +486,9 @@ export function NovaVendaWizard({
           bairroEmpresa: data.bairro ?? d.bairroEmpresa, municipioEmpresa: data.localidade ?? d.municipioEmpresa, estadoEmpresa: data.uf ?? d.estadoEmpresa,
         }))
       }
-    } catch {}
+    } catch {
+      setErroValidacao('Erro ao buscar CEP. Verifique sua conexão.')
+    }
     tipo === 'resp' ? setBuscandoCep(false) : setBuscandoCepEmp(false)
   }
 

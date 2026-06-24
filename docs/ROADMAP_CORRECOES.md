@@ -355,7 +355,15 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
   deveria ter sido preenchido automaticamente, sem saber que houve falha.
 - **Impacto**: baixo — adicionar feedback (toast/mensagem) ou log,
   sem alterar fluxo de submissão.
-- **Status**: pendente.
+- **Status**: ✅ concluído em 24/06/2026. Os números de linha originais
+  não batiam mais com o código atual; remapeado e confirmado que
+  `clientes/novo` e a busca de CNPJ em `clientes/[id]/editar` já tinham
+  tratamento de erro — só a busca de **CEP** em `clientes/[id]/editar`
+  estava silenciosa. Busca ampliada por todo `src/` encontrou mais 2
+  ocorrências do mesmo padrão fora do escopo original:
+  `configuracoes/empresa/page.tsx` e `pedidos/nova-venda/wizard.tsx`.
+  Os 3 corrigidos com feedback ao usuário. Detalhe completo em
+  `docs/changelog.md` (24/06/2026).
 - **Dependências**: nenhuma; pode ser combinado com P1.1 (mesmas
   funções), mas não é obrigatório.
 - **Onda**: ONDA 4.

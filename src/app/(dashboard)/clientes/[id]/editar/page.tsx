@@ -158,7 +158,9 @@ export default function EditarClientePage() {
           estado:     data.uf         ?? '',
         }))
       }
-    } catch {}
+    } catch {
+      setErro('Erro ao buscar CEP. Verifique sua conexão.')
+    }
     setBuscandoCep(false)
   }
 

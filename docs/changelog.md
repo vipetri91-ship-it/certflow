@@ -7,6 +7,40 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 24/06/2026
 
+### fix: feedback de erro na busca de CEP que falhava silenciosamente (Onda 4, P2.3)
+- **Arquivos**: `clientes/[id]/editar/page.tsx`,
+  `configuracoes/empresa/page.tsx`,
+  `pedidos/nova-venda/wizard.tsx`.
+- **Escopo original do roadmap** citava `clientes/novo` e
+  `clientes/[id]/editar` com números de linha que não bateram mais com
+  o código atual (arquivos mudaram em ondas anteriores). Refeito o
+  mapeamento: `clientes/novo/page.tsx` e a busca de CNPJ em
+  `clientes/[id]/editar` **já tinham** tratamento de erro visível —
+  só a busca de **CEP** em `clientes/[id]/editar` (linha 161) estava
+  com `catch {}` totalmente silencioso. Busca ampliada por todo `src/`
+  encontrou mais 2 ocorrências do mesmo padrão fora do escopo original:
+  `configuracoes/empresa/page.tsx` e `pedidos/nova-venda/wizard.tsx`
+  (a maior tela de risco do sistema, usada na Nova Venda).
+- **Correção**: os 3 `catch {}` agora mostram mensagem de erro ao
+  usuário ("Erro ao buscar CEP. Verifique sua conexão."), reaproveitando
+  o estado de erro já existente em cada tela (`setErro`, `setMensagem`,
+  `setErroValidacao`) — sem introduzir nenhum mecanismo novo de feedback.
+- **Fora do escopo, registrado para referência futura**: encontrado o
+  mesmo padrão (`catch {}` silencioso) em
+  `pedidos/nova-venda/emissao-online.tsx:88` (busca de série A3 por
+  protocolo, não é CEP/CNPJ) e outros ~15 pontos do sistema (heartbeat
+  de sessão, logout de webmail, delete secundário de contato de
+  parceiro, etc.) — não corrigidos agora por estarem fora do escopo
+  específico de "buscas de CEP/CNPJ" do P2.3, e em sua maioria serem
+  intencionalmente silenciosos por design (ex.: heartbeat não deve
+  incomodar o usuário se falhar uma vez).
+- **Impacto**: só UX — usuário agora sabe quando o autopreenchimento de
+  endereço falhou, em vez de preencher manualmente sem entender o
+  motivo.
+- **Testes**: `npx vitest run` (75/75) e `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert`.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: remove logs de diagnóstico com PII de cliente em nova-venda (Onda 4, P2.2)
 - **Arquivo**: `src/app/api/pedidos/nova-venda/route.ts`.
 - **Escopo original do roadmap (P2.2)** era só sobre um `console.log`

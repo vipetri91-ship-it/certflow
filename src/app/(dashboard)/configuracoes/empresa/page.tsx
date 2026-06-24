@@ -59,7 +59,9 @@ export default function EmpresaPage() {
           estado:     data.uf         ?? d.estado,
         } : d)
       }
-    } catch {}
+    } catch {
+      setMensagem('Erro ao buscar CEP. Verifique sua conexão.')
+    }
   }
 
   async function uploadLogo(file: File) {
