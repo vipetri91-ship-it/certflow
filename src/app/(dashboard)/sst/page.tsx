@@ -5,6 +5,7 @@ import { Plus, X, Trash2, Loader2, Phone, Users, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mergeDadosEmpresaPorCnpjSst, type CnpjEncontradoSst } from './lib/merge-dados-cnpj'
 import { BuscaCancelavel } from '@/lib/busca-cancelavel'
+import { mascararCNPJ as formatarCNPJ } from '@/lib/mascaras'
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -50,11 +51,6 @@ const ORIGENS = ['Prospecção Ativa', 'Cliente Existente', 'Indicação de Parc
 
 const PARCELAS_OPCOES = [1, 2, 3, 4, 6, 8, 10, 12]
 
-function formatarCNPJ(v: string) {
-  return v.replace(/\D/g, '').slice(0, 14)
-    .replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, '$1.$2.$3/$4-$5')
-    .replace(/-$/, '')
-}
 
 // ─── Formulário vazio ──────────────────────────────────────────────────────
 

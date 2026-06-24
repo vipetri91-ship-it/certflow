@@ -3,9 +3,7 @@
 // módulo isolado e puro para permitir testes automatizados de regressão —
 // mesmo padrão de clientes/novo/lib/merge-dados-cnpj.ts (ONDA 2).
 
-function formatarCEP(v: string) {
-  return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{0,3})/, '$1-$2').replace(/-$/, '')
-}
+import { mascararCEP as formatarCEP } from '../../../../../../lib/mascaras'
 
 export interface DadosEmpresaCnpj {
   razaoSocial: string

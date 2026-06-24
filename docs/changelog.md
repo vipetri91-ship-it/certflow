@@ -7,6 +7,45 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 24/06/2026
 
+### refactor: centraliza máscaras de CPF/CNPJ/telefone/CEP duplicadas (Onda 4, P2.1)
+- **Arquivos novos**: `src/lib/mascaras.ts` (4 funções: `mascararCPF`,
+  `mascararCNPJ`, `mascararTelefone`, `mascararCEP`),
+  `src/lib/mascaras.test.ts` (13 testes).
+- **Arquivos editados** (removida a reimplementação local, substituída
+  por import): `clientes/novo/page.tsx`, `clientes/[id]/editar/page.tsx`,
+  `parceiros/novo/page.tsx`, `parceiros/[id]/editar/page.tsx`,
+  `sst/page.tsx`, `configuracoes/empresa/page.tsx`,
+  `clientes/novo/lib/merge-dados-cnpj.ts`,
+  `clientes/[id]/editar/lib/merge-dados-cnpj.ts`.
+- **Mapeamento feito antes de codar** (Regra 3): a função
+  `formatarCPF`/`formatarCNPJ` já existente em `src/lib/utils.ts` **não**
+  é a mesma coisa que estava duplicada — aquela assume o valor já
+  completo (uso em telas de exibição/listagem); o que estava duplicado
+  em 8 arquivos era uma **máscara progressiva de input** (aceita dígitos
+  parciais enquanto o usuário digita), com lógica idêntica entre as
+  cópias. Por isso a correção criou uma abstração nova (`mascarar*`) em
+  vez de reaproveitar `formatarCPF`/`formatarCNPJ`/`formatarTelefone` —
+  evita confundir os dois propósitos e não altera nenhuma tela de
+  exibição.
+- **Comportamento preservado exatamente**: os testes em
+  `mascaras.test.ts` confirmam, inclusive, dois comportamentos que
+  pareciam "estranhos" no código original e foram mantidos de propósito
+  (não são regressão desta refatoração): a máscara só começa a aparecer
+  quando os grupos obrigatórios da regex estão completos (ex.: CNPJ com
+  7 dígitos não ganha pontuação ainda), e a máscara de telefone deixa um
+  hífen sobrando enquanto o último grupo está vazio.
+- **Nota técnica**: nos 2 módulos `lib/merge-dados-cnpj.ts` (que são
+  "puros", sem dependência de módulos externos, para serem testáveis
+  pelo Vitest sem configuração de alias) o import usa caminho relativo
+  em vez de `@/lib/mascaras` — o alias `@/` não resolve nesses arquivos
+  no ambiente de teste.
+- **Impacto**: nenhuma mudança visual ou de comportamento esperada —
+  refatoração pura de duplicação de código.
+- **Testes**: `npx vitest run` (75/75, 13 novos) e `npx next build`
+  limpos.
+- **Reversão**: commit único, revertível com `git revert`.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: emoji de meta do AGR usava média mensal em vez de vendas do dia
 - **Arquivos**: `src/app/(dashboard)/dashboard/page.tsx` (novo campo
   `vendasHoje` em `performanceAgr`), `src/app/(dashboard)/dashboard/painel-agr.tsx`

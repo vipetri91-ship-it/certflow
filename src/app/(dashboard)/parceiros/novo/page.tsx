@@ -7,6 +7,7 @@ import { ArrowLeft, Save, Loader2, User, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { mergeDadosParceiroPorCnpj, type CnpjEncontradoParceiro } from './lib/merge-dados-cnpj'
 import { BuscaCancelavel } from '@/lib/busca-cancelavel'
+import { mascararCPF as formatarCPF, mascararCNPJ as formatarCNPJ, mascararTelefone as formatarTelefone } from '@/lib/mascaras'
 
 const TIPOS_PARCEIRO = ['Indicador', 'Revendedor', 'Agente', 'Distribuidor', 'Outro']
 const TIPOS_CONTA = ['Corrente', 'Poupança']
@@ -34,17 +35,6 @@ function Select({ className = '', children, ...props }: React.SelectHTMLAttribut
   )
 }
 
-function formatarCPF(v: string) {
-  return v.replace(/\D/g,'').slice(0,11).replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4').replace(/-$/,'')
-}
-function formatarCNPJ(v: string) {
-  return v.replace(/\D/g,'').slice(0,14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5').replace(/-$/,'')
-}
-function formatarTelefone(v: string) {
-  const n = v.replace(/\D/g,'').slice(0,11)
-  if (n.length <= 10) return n.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3')
-  return n.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3')
-}
 
 export default function NovoParceiro() {
   const router = useRouter()

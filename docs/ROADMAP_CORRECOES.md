@@ -307,7 +307,21 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 - **Impacto**: médio esforço — consolidar em `src/lib/utils.ts` e
   substituir as chamadas, sem alterar o resultado visual/funcional (são
   reimplementações do mesmo algoritmo).
-- **Status**: pendente.
+- **Status**: ✅ concluído em 24/06/2026. **Achado importante durante a
+  análise**: `formatarCPF`/`formatarCNPJ` de `utils.ts` **não eram** a
+  mesma função que estava duplicada — aquelas assumem o valor já
+  completo (uso em telas de exibição/listagem: `clientes/[id]`,
+  `pedidos/monitoramento`, `clientes/tabela.tsx` etc.); o que estava
+  duplicado em 8 arquivos era uma **máscara progressiva de input**
+  (aceita dígitos parciais durante a digitação), com lógica idêntica
+  entre as cópias. Criada nova abstração `src/lib/mascaras.ts`
+  (`mascararCPF`, `mascararCNPJ`, `mascararTelefone`, `mascararCEP`),
+  com 13 testes automatizados, sem alterar nenhuma tela de exibição.
+  `wizard.tsx`, `emissao-online.tsx` e `widget-rfb.tsx` (citados na
+  auditoria original) **não tinham**, na verdade, nenhuma dessas
+  funções duplicadas — confirmado por busca exaustiva no código antes
+  de concluir o item. Detalhe completo em `docs/changelog.md`
+  (24/06/2026).
 - **Dependências**: nenhuma, mas se sobrepõe a arquivos tocados em P1.1 —
   recomenda-se fazer **depois** de P1.1 para não conflitar.
 - **Onda**: ONDA 4.

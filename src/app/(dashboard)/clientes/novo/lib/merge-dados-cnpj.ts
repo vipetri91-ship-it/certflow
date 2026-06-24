@@ -3,9 +3,7 @@
 // e puro para permitir testes automatizados de regressão — ver
 // docs/regras-negocio/isolamento-de-formularios.md.
 
-function formatarCEP(v: string) {
-  return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{0,3})/, '$1-$2').replace(/-$/, '')
-}
+import { mascararCEP as formatarCEP } from '../../../../../lib/mascaras'
 
 export interface DadosEmpresaCnpj {
   razaoSocial: string

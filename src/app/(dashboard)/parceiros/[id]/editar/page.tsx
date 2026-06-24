@@ -8,6 +8,7 @@ import {
   ArrowLeft, Save, Loader2, Plus, Trash2, Building2, User,
   ChevronRight,
 } from 'lucide-react'
+import { mascararCPF as formatarCPF, mascararCNPJ as formatarCNPJ, mascararTelefone as formatarTel } from '@/lib/mascaras'
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -50,19 +51,6 @@ interface ParceiroData {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function formatarCNPJ(v: string) {
-  return v.replace(/\D/g, '').slice(0, 14)
-    .replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, '$1.$2.$3/$4-$5').replace(/-$/, '')
-}
-function formatarTel(v: string) {
-  const n = v.replace(/\D/g, '').slice(0, 11)
-  if (n.length <= 10) return n.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3')
-  return n.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3')
-}
-function formatarCPF(v: string) {
-  return v.replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4').replace(/-$/, '')
-}
 function moeda(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 }

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { Save, Upload, Building2, Loader2, X } from 'lucide-react'
 import Image from 'next/image'
 import type { DadosEmpresa } from '@/app/api/configuracoes/empresa/route'
+import { mascararCEP as formatarCEP, mascararCNPJ as formatarCNPJ } from '@/lib/mascaras'
 
 const ESTADOS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
   'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
@@ -27,12 +28,6 @@ function Sel({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElemen
   return <select className={`${cls} bg-white`} {...props}>{children}</select>
 }
 
-function formatarCEP(v: string) {
-  return v.replace(/\D/g,'').slice(0,8).replace(/(\d{5})(\d{0,3})/,'$1-$2').replace(/-$/,'')
-}
-function formatarCNPJ(v: string) {
-  return v.replace(/\D/g,'').slice(0,14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5').replace(/-$/,'')
-}
 
 export default function EmpresaPage() {
   const [dados,    setDados]    = useState<DadosEmpresa | null>(null)
