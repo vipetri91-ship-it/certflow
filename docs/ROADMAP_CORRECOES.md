@@ -335,7 +335,14 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
   ainda é PII em log persistente.
 - **Impacto**: trivial — remover ou substituir por log sem PII (ex.:
   apenas `id` e `role`).
-- **Status**: pendente.
+- **Status**: ✅ concluído em 24/06/2026. **Achado mais grave durante a
+  análise**: além do log original (usuário interno), o mesmo arquivo
+  tinha mais 2 `console.log('[Safeweb][diag] ...')` vazando **CPF,
+  CNPJ, DDD, celular, CEP e endereço completo do cliente final** — risco
+  real maior do que o mapeado originalmente. Os 3 logs com PII foram
+  removidos por completo (eram diagnóstico temporário não limpo após o
+  debug original da integração Safeweb). Detalhe completo em
+  `docs/changelog.md` (24/06/2026).
 - **Dependências**: nenhuma.
 - **Onda**: ONDA 4.
 

@@ -85,8 +85,6 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
-  console.log('[Safeweb][diag] usuário logado', { id: session.user.id, nome: session.user.name, email: session.user.email, role: session.user.role })
-
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) {
@@ -193,20 +191,6 @@ export async function POST(req: NextRequest) {
 
     async function gerarProtocoloAutomatico(): Promise<ResultadoProtocoloGeracao> {
       try {
-        console.log('[Safeweb][diag] cliente selecionado', {
-          clienteId: idCliente,
-          tipoPessoa: clienteDados.tipoPessoa,
-          cpf: clienteDados.cpf,
-          cnpj: clienteDados.cnpj,
-          ddd: clienteDados.ddd,
-          celular: clienteDados.celular,
-          cep: clienteDados.cep,
-          logradouro: clienteDados.logradouro,
-          numero: clienteDados.numero,
-          bairro: clienteDados.bairro,
-          cidade: clienteDados.cidade,
-          estado: clienteDados.estado,
-        })
         const modeloDb = await prisma.modeloCertificado.findUnique({
           where: { id: modeloId },
           select: { tipoPessoa: true, tipoCertificado: true, validadeMeses: true, suporte: true, codigoSafeweb: true },
@@ -280,14 +264,6 @@ export async function POST(req: NextRequest) {
         const enderecoCliente = montarEnderecoCompleto(clienteDados, clienteDb)
         const dddCliente           = clienteDados.ddd || clienteDb.ddd || undefined
         const dataNascimentoCliente = clienteDados.dataNascimento || dataYMD(clienteDb.dataNascimento?.toISOString())
-
-        console.log('[Safeweb][diag] dados resolvidos para envio', {
-          ddd: dddCliente,
-          telefone: clienteDb.celular,
-          cepRequest: clienteDados.cep,
-          cepBanco: clienteDb.cep,
-          enderecoCompleto: enderecoCliente,
-        })
 
         const nomeCliente = clienteDb.razaoSocial || clienteDb.nome
         const ehPJ = clienteDados.tipoPessoa === 'PJ'

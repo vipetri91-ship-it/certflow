@@ -7,6 +7,32 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 24/06/2026
 
+### fix: remove logs de diagnóstico com PII de cliente em nova-venda (Onda 4, P2.2)
+- **Arquivo**: `src/app/api/pedidos/nova-venda/route.ts`.
+- **Escopo original do roadmap (P2.2)** era só sobre um `console.log`
+  com nome/e-mail de **usuário interno** (linha 39-40 na auditoria
+  original). **Achado mais grave durante a análise**: ao investigar o
+  arquivo inteiro, encontrados 2 outros `console.log('[Safeweb][diag]
+  ...')` vazando **CPF, CNPJ, DDD, celular, CEP e endereço completo do
+  cliente final** em log de servidor de produção (não apenas dados de
+  usuário interno) — risco mais alto do que o item original previa.
+- **Verificação antes de remover**: busca em todo `src/app` e `src/lib`
+  por outros `console.log`/`error`/`warn` vazando campos de PII
+  (cpf/cnpj/celular/cep/logradouro/dataNascimento) — só esses 3 pontos
+  encontrados, todos no mesmo arquivo. Outros 3 logs com o mesmo prefixo
+  `[Safeweb][diag]` (linhas 342, 352, 364) só registram erro/motivo/stack
+  trace, sem PII — mantidos como estão (úteis para diagnosticar falhas
+  reais da integração). Nenhuma referência a esses logs em sistemas de
+  monitoramento/parsing no código — seguros para remover.
+- **Correção**: os 3 `console.log` com PII removidos por completo (eram
+  logs de diagnóstico temporário, aparentemente nunca limpos após o
+  debug original da integração Safeweb).
+- **Impacto**: nenhum funcional — apenas remoção de logging, sem
+  alteração de lógica de negócio.
+- **Testes**: `npx vitest run` (75/75) e `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert`.
+- **Autor**: Vinicius (via Claude Code).
+
 ### refactor: centraliza máscaras de CPF/CNPJ/telefone/CEP duplicadas (Onda 4, P2.1)
 - **Arquivos novos**: `src/lib/mascaras.ts` (4 funções: `mascararCPF`,
   `mascararCNPJ`, `mascararTelefone`, `mascararCEP`),
