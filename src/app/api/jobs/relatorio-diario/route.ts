@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   // Buscar dados do dia
   const [pedidosDia, clientesDia, certificadosDia, receitaDia, vencendo7] = await Promise.all([
     prisma.pedido.findMany({
-      where: { createdAt: { gte: inicio, lte: fim } },
+      where: { createdAt: { gte: inicio, lte: fim }, ignorarMetricasVendas: false },
       include: { cliente: { select: { nome: true } }, itens: { include: { modelo: { select: { nome: true } } } } },
     }),
     prisma.cliente.count({ where: { createdAt: { gte: inicio, lte: fim } } }),
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     prisma.pedido.count({
       where: {
         status: { not: 'CANCELADO' },
+        ignorarMetricasVendas: false,
         createdAt: {
           gte: new Date(hoje.getFullYear(), hoje.getMonth(), 1),
           lte: fim,

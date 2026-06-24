@@ -5,6 +5,40 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 24/06/2026
+
+### feat: excluir das métricas de vendas pedidos cobrados fora do CertFlow
+- **Arquivos**: `prisma/schema.prisma` (novo campo
+  `Pedido.ignorarMetricasVendas`), `scripts/migrate.js`,
+  `src/app/(dashboard)/dashboard/page.tsx` (todas as contagens/somas de
+  vendas, emissões e faturamento, incluindo o card de produção por AGR),
+  `src/app/api/telegram/webhook/route.ts` e
+  `src/app/api/digisac/webhook/route.ts` (ferramenta `resumo_financeiro`
+  dos bots), `src/app/api/jobs/relatorio-diario/route.ts`.
+- **Motivo**: os mesmos 6 pedidos já tratados em 23/06/2026 (cobrança
+  feita pelo sistema antigo, certificado real emitido pela Safeweb)
+  continuavam contando como "vendas" no card de Produção do Mês da Ana
+  Karolina (6 vendas, 6 emissões, R$ 1.025,00 de faturamento — exatamente
+  a soma desses 6 pedidos) e em qualquer outra métrica de vendas do
+  sistema (dashboard, bots do Telegram/Digisac, relatório diário por
+  e-mail).
+- **Decisão (confirmada com o Vinicius)**: manter `Pedido` e
+  `Certificado` exatamente como estão (histórico real, importante para
+  auditoria), só excluir esses registros das contagens/somas de
+  "vendas" — sem apagar nada.
+- **Onde NÃO foi alterado, de propósito**: listagens operacionais de
+  pedidos (`/pedidos`, `/api/pedidos`) continuam mostrando esses 6
+  pedidos normalmente — o filtro só afeta métricas agregadas (contagem
+  e soma), não a visualização do registro em si.
+- **Próximo passo, fora deste commit**: marcar os 6 pedidos com
+  `ignorarMetricasVendas = true` em produção, após o deploy da
+  migration.
+- **Testes**: `npx vitest run` (62/62) e `npx next build` limpos.
+- **Reversão**: commit único, revertível com `git revert` (campo novo,
+  `default: false`, sem efeito em pedidos existentes até a marcação
+  manual).
+- **Autor**: Vinicius (via Claude Code).
+
 ## 23/06/2026
 
 ### chore: limpeza de 7 lançamentos financeiros de cobrança feita fora do CertFlow

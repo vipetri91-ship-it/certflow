@@ -460,6 +460,7 @@ model Pedido {
   popupNotificacaoVisto Boolean     @default(false) // marca se o AGR já viu/fechou o popup automático de "Certificado Emitido"
   safewebSerieA3       String?                     // número de série do certificado A3 PF usado na emissão online
   ignorarReconciliacaoFinanceira Boolean @default(false) // true: cobrança feita fora do CertFlow, nunca deve gerar Lancamento automático
+  ignorarMetricasVendas Boolean @default(false) // true: certificado real emitido mas a venda não foi feita pelo CertFlow — não contar em dashboards/relatórios de vendas
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

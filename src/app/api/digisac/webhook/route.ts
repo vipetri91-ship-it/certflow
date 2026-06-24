@@ -21,9 +21,9 @@ async function consultarDados(periodo: 'dia' | 'semana' | 'mes') {
                : endOfMonth(hoje)
 
   const [vendas, faturamento, emissoes, sst] = await Promise.all([
-    prisma.pedido.count({ where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.count({ where: { emitidoEm: { gte: inicio, lte: fim } } }),
+    prisma.pedido.count({ where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.count({ where: { emitidoEm: { gte: inicio, lte: fim }, ignorarMetricasVendas: false } }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (prisma as any).sSTLead.count({ where: { createdAt: { gte: inicio, lte: fim } } }).catch(() => 0),
   ])

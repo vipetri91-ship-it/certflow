@@ -33,7 +33,7 @@ async function getDashboardData() {
   // Helper para buscar pedidos detalhados de um período
   async function buscarPedidos(gte: Date, lte: Date, limite = 500) {
     const pedidos = await prisma.pedido.findMany({
-      where: { createdAt: { gte, lte }, status: { not: 'CANCELADO' } },
+      where: { createdAt: { gte, lte }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false },
       include: {
         cliente: { select: { nome: true, cpf: true, cnpj: true } },
         parceiro: { select: { nome: true } },
@@ -65,19 +65,19 @@ async function getDashboardData() {
     aPagarContagemAgg,
     aPagarVencidosContagem,
   ] = await Promise.all([
-    prisma.pedido.count({ where: { createdAt: { gte: inicioDia,   lte: fimDia   }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.count({ where: { createdAt: { gte: inicioSemana,lte: fimSemana}, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.count({ where: { createdAt: { gte: inicioMes,   lte: fimMes   }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.count({ where: { createdAt: { gte: inicioAno,   lte: fimAno   }, status: { not: 'CANCELADO' } } }),
+    prisma.pedido.count({ where: { createdAt: { gte: inicioDia,   lte: fimDia   }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.count({ where: { createdAt: { gte: inicioSemana,lte: fimSemana}, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.count({ where: { createdAt: { gte: inicioMes,   lte: fimMes   }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.count({ where: { createdAt: { gte: inicioAno,   lte: fimAno   }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
     prisma.certificado.count({ where: { status: 'ATIVO', dataVencimento: { gte: hoje, lte: addDays(hoje, 7) } } }),
-    prisma.pedido.count({ where: { emitidoEm: { gte: inicioDia,    lte: fimDia    } } }),
-    prisma.pedido.count({ where: { emitidoEm: { gte: inicioSemana, lte: fimSemana } } }),
-    prisma.pedido.count({ where: { emitidoEm: { gte: inicioMes,    lte: fimMes    } } }),
-    prisma.pedido.count({ where: { emitidoEm: { gte: inicioAno,    lte: fimAno    } } }),
-    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioDia,    lte: fimDia    }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioSemana, lte: fimSemana }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioMes,    lte: fimMes    }, status: { not: 'CANCELADO' } } }),
-    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioAno,    lte: fimAno    }, status: { not: 'CANCELADO' } } }),
+    prisma.pedido.count({ where: { emitidoEm: { gte: inicioDia,    lte: fimDia    }, ignorarMetricasVendas: false } }),
+    prisma.pedido.count({ where: { emitidoEm: { gte: inicioSemana, lte: fimSemana }, ignorarMetricasVendas: false } }),
+    prisma.pedido.count({ where: { emitidoEm: { gte: inicioMes,    lte: fimMes    }, ignorarMetricasVendas: false } }),
+    prisma.pedido.count({ where: { emitidoEm: { gte: inicioAno,    lte: fimAno    }, ignorarMetricasVendas: false } }),
+    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioDia,    lte: fimDia    }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioSemana, lte: fimSemana }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioMes,    lte: fimMes    }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+    prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicioAno,    lte: fimAno    }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
     buscarPedidos(inicioDia,    fimDia,    200),
     buscarPedidos(inicioSemana, fimSemana, 500),
     buscarPedidos(inicioMes,    fimMes,    500),
@@ -96,7 +96,7 @@ async function getDashboardData() {
   const performanceAgr = await Promise.all(
     AGR_KEYS.map(async (agr) => {
       const pedidos = await prisma.pedido.findMany({
-        where: { agr, createdAt: { gte: inicioMes, lte: fimMes }, status: { not: 'CANCELADO' } },
+        where: { agr, createdAt: { gte: inicioMes, lte: fimMes }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false },
         select: { valorFinal: true, emitidoEm: true },
       })
       return {

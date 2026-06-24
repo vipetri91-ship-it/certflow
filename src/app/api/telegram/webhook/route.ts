@@ -201,9 +201,9 @@ async function executarFerramenta(nome: string, input: Record<string, unknown>):
                  : endOfMonth(hoje)
 
     const [vendas, fat, emissoes, aReceber, aPagar] = await Promise.all([
-      prisma.pedido.count({ where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
-      prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' } } }),
-      prisma.pedido.count({ where: { emitidoEm: { gte: inicio, lte: fim } } }),
+      prisma.pedido.count({ where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+      prisma.pedido.aggregate({ _sum: { valorFinal: true }, where: { createdAt: { gte: inicio, lte: fim }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false } }),
+      prisma.pedido.count({ where: { emitidoEm: { gte: inicio, lte: fim }, ignorarMetricasVendas: false } }),
       prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'RECEBER', status: 'PENDENTE' } }),
       prisma.lancamento.aggregate({ _sum: { valor: true }, where: { tipo: 'PAGAR',   status: 'PENDENTE' } }),
     ])
