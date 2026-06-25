@@ -150,3 +150,42 @@ export function gerarMensagemWhatsApp(params: {
     `_V&G Certificação Digital_`
   )
 }
+
+// Mensagens de nutrição (retenção) — mesmo espírito dos e-mails de nutrição
+// em src/lib/email/templates.ts, só que em formato curto para WhatsApp.
+export function gerarMensagemNutricaoWhatsApp(params: {
+  nomeCliente: string
+  trimestre: 1 | 2 | 3
+}): string {
+  const primeiroNome = params.nomeCliente.split(' ')[0]
+
+  const conteudos: Record<1 | 2 | 3, string> = {
+    1:
+      `👋 *Olá, ${primeiroNome}!*\n\n` +
+      `Já faz 3 meses desde que você adquiriu seu certificado digital. Você sabia que pode usá-lo para:\n\n` +
+      `• Assinar PDFs (Adobe Acrobat/DocuSign)\n` +
+      `• Declarar o IR no e-CAC sem senha\n` +
+      `• Abrir MEI/CNPJ 100% digital\n` +
+      `• Participar de licitações públicas\n\n` +
+      `Qualquer dúvida, é só chamar! 😊\n\n` +
+      `_V&G Certificação Digital_`,
+    2:
+      `🔐 *${primeiroNome}, dica de segurança!*\n\n` +
+      `Seu certificado digital é como uma identidade eletrônica. Pra mantê-lo seguro:\n\n` +
+      `• Nunca compartilhe sua senha PIN\n` +
+      `• Remova o token/cartão quando não usar\n` +
+      `• Mantenha o driver do token atualizado\n\n` +
+      `Precisa de suporte? Estamos por aqui!\n\n` +
+      `_V&G Certificação Digital_`,
+    3:
+      `📅 *${primeiroNome}, hora de planejar a renovação!*\n\n` +
+      `Seu certificado digital está na reta final de validade. Renovando com a gente você mantém:\n\n` +
+      `• Todos os seus dados cadastrais\n` +
+      `• Histórico de documentos assinados\n` +
+      `• Acesso contínuo a todos os sistemas\n\n` +
+      `Agende com antecedência e evite imprevistos! 👉 wa.me/5511933323003\n\n` +
+      `_V&G Certificação Digital_`,
+  }
+
+  return conteudos[params.trimestre]
+}

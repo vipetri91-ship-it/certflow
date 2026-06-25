@@ -317,6 +317,8 @@ async function migrate() {
     )`,
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "ignorarReconciliacaoFinanceira" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "ignorarMetricasVendas" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TYPE "TipoEmailAutomatico" ADD VALUE IF NOT EXISTS 'VENCIDO_1'`,
+    `ALTER TYPE "TipoEmailAutomatico" ADD VALUE IF NOT EXISTS 'VENCIDO_7'`,
   ]
 
   for (const q of queries) {

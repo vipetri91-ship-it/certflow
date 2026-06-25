@@ -64,6 +64,29 @@ export function templateVencimento(vars: TemplateVars, dias: number): { assunto:
   }
 }
 
+export function templateVencido(vars: TemplateVars, diasVencido: number): { assunto: string; html: string } {
+  return {
+    assunto: `🚨 Seu certificado digital venceu há ${diasVencido} dia${diasVencido !== 1 ? 's' : ''}`,
+    html: base(`
+      <h2>Atenção, ${vars.nomeCliente}!</h2>
+      <div class="alerta vermelho">
+        <strong>⛔ Certificado:</strong> ${vars.modeloCertificado ?? 'Certificado Digital'}<br/>
+        <strong>📅 Venceu em:</strong> ${vars.dataVencimento}<br/>
+        <strong>⏰ Já são ${diasVencido} dia${diasVencido !== 1 ? 's' : ''} de atraso</strong>
+      </div>
+      <p>Com o certificado vencido você não consegue mais:</p>
+      <ul>
+        <li>Emitir Notas Fiscais</li>
+        <li>Acessar o e-CAC e portais da Receita Federal</li>
+        <li>Assinar contratos e documentos digitalmente</li>
+        <li>Cumprir obrigações fiscais (SPED, eSocial, DCTF)</li>
+      </ul>
+      <p>A irregularidade pode gerar <strong>multas e bloqueios</strong> em seus sistemas. <strong>Renove agora</strong> e regularize sua situação — o processo é rápido, feito por videoconferência, sem sair de casa.</p>
+      <a class="btn" href="${vars.linkRenovacao ?? '#'}">Renovar Certificado</a>
+    `),
+  }
+}
+
 export function templatePosEmissao(vars: TemplateVars): { assunto: string; html: string } {
   return {
     assunto: `✅ Certificado digital emitido com sucesso!`,

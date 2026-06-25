@@ -7,6 +7,75 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 25/06/2026
 
+### feat: marco mais urgente aplicável + WhatsApp de nutrição + e-mail pós-vencimento
+- **Arquivos novos**: `src/lib/marco-mais-urgente.ts` (função pura,
+  testável) + `src/lib/marco-mais-urgente.test.ts` (7 testes).
+- **Arquivos alterados**: `prisma/schema.prisma` (enum
+  `TipoEmailAutomatico` ganha `VENCIDO_1`/`VENCIDO_7`), `scripts/migrate.js`,
+  `src/lib/email/templates.ts` (novo `templateVencido`), `src/lib/digisac.ts`
+  (novo `gerarMensagemNutricaoWhatsApp`),
+  `src/app/api/jobs/processar-emails/route.ts`,
+  `src/app/api/jobs/processar-whatsapp/route.ts` (reescritos).
+- **Pedido do Vinicius**, depois de eu confirmar que a régua de
+  vencimento nunca foi testada com cliente real (só 8 certificados no
+  sistema, o mais próximo vence em 115 dias) e que ele pretende importar
+  o controle de vencimentos de outro sistema a partir de julho/agosto:
+  1. **Nutrição também por WhatsApp** (3, 6, 9 meses após emissão) — antes
+     só existia por e-mail.
+  2. **E-mail de 1 e 7 dias após o vencimento** (reforço da importância de
+     renovar) — antes só existia por WhatsApp.
+  3. **Não depender mais do "dia exato"** — se o sistema só descobre a
+     data de vencimento de um cliente depois (ex.: importação tardia de
+     dados de outro sistema), precisa disparar o aviso de acordo com a
+     data real, e não perder o aviso porque o dia exato do marco já
+     passou.
+- **Solução para o item 3**: criada `marcoMaisUrgenteAplicavel()` — dado
+  uma lista de marcos ordenada do mais urgente pro menos urgente, retorna
+  o primeiro cujo limite já foi alcançado e que ainda não foi enviado.
+  Isso substitui a comparação por "dia exato" (`dataVencimento` cai
+  num intervalo de 24h específico) por uma comparação de "alcançou ou
+  passou o limite", o que naturalmente resolve dois problemas ao mesmo
+  tempo: (a) importação tardia — um cliente que vence em 3 dias dispara
+  direto o marco de 7 dias (o mais urgente aplicável), sem precisar ter
+  passado pelos marcos de 60/30/15; (b) robustez geral — se o robô não
+  rodar num dia específico (falha pontual), o marco perdido é capturado
+  no próximo dia em que rodar, em vez de ser perdido para sempre. A
+  mensagem enviada ao cliente sempre mostra o número real de dias
+  (`diasRestantes`/`diasVencido`), não o valor nominal do marco — então o
+  texto bate com a data real mesmo quando o marco "salta".
+- **Mudança de comportamento no dedup do WhatsApp**: antes, o
+  pré-vencimento não reenviava se já tivesse mandado qualquer WhatsApp
+  "automático" nos últimos 5 dias (texto genérico); agora cada marco (60/
+  30/15/7 antes, 1/7 depois, 3/6/9 meses de nutrição) tem seu próprio
+  texto fixo em `HistoricoContato`, e o dedup é permanente por marco —
+  mais preciso, no mesmo espírito do dedup que o e-mail já tinha via
+  `EmailLog`.
+- **Limpeza correlata**: removido o `GET` sem autenticação que existia em
+  `processar-whatsapp` (herdado do Vercel Cron, "protegido pelo
+  schedule" — ou seja, sem proteção real). Hoje só o `certflow-cron`
+  chama essas rotas, sempre via `POST` com `x-job-token`; o `GET` aberto
+  não tinha mais função e era um risco (qualquer um que descobrisse a URL
+  podia disparar WhatsApp em massa pra clientes reais).
+- **Correção de fronteira**: as consultas ao banco passaram a usar o
+  início do dia de hoje como referência (em vez do horário exato em que o
+  robô roda) — evita que um certificado que vence/venceu/foi emitido hoje
+  de madrugada "escape" da régua só porque o job roda à tarde.
+- **Reaproveitado, sem campo novo**: como não existe um campo de opt-out
+  separado para nutrição/pós-vencimento, ambos reaproveitam os mesmos
+  campos já existentes por canal (`emailVencimentoAtivo` /
+  `whatsappVencimentoAtivo` do Parceiro).
+- **Testes**: `npx vitest run` (82/82, 7 novos) e `npx next build`
+  (com `npx prisma generate` antes, por causa do enum novo) limpos.
+- **Verificação manual feita**: nenhuma — não havia certificado real em
+  janela de vencimento hoje para testar ponta a ponta; validar quando a
+  importação de julho/agosto acontecer.
+- **Risco**: médio (lógica de comunicação automática com clientes reais)
+  — mitigado por: lógica extraída em função pura testada (7 cenários,
+  incluindo o caso de importação tardia), build e testes limpos, e pelo
+  fato de hoje não haver nenhum certificado real na janela (mudança não
+  testada com tráfego real ainda).
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix: ajusta horários do worker de cron a pedido do Vinicius
 - **Arquivo**: `scripts/cron-worker.js`.
 - **Pedido do Vinicius**: e-mails de vencimento, WhatsApp e relatório de
