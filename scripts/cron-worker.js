@@ -32,9 +32,9 @@ async function dispararJob(nome, metodo) {
 
 const jobs = [
   { nome: 'relatorio-diario', cronExpr: '0 21 * * *', metodo: 'POST' }, // 18h BRT diário
-  { nome: 'processar-emails', cronExpr: '0 8 * * *', metodo: 'POST' }, // 5h BRT diário
-  { nome: 'processar-whatsapp', cronExpr: '0 9 * * *', metodo: 'POST' }, // 6h BRT diário
-  { nome: 'relatorio-atividade', cronExpr: '0 8 1 * *', metodo: 'GET' }, // 5h BRT, dia 1 do mês
+  { nome: 'processar-emails', cronExpr: '0 11 * * *', metodo: 'POST' }, // 8h BRT diário
+  { nome: 'processar-whatsapp', cronExpr: '0 11 * * *', metodo: 'POST' }, // 8h BRT diário
+  { nome: 'relatorio-atividade', cronExpr: '0 11 1 * *', metodo: 'GET' }, // 8h BRT, dia 1 do mês
 ]
 
 for (const job of jobs) {

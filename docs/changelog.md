@@ -7,6 +7,20 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 25/06/2026
 
+### fix: ajusta horários do worker de cron a pedido do Vinicius
+- **Arquivo**: `scripts/cron-worker.js`.
+- **Pedido do Vinicius**: e-mails de vencimento, WhatsApp e relatório de
+  atividade mensal devem chegar **às 8h BRT** (estavam configurados
+  às 5h/6h BRT, mesmo horário que já vinha do `vercel.json` original).
+  Relatório diário (18h BRT) continua igual — está bom como está.
+- **Alteração**: `processar-emails` e `processar-whatsapp` de
+  `0 8 * * *`/`0 9 * * *` (UTC) para `0 11 * * *` (UTC = 8h BRT);
+  `relatorio-atividade` de `0 8 1 * *` para `0 11 1 * *` (UTC).
+  `relatorio-diario` (`0 21 * * *` = 18h BRT) sem alteração.
+- **Risco**: baixo — só muda o horário de disparo, não a lógica de cada
+  job.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: worker de cron dedicado no Railway para reativar jobs automáticos
 - **Arquivos**: `scripts/cron-worker.js` (novo), `package.json`/`package-lock.json`
   (dependência `node-cron`).
