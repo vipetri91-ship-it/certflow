@@ -5,6 +5,48 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 25/06/2026
+
+### feat: worker de cron dedicado no Railway para reativar jobs automáticos
+- **Arquivos**: `scripts/cron-worker.js` (novo), `package.json`/`package-lock.json`
+  (dependência `node-cron`).
+- **Motivo**: confirmado (banco + logs HTTP de 7 dias do Railway) que os 5
+  crons do `vercel.json` pararam de disparar desde a migração para o
+  Railway em 16/06/2026 — o Railway não lê esse arquivo. Evidência: zero
+  `EmailLog` em 10 dias, zero `PostSocial` em 15 dias, zero chamadas a
+  `/api/jobs/*` nos logs HTTP recentes.
+- **Solução**: criado um 2º serviço no mesmo projeto Railway
+  (`certflow-cron`), sempre ligado, que roda só `scripts/cron-worker.js`
+  (via `node-cron`) e chama por HTTP as rotas já existentes —
+  `relatorio-diario`, `processar-emails`, `processar-whatsapp` e
+  `relatorio-atividade` — usando a mesma autenticação por `x-job-token`
+  (`AUTH_SECRET`) que essas rotas já exigiam. Os horários reproduzem
+  exatamente os mesmos do `vercel.json` (mesma expressão cron, fuso UTC).
+- **Configuração do novo serviço**: variáveis `RAILPACK_BUILD_CMD=npm
+  install` e `RAILPACK_START_CMD=node scripts/cron-worker.js` (builder
+  atual do Railway é o Railpack — as variáveis `NIXPACKS_*` testadas
+  primeiro não tiveram efeito e foram removidas); `AUTH_SECRET` como
+  referência ao mesmo valor do serviço principal
+  (`${{certflow.AUTH_SECRET}}`), sem duplicar o segredo manualmente. Sem
+  acesso a banco — o worker só faz chamadas HTTP, não usa Prisma.
+- **Fora do escopo, registrado como pendência separada**:
+  `/api/jobs/social-media` exige sessão de usuário ADMIN (cookie), não
+  token de robô — não foi incluído neste worker até esse endpoint ser
+  ajustado para aceitar o mesmo padrão de `x-job-token` das outras rotas.
+- **Verificação feita**: chamada de teste com token errado retornou `401`
+  (rota existe e exige autenticação, sem disparar nenhum envio real). A
+  verificação ponta-a-ponta de cada job depende do primeiro disparo real
+  no horário agendado (relatório diário hoje às 18h BRT; e-mails e
+  WhatsApp amanhã de manhã) — checar `EmailLog`/Telegram/logs do
+  `certflow-cron` depois desses horários para confirmar.
+- **Risco**: baixo — não altera nenhuma rota existente, só adiciona um
+  serviço novo que as chama de fora. Caso o worker falhe, o sistema
+  principal continua funcionando normalmente (mesmo estado de antes,
+  jobs parados).
+- **Testes**: `npx vitest run` (75/75) e `npx next build` limpos antes do
+  commit.
+- **Autor**: Vinicius (via Claude Code).
+
 ## 24/06/2026
 
 ### fix: feedback de erro na busca de CEP que falhava silenciosamente (Onda 4, P2.3)
