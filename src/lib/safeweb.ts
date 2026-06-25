@@ -431,56 +431,84 @@ export async function listarProdutos(idTipoEmissao = 3): Promise<{
 }
 
 // ── 4b. Buscar produto Safeweb por tipo de pessoa, modelo e validade ─────────
-// Mapeia automaticamente o modelo do CertFlow → idProduto da Safeweb
+// Mapeia automaticamente o modelo do CertFlow → idProduto da Safeweb.
+//
+// Regra confirmada com o suporte da Safeweb (chamado de 25/06/2026) e com a
+// própria API GetListProdutoByAR — NÃO é uma suposição:
+// - O campo que distingue a mídia é `MidiaTipo`, não `ProdutoModelo` (que é
+//   sempre "A3", igual em todos os produtos A3, com ou sem mídia).
+// - A linha SafeID (mídia "PSC" = nuvem) é vendida por período de uso, em
+//   `DiasPeriodoUso` (120 = 4 meses, 365 = 1 ano, 730 = 2 anos) — o campo
+//   `ProdutoValidade` nessa linha sempre mostra "2 Anos", que é a validade
+//   técnica do certificado emitido, não o período comercial vendido.
+// - Nas demais linhas (sem mídia, cartão, token, arquivo), não existe opção
+//   de "4 meses" — só 1 ano ou 2 anos — e `ProdutoValidade` reflete isso
+//   corretamente.
+const MIDIA_TIPO_POR_SUPORTE: Record<string, string> = {
+  NUVEM: 'PSC',
+  TOKEN: 'Token',
+  CARTAO: 'Cartão',
+  ARQUIVO: 'Arquivo',
+}
+
+const DIAS_PERIODO_USO_POR_VALIDADE: Record<number, number> = {
+  4: 120,
+  12: 365,
+  24: 730,
+}
 
 export interface FiltrosProduto {
   tipoPessoa: 'PF' | 'PJ'           // PF → e-CPF, PJ → e-CNPJ
   tipoCertificado: 'A1' | 'A3'      // A1 ou A3
-  validadeMeses: number              // 12 → 1 Ano, 24 → 2 Anos
+  validadeMeses: number              // período comercial: 4, 12 ou 24
   idTipoEmissao?: number             // 3 = videoconferência (padrão)
   suporte?: string                   // NUVEM, TOKEN, CARTAO, ARQUIVO
 }
 
-function encontrarNosprodutos(
+// Retorna o produto cuja mídia e período batem exatamente com o solicitado.
+// Não existe mais fallback "produto parecido" — se não houver correspondência
+// exata, a venda deve falhar com erro claro em vez de seguir com um produto
+// que pode não ser o que o cliente pediu.
+export function encontrarNosprodutos(
   produtos: Record<string, unknown>[],
   tipoProduto: string,
   modelo: string,
-  validade: string,
-  ehNuvem: boolean,
+  filtros: FiltrosProduto,
 ): Record<string, unknown> | undefined {
-  const modeloMatch = (p: Record<string, unknown>) => {
-    const m = String(p.ProdutoModelo)
-    // Para NUVEM, aceita variantes como 'A3N', 'A3 Nuvem', 'A3 HSM', etc.
-    return ehNuvem ? (m === modelo || m.startsWith(modelo)) : m === modelo
-  }
+  const midiaTipoEsperado = filtros.suporte ? MIDIA_TIPO_POR_SUPORTE[filtros.suporte] : undefined
 
-  const produto = produtos.find((p: Record<string, unknown>) =>
-    String(p.ProdutoTipo).includes(tipoProduto) &&
-    modeloMatch(p) &&
-    String(p.ProdutoValidade).includes(validade.split(' ')[0])
-  ) as Record<string, unknown> | undefined
+  return produtos.find((p: Record<string, unknown>) => {
+    // "SafeAgro + SafeID ..." é um produto combinado separado (voltado a
+    // produtores rurais) — fora do escopo desta busca automática por
+    // decisão do Vinicius em 25/06/2026. Tratamento do SafeAgro fica para
+    // depois (precisa de um jeito de fixar o produto exato por modelo).
+    if (String(p.Nome ?? '').includes('SafeAgro')) return false
+    if (!String(p.ProdutoTipo).includes(tipoProduto)) return false
+    if (String(p.ProdutoModelo) !== modelo) return false
+    if (midiaTipoEsperado && String(p.MidiaTipo) !== midiaTipoEsperado) return false
 
-  if (produto) return produto
+    if (midiaTipoEsperado === 'PSC') {
+      const diasEsperados = DIAS_PERIODO_USO_POR_VALIDADE[filtros.validadeMeses]
+      return diasEsperados !== undefined && Number(p.DiasPeriodoUso) === diasEsperados
+    }
 
-  // Fallback: ignora validade
-  return produtos.find((p: Record<string, unknown>) =>
-    String(p.ProdutoTipo).includes(tipoProduto) &&
-    modeloMatch(p)
-  ) as Record<string, unknown> | undefined
+    const validade = filtros.validadeMeses <= 12 ? '1 Ano' : '2 Anos'
+    return String(p.ProdutoValidade).includes(validade.split(' ')[0])
+  }) as Record<string, unknown> | undefined
 }
 
 export async function buscarProduto(filtros: FiltrosProduto): Promise<{
   ok: boolean; idProduto?: number; nome?: string; idTipoEmissaoUsado?: number; erro?: string
 }> {
   const tipoPrimario = filtros.idTipoEmissao ?? 3
-  const ehNuvem      = filtros.suporte === 'NUVEM'
   const tipoProduto  = filtros.tipoPessoa === 'PF' ? 'e-CPF' : 'e-CNPJ'
   const modelo       = filtros.tipoCertificado
-  const validade     = filtros.validadeMeses <= 12 ? '1 Ano' : '2 Anos'
 
-  // Ordem de tentativa: tipo principal primeiro; para NUVEM, testa 5 e 3 como fallback
-  const tiposParaTentar = ehNuvem
-    ? [...new Set([tipoPrimario, 5, 3, 1])]
+  // A linha SafeID (NUVEM/PSC) tem produtos cadastrados em mais de um tipo
+  // de emissão — tenta o tipo solicitado primeiro e só cai pros outros se
+  // não encontrar o produto exato no tipo pedido.
+  const tiposParaTentar = filtros.suporte === 'NUVEM'
+    ? [...new Set([tipoPrimario, 3, 5, 1])]
     : [tipoPrimario]
 
   for (const tipo of tiposParaTentar) {
@@ -492,13 +520,16 @@ export async function buscarProduto(filtros: FiltrosProduto): Promise<{
       continue
     }
 
-    const encontrado = encontrarNosprodutos(produtos, tipoProduto, modelo, validade, ehNuvem)
+    const encontrado = encontrarNosprodutos(produtos, tipoProduto, modelo, filtros)
     if (encontrado) {
       return { ok: true, idProduto: Number(encontrado.idProduto), nome: String(encontrado.Nome), idTipoEmissaoUsado: tipo }
     }
   }
 
-  return { ok: false, erro: `Produto não encontrado: ${tipoProduto} ${modelo} ${validade}` }
+  return {
+    ok: false,
+    erro: `Produto Safeweb não encontrado para ${tipoProduto} ${modelo}, suporte ${filtros.suporte ?? '(não informado)'}, ${filtros.validadeMeses} meses. Confira o catálogo real (GetListProdutoByAR) antes de tentar novamente — não existe produto aproximado.`,
+  }
 }
 
 // ── 5. Consultar status de um protocolo ──────────────────────────────────────

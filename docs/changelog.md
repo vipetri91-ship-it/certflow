@@ -7,6 +7,54 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 25/06/2026
 
+### fix crítico: protocolo Safeweb gerado com produto errado (incidente real)
+- **Arquivos**: `src/lib/safeweb.ts` (`buscarProduto`/`encontrarNosprodutos`),
+  `src/lib/safeweb.test.ts` (novo, 6 testes).
+- **Incidente**: 2 vendas reais hoje (protocolos `1010896707` e
+  `1010897789`, modelo "E-CPF A3 em Nuvem - 4 Meses") geraram na Safeweb
+  um certificado **e-CPF A3 SEM MÍDIA, 1 Ano** em vez de **NUVEM, 4
+  meses**. Um dos clientes ficou inacessível (viajou) para refazer o
+  atendimento — prejuízo real.
+- **Causa raiz** (confirmada na API real da Safeweb + no suporte deles,
+  não suposta): a busca automática de produto comparava
+  `ProdutoModelo`/`ProdutoValidade`, mas esses campos **não** distinguem
+  nuvem de sem mídia (`ProdutoModelo` é sempre `"A3"`) nem refletem o
+  período comercial da linha SafeID (`ProdutoValidade` é sempre "2 Anos"
+  nessa linha, porque o certificado emitido é sempre de 2 anos — o
+  período vendido, em meses, vem em outro campo). Sem encontrar
+  correspondência exata, o código antigo tinha um fallback que pegava
+  "o produto mais parecido" — foi esse fallback que escolheu o produto
+  errado, em silêncio, sem bloquear a venda.
+- **Correção**: a busca agora usa os campos certos, confirmados direto na
+  API `GetListProdutoByAR` e na conversa com o suporte da Safeweb:
+  `MidiaTipo` (`PSC`=NUVEM, `Token`=TOKEN, `Cartão`=CARTAO,
+  `Arquivo`=ARQUIVO) e, só para a linha PSC, `DiasPeriodoUso` (120=4
+  meses, 365=1 ano, 730=2 anos). **O fallback "produto parecido" foi
+  removido** — se não houver correspondência exata, a função retorna
+  erro e a criação do pedido é bloqueada com mensagem clara (fluxo já
+  existente em `nova-venda/route.ts`), em vez de seguir com um produto
+  adivinhado.
+- **Achado adicional durante os testes**: existem produtos `"SafeAgro +
+  SafeID e-CPF"` (combo para produtores rurais) com os mesmos critérios
+  de tipo/mídia/período do `"SafeID e-CPF"` puro — por decisão do
+  Vinicius, esses produtos são **excluídos explicitamente** da busca
+  automática por enquanto (`Nome` contém `"SafeAgro"`); cadastrar um
+  modelo específico para esse combo fica para uma próxima sessão (precisa
+  de um jeito de fixar o produto exato por modelo, já que o campo
+  `codigoSafeweb` existe no cadastro mas hoje não é usado em nenhum lugar
+  do fluxo de venda).
+- **Testes**: `src/lib/safeweb.test.ts`, com o catálogo real capturado da
+  Safeweb em 25/06/2026 como fixture — cobre NUVEM 4 meses/1 ano/2 anos,
+  sem mídia, ausência de correspondência (não inventa) e a exclusão do
+  SafeAgro. `npx vitest run` (88/88) e `npx next build` limpos.
+- **Pendência separada, fora deste commit**: cancelar os 2 protocolos
+  reais já gerados com o produto errado (`1010896707`, `1010897789`) —
+  decisão do Vinicius, a executar com a Safeweb.
+- **Risco**: alto antes da correção (já causou prejuízo real); baixo
+  depois — a mudança só torna a validação mais estrita (bloqueia em vez
+  de adivinhar), não introduz novo comportamento de sucesso.
+- **Autor**: Vinicius (via Claude Code).
+
 ### feat: marco mais urgente aplicável + WhatsApp de nutrição + e-mail pós-vencimento
 - **Arquivos novos**: `src/lib/marco-mais-urgente.ts` (função pura,
   testável) + `src/lib/marco-mais-urgente.test.ts` (7 testes).
