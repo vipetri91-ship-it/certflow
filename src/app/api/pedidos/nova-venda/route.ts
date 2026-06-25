@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
       try {
         const modeloDb = await prisma.modeloCertificado.findUnique({
           where: { id: modeloId },
-          select: { tipoPessoa: true, tipoCertificado: true, validadeMeses: true, suporte: true, codigoSafeweb: true },
+          select: { nome: true, tipoPessoa: true, tipoCertificado: true, validadeMeses: true, suporte: true, codigoSafeweb: true },
         })
         const clienteDb = await prisma.cliente.findUnique({
           where: { id: idCliente! },
@@ -224,6 +224,10 @@ export async function POST(req: NextRequest) {
           validadeMeses:   modeloDb.validadeMeses,
           idTipoEmissao,
           suporte:         modeloDb.suporte ?? undefined,
+          // Único jeito hoje de saber se o modelo inclui leitora de cartão é
+          // pelo nome cadastrado (não existe campo próprio) — confirmado com
+          // o Vinicius em 25/06/2026 que essa é a convenção de nomenclatura.
+          comLeitora:      modeloDb.nome.toLowerCase().includes('leitora'),
         })
         if (!prod.ok || !prod.idProduto) {
           console.error('[Safeweb] produto não encontrado', { erro: prod.erro, tipoCertificado: modeloDb.tipoCertificado, suporte: modeloDb.suporte, validadeMeses: modeloDb.validadeMeses, idTipoEmissao })

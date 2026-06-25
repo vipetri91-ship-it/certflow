@@ -7,6 +7,48 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 25/06/2026
 
+### fix: auditoria completa de produtos Safeweb encontra 2 problemas adicionais
+- **Arquivos**: `src/lib/safeweb.ts`, `src/lib/safeweb.test.ts` (+3 testes),
+  `src/app/api/pedidos/nova-venda/route.ts`.
+- **Motivo**: a pedido do Vinicius, depois do incidente do item anterior,
+  auditei os 23 modelos ativos × 3 tipos de atendimento (69 combinações),
+  usando a função real `buscarProduto` contra o catálogo ao vivo da
+  Safeweb (não uma simulação separada). Achados:
+  1. **Cartão vs Cartão+Leitora ambíguos**: "e-CPF/e-CNPJ A3 + cartão" e
+     "+ cartão + leitora" têm exatamente o mesmo `ProdutoTipo`/
+     `ProdutoModelo`/`MidiaTipo` — só o campo `Acessorio` ("Leitora" ou
+     `null`) distingue os dois. Sem checar esse campo, a busca escolhia o
+     primeiro da lista, não necessariamente o certo (8 combinações
+     afetadas: 4 modelos × PF/PJ).
+  2. **Troca silenciosa de tipo de emissão**: quando o produto não existia
+     no tipo de emissão pedido (presencial/vídeo/online) mas existia em
+     outro, `buscarProduto` usava o de outro tipo sem avisar — só que
+     presencial/vídeo/online são endpoints diferentes na Safeweb
+     (`Add/1`, `Add/3`, `Add/5`, com fluxos de verificação diferentes).
+     Mesma categoria de risco do incidente anterior, em outro lugar.
+- **Correção**: novo filtro `comLeitora` em `FiltrosProduto` (derivado do
+  nome do modelo conter "leitora" — único jeito hoje de saber isso, não
+  existe campo próprio no cadastro) checado contra o campo real
+  `Acessorio`. Removido por completo o fallback entre tipos de emissão —
+  decisão do Vinicius: "bloquear sempre" em vez de trocar de tipo.
+- **Verificação**: reauditoria das mesmas 69 combinações após a correção
+  — 0 ambíguas, 0 trocas de tipo de emissão, 32 OK, 37 bloqueadas
+  corretamente (a maioria são combinações que nunca existiram — mídia
+  física, por natureza, só existe presencial).
+- **Achado não corrigido, só registrado**: `E-CNPJ A3 em Nuvem - 24
+  Meses` não tem produto correspondente em **nenhum** tipo de emissão
+  (presencial, vídeo ou online) — gap pré-existente no catálogo da
+  Safeweb para essa combinação específica, não causado por esta correção
+  (já falhava nos 3 tipos antes também). Avaliar com a Safeweb se esse
+  produto existe sob outro código, ou se o modelo nunca deveria ter sido
+  oferecido dessa forma.
+- **Testes**: `src/lib/safeweb.test.ts`, 3 novos casos com o catálogo real
+  de cartão/cartão+leitora como fixture. `npx vitest run` (91/91) e
+  `npx next build` limpos.
+- **Risco**: baixo — só torna a validação mais estrita, igual ao item
+  anterior.
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix crítico: protocolo Safeweb gerado com produto errado (incidente real)
 - **Arquivos**: `src/lib/safeweb.ts` (`buscarProduto`/`encontrarNosprodutos`),
   `src/lib/safeweb.test.ts` (novo, 6 testes).

@@ -51,3 +51,37 @@ describe('encontrarNosprodutos — incidente de 25/06/2026 (produto Safeweb erra
     expect(produto?.idProduto).toBe(142447)
   })
 })
+
+// Catálogo real (idTipoEmissao=1, presencial) capturado em 25/06/2026 —
+// achado durante a auditoria geral de todos os modelos: cartão simples e
+// cartão+leitora têm os mesmos ProdutoTipo/ProdutoModelo/MidiaTipo, só o
+// campo `Acessorio` distingue os dois.
+const CATALOGO_PRESENCIAL_CARTAO = [
+  { idProduto: 41754, Nome: 'e-CPF A3 + cartão', ProdutoTipo: 'e-CPF', ProdutoModelo: 'A3', MidiaTipo: 'Cartão', ProdutoValidade: '2 Anos', Acessorio: null },
+  { idProduto: 41737, Nome: 'e-CPF A3 + cartão', ProdutoTipo: 'e-CPF', ProdutoModelo: 'A3', MidiaTipo: 'Cartão', ProdutoValidade: '1 Ano', Acessorio: null },
+  { idProduto: 41736, Nome: 'e-CPF A3 + cartão + leitora', ProdutoTipo: 'e-CPF', ProdutoModelo: 'A3', MidiaTipo: 'Cartão', ProdutoValidade: '1 Ano', Acessorio: 'Leitora' },
+  { idProduto: 41755, Nome: 'e-CPF A3 + cartão + leitora', ProdutoTipo: 'e-CPF', ProdutoModelo: 'A3', MidiaTipo: 'Cartão', ProdutoValidade: '2 Anos', Acessorio: 'Leitora' },
+]
+
+describe('encontrarNosprodutos — Cartão vs Cartão+Leitora (achado na auditoria de 25/06/2026)', () => {
+  it('modelo "em Cartão" (sem leitora) nunca pega o produto com leitora', () => {
+    const filtros: FiltrosProduto = { tipoPessoa: 'PF', tipoCertificado: 'A3', validadeMeses: 12, suporte: 'CARTAO', comLeitora: false }
+    const produto = encontrarNosprodutos(CATALOGO_PRESENCIAL_CARTAO, 'e-CPF', 'A3', filtros)
+    expect(produto?.idProduto).toBe(41737)
+    expect(produto?.Acessorio).toBeNull()
+  })
+
+  it('modelo "Cartão + Leitora" sempre pega o produto com Acessorio=Leitora', () => {
+    const filtros: FiltrosProduto = { tipoPessoa: 'PF', tipoCertificado: 'A3', validadeMeses: 12, suporte: 'CARTAO', comLeitora: true }
+    const produto = encontrarNosprodutos(CATALOGO_PRESENCIAL_CARTAO, 'e-CPF', 'A3', filtros)
+    expect(produto?.idProduto).toBe(41736)
+    expect(produto?.Acessorio).toBe('Leitora')
+  })
+
+  it('mesma distinção vale para 24 meses', () => {
+    const semLeitora = encontrarNosprodutos(CATALOGO_PRESENCIAL_CARTAO, 'e-CPF', 'A3', { tipoPessoa: 'PF', tipoCertificado: 'A3', validadeMeses: 24, suporte: 'CARTAO', comLeitora: false })
+    const comLeitora = encontrarNosprodutos(CATALOGO_PRESENCIAL_CARTAO, 'e-CPF', 'A3', { tipoPessoa: 'PF', tipoCertificado: 'A3', validadeMeses: 24, suporte: 'CARTAO', comLeitora: true })
+    expect(semLeitora?.idProduto).toBe(41754)
+    expect(comLeitora?.idProduto).toBe(41755)
+  })
+})

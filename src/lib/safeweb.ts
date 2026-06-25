@@ -463,6 +463,7 @@ export interface FiltrosProduto {
   validadeMeses: number              // período comercial: 4, 12 ou 24
   idTipoEmissao?: number             // 3 = videoconferência (padrão)
   suporte?: string                   // NUVEM, TOKEN, CARTAO, ARQUIVO
+  comLeitora?: boolean               // só para CARTAO: distingue "+ cartão" de "+ cartão + leitora"
 }
 
 // Retorna o produto cuja mídia e período batem exatamente com o solicitado.
@@ -487,6 +488,13 @@ export function encontrarNosprodutos(
     if (String(p.ProdutoModelo) !== modelo) return false
     if (midiaTipoEsperado && String(p.MidiaTipo) !== midiaTipoEsperado) return false
 
+    // Cartão simples e cartão+leitora têm os mesmos ProdutoTipo/Modelo/Midia
+    // — só o campo `Acessorio` ("Leitora" ou null) distingue os dois.
+    if (midiaTipoEsperado === 'Cartão') {
+      const temLeitora = Boolean(p.Acessorio)
+      if (temLeitora !== Boolean(filtros.comLeitora)) return false
+    }
+
     if (midiaTipoEsperado === 'PSC') {
       const diasEsperados = DIAS_PERIODO_USO_POR_VALIDADE[filtros.validadeMeses]
       return diasEsperados !== undefined && Number(p.DiasPeriodoUso) === diasEsperados
@@ -500,35 +508,29 @@ export function encontrarNosprodutos(
 export async function buscarProduto(filtros: FiltrosProduto): Promise<{
   ok: boolean; idProduto?: number; nome?: string; idTipoEmissaoUsado?: number; erro?: string
 }> {
-  const tipoPrimario = filtros.idTipoEmissao ?? 3
-  const tipoProduto  = filtros.tipoPessoa === 'PF' ? 'e-CPF' : 'e-CNPJ'
-  const modelo       = filtros.tipoCertificado
+  const idTipoEmissao = filtros.idTipoEmissao ?? 3
+  const tipoProduto    = filtros.tipoPessoa === 'PF' ? 'e-CPF' : 'e-CNPJ'
+  const modelo         = filtros.tipoCertificado
 
-  // A linha SafeID (NUVEM/PSC) tem produtos cadastrados em mais de um tipo
-  // de emissão — tenta o tipo solicitado primeiro e só cai pros outros se
-  // não encontrar o produto exato no tipo pedido.
-  const tiposParaTentar = filtros.suporte === 'NUVEM'
-    ? [...new Set([tipoPrimario, 3, 5, 1])]
-    : [tipoPrimario]
+  // Decisão de 25/06/2026: nunca trocar o tipo de emissão por baixo dos
+  // panos. Presencial (Add/1), videoconferência (Add/3) e emissão online
+  // (Add/5) são endpoints e fluxos diferentes na Safeweb — usar o produto
+  // de um tipo para o protocolo de outro pode gerar uma solicitação que a
+  // Safeweb processa de um jeito que o CertFlow não espera. Se não houver
+  // produto exato para o tipo pedido, a venda deve falhar, não trocar de tipo.
+  const { ok, produtos, erro } = await listarProdutos(idTipoEmissao)
+  if (!ok || !produtos?.length) {
+    return { ok: false, erro: erro ?? 'Sem produtos disponíveis' }
+  }
 
-  for (const tipo of tiposParaTentar) {
-    const { ok, produtos, erro } = await listarProdutos(tipo)
-    if (!ok || !produtos?.length) {
-      if (tipo === tiposParaTentar[tiposParaTentar.length - 1]) {
-        return { ok: false, erro: erro ?? 'Sem produtos disponíveis' }
-      }
-      continue
-    }
-
-    const encontrado = encontrarNosprodutos(produtos, tipoProduto, modelo, filtros)
-    if (encontrado) {
-      return { ok: true, idProduto: Number(encontrado.idProduto), nome: String(encontrado.Nome), idTipoEmissaoUsado: tipo }
-    }
+  const encontrado = encontrarNosprodutos(produtos, tipoProduto, modelo, filtros)
+  if (encontrado) {
+    return { ok: true, idProduto: Number(encontrado.idProduto), nome: String(encontrado.Nome), idTipoEmissaoUsado: idTipoEmissao }
   }
 
   return {
     ok: false,
-    erro: `Produto Safeweb não encontrado para ${tipoProduto} ${modelo}, suporte ${filtros.suporte ?? '(não informado)'}, ${filtros.validadeMeses} meses. Confira o catálogo real (GetListProdutoByAR) antes de tentar novamente — não existe produto aproximado.`,
+    erro: `Produto Safeweb não encontrado para ${tipoProduto} ${modelo}, suporte ${filtros.suporte ?? '(não informado)'}, ${filtros.validadeMeses} meses, tipo de emissão ${idTipoEmissao}. Confira o catálogo real (GetListProdutoByAR) antes de tentar novamente — não existe produto aproximado, nem de outro tipo de emissão.`,
   }
 }
 
