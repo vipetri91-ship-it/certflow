@@ -246,18 +246,56 @@ model Parceiro {
   permissoesPainel         Json?
   whatsappVencimentoAtivo  Boolean    @default(true)
   emailVencimentoAtivo     Boolean    @default(true)
+  // Tabela de preço de custo vinculada (26/06/2026) — quando preenchida, o
+  // "Valor de Custo" de cada modelo passa a vir da tabela (ao vivo: se a
+  // tabela mudar depois, reflete automaticamente), em vez de precisar
+  // cadastrar modelo por modelo. Modelos que não estão na tabela continuam
+  // editáveis manualmente em Comissao.valorCusto (ver tabela-preco.lib.ts).
+  tabelaPrecoId        String?
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
   responsavel      Usuario?          @relation("ParceiroResponsavel", fields: [responsavelId], references: [id])
+  tabelaPreco      TabelaPreco?      @relation(fields: [tabelaPrecoId], references: [id])
   clientes         Cliente[]
   comissoes        Comissao[]
   pedidos          Pedido[]
   lancamentos      Lancamento[]
   contatosParceiro ContatoParceiro[]
-  comissoesFechamento ComissaoFechamento[]
+  comissoesPedido  ComissaoPedido[]
 
   @@map("parceiros")
+}
+
+// ─── TABELAS DE PREÇO DE CUSTO ─────────────────────────────────────────────────
+// Cada tabela tem um valor de custo por modelo de certificado (ex.: "Tabela 1"
+// a "Tabela 5", da VEG Certificadora, 29/06/2026). Um parceiro pode ser
+// vinculado a uma tabela inteira em vez de preencher modelo por modelo — e,
+// por decisão do Vinicius, o vínculo é "ao vivo": editar a tabela depois
+// atualiza todos os parceiros vinculados a ela automaticamente.
+
+model TabelaPreco {
+  id        String            @id @default(cuid())
+  nome      String            @unique
+  itens     TabelaPrecoItem[]
+  parceiros Parceiro[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@map("tabelas_preco")
+}
+
+model TabelaPrecoItem {
+  id            String   @id @default(cuid())
+  tabelaPrecoId String
+  modeloId      String
+  valorCusto    Decimal  @db.Decimal(10, 2)
+
+  tabelaPreco TabelaPreco       @relation(fields: [tabelaPrecoId], references: [id], onDelete: Cascade)
+  modelo      ModeloCertificado @relation(fields: [modeloId], references: [id])
+
+  @@unique([tabelaPrecoId, modeloId])
+  @@map("tabela_preco_itens")
 }
 
 model ContatoParceiro {
@@ -295,26 +333,30 @@ model Comissao {
   @@map("comissoes")
 }
 
-// Fechamento mensal de comissão por parceiro — controla o que já foi
-// pago, para não calcular/pagar o mesmo período duas vezes.
-model ComissaoFechamento {
-  id           String    @id @default(cuid())
-  parceiroId   String
-  mes          Int       // 1-12
-  ano          Int
-  valorTotal   Decimal   @db.Decimal(10, 2)
-  qtdPedidos   Int
-  status       String    @default("PENDENTE") // PENDENTE | PAGO
-  lancamentoId String?   @unique
-  pagoEm       DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+// Comissão por pedido individual (29/06/2026 — substitui o fechamento
+// mensal único, que nunca chegou a ser usado com dados reais). Cada
+// certificado emitido com parceiro gera uma linha aqui; o pagamento é
+// feito selecionando quais linhas entram em cada lote — clientes que
+// ainda não pagaram a V&G ficam "PENDENTE" indefinidamente (sem prazo),
+// reaparecendo em qualquer mês seguinte até serem marcados como pagos.
+model ComissaoPedido {
+  id            String    @id @default(cuid())
+  pedidoId      String    @unique
+  parceiroId    String
+  valorCusto    Decimal   @db.Decimal(10, 2)
+  valorCliente  Decimal   @db.Decimal(10, 2)
+  valorComissao Decimal   @db.Decimal(10, 2)
+  status        String    @default("PENDENTE") // PENDENTE | PAGO
+  lancamentoId  String?
+  pagoEm        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  pedido     Pedido      @relation(fields: [pedidoId], references: [id])
   parceiro   Parceiro    @relation(fields: [parceiroId], references: [id])
   lancamento Lancamento? @relation(fields: [lancamentoId], references: [id])
 
-  @@unique([parceiroId, mes, ano])
-  @@map("comissoes_fechamento")
+  @@map("comissoes_pedido")
 }
 
 // ─── MODELOS DE CERTIFICADO ───────────────────────────────────────────────────
@@ -336,6 +378,7 @@ model ModeloCertificado {
   certificados Certificado[]
   comissoes    Comissao[]
   itensPedido  ItemPedido[]
+  tabelaPrecoItens TabelaPrecoItem[]
 
   @@map("modelos_certificado")
 }
@@ -472,6 +515,7 @@ model Pedido {
   itens        ItemPedido[]
   certificados Certificado[]
   lancamentos  Lancamento[]
+  comissaoPedido ComissaoPedido?
 
   @@map("pedidos")
 }
@@ -536,7 +580,7 @@ model Lancamento {
   categoria CategoriaFinanceira? @relation(fields: [categoriaId], references: [id])
   pedido    Pedido?              @relation(fields: [pedidoId], references: [id])
   parceiro  Parceiro?            @relation(fields: [parceiroId], references: [id])
-  comissaoFechamento ComissaoFechamento?
+  comissoesPedido ComissaoPedido[]
 
   @@map("lancamentos")
 }

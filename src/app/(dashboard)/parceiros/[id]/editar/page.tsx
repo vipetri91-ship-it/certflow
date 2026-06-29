@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { mascararCPF as formatarCPF, mascararCNPJ as formatarCNPJ, mascararTelefone as formatarTel } from '@/lib/mascaras'
+import { ordenarModelos } from '@/lib/modelos-grupo'
 
 // ── tipos ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ interface ParceiroData {
   banco?: string; agencia?: string; conta?: string; tipoConta?: string; chavePix?: string
   loginParceiro?: string; statusPainel: boolean; permissoesPainel?: Record<string, boolean>
   whatsappVencimentoAtivo: boolean; emailVencimentoAtivo: boolean
+  tabelaPrecoId?: string | null
   temSenha?: boolean; ativo: boolean
   comissoes: Comissao[]
   contatosParceiro: ContatoP[]
@@ -82,36 +84,6 @@ function Sel({ className = '', children, ...props }: React.SelectHTMLAttributes<
       {children}
     </select>
   )
-}
-
-// ── ordenação de modelos (igual à página de configurações) ────────────────────
-
-const GRUPO_ORDEM = [
-  'A1 - Software',
-  'A3 - em Cartão',
-  'A3 - em Token',
-  'A3 - Sem Mídia',
-  'A3 - Cartão + Leitora',
-  'A3 - em Nuvem',
-]
-
-function getGrupo(nome: string): string {
-  if (nome.includes('A1'))               return 'A1 - Software'
-  if (nome.includes('Cartão + Leitora')) return 'A3 - Cartão + Leitora'
-  if (nome.includes('em Cartão'))        return 'A3 - em Cartão'
-  if (nome.includes('em Token'))         return 'A3 - em Token'
-  if (nome.includes('Sem Mídia'))        return 'A3 - Sem Mídia'
-  if (nome.includes('em Nuvem'))         return 'A3 - em Nuvem'
-  return 'Outros'
-}
-
-function ordenarModelos(lista: Modelo[]): Modelo[] {
-  return [...lista].sort((a, b) => {
-    const ga = GRUPO_ORDEM.indexOf(getGrupo(a.nome))
-    const gb = GRUPO_ORDEM.indexOf(getGrupo(b.nome))
-    if (ga !== gb) return (ga === -1 ? 99 : ga) - (gb === -1 ? 99 : gb)
-    return a.validadeMeses - b.validadeMeses
-  })
 }
 
 // ── abas ──────────────────────────────────────────────────────────────────────
@@ -213,6 +185,7 @@ export default function EditarParceiroPage() {
   const [modelos,   setModelos]   = useState<Modelo[]>([])
   const [usuarios,  setUsuarios]  = useState<{ id: string; nome: string }[]>([])
   const [comMap,    setComMap]    = useState<Record<string, Comissao>>({})
+  const [tabelas,   setTabelas]   = useState<{ id: string; nome: string; itens: { modeloId: string; valorCusto: number }[] }[]>([])
 
   // form geral
   const [f, setF] = useState<Record<string, string | boolean>>({})
@@ -228,15 +201,19 @@ export default function EditarParceiroPage() {
   // ── load ──
   const carregar = useCallback(async () => {
     try {
-      const [rp, rm, ru] = await Promise.all([
+      const [rp, rm, ru, rt] = await Promise.all([
         fetch(`/api/parceiros/${id}`).then(r => r.json()),
         fetch('/api/configuracoes/modelos').then(r => r.json()),
         fetch('/api/usuarios').then(r => r.json()),
+        fetch('/api/configuracoes/tabelas-preco').then(r => r.json()),
       ])
       const p: ParceiroData = rp
       setParceiro(p)
       setModelos(rm.modelos ?? [])
       setUsuarios(ru.usuarios ?? ru ?? [])
+      setTabelas((rt.tabelas ?? []).map((t: { id: string; nome: string; itens: { modeloId: string; valorCusto: string | number }[] }) => ({
+        id: t.id, nome: t.nome, itens: t.itens.map((i) => ({ modeloId: i.modeloId, valorCusto: Number(i.valorCusto) })),
+      })))
 
       // preenche form
       setF({
@@ -269,6 +246,7 @@ export default function EditarParceiroPage() {
         statusPainel:            p.statusPainel,
         whatsappVencimentoAtivo: p.whatsappVencimentoAtivo ?? true,
         emailVencimentoAtivo:    p.emailVencimentoAtivo    ?? true,
+        tabelaPrecoId:           p.tabelaPrecoId ?? '',
         ativo:                   p.ativo,
       })
 
@@ -341,6 +319,7 @@ export default function EditarParceiroPage() {
         permissoesPainel:        parceiro?.permissoesPainel ?? {},
         whatsappVencimentoAtivo: f.whatsappVencimentoAtivo,
         emailVencimentoAtivo:    f.emailVencimentoAtivo,
+        tabelaPrecoId:           f.tabelaPrecoId || '',
         ativo:                   f.ativo,
       }
 
@@ -652,6 +631,18 @@ export default function EditarParceiroPage() {
             {aba === 'custo' && (
               <div className="space-y-4">
                 <p className="text-xs text-gray-500">Valor que cobramos deste parceiro por cada tipo de certificado.</p>
+                <Campo label="Tabela de preço (preenche o custo automaticamente)">
+                  <Sel value={String(f.tabelaPrecoId ?? '')} onChange={e => set('tabelaPrecoId', e.target.value)}>
+                    <option value="">Nenhuma — preencher manualmente</option>
+                    {tabelas.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                  </Sel>
+                  {f.tabelaPrecoId && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Os campos em cinza vêm da tabela e mudam automaticamente se ela for editada em Configurações.
+                      Modelos sem valor na tabela continuam editáveis manualmente.
+                    </p>
+                  )}
+                </Campo>
                 <TabelaModelos
                   modelosPJ={modelosPJ}
                   modelosPF={modelosPF}
@@ -659,14 +650,26 @@ export default function EditarParceiroPage() {
                     { header: 'Preço Padrão', render: m => <span className="text-gray-400">{moeda(m.preco)}</span>, align: 'right' },
                     {
                       header: 'Valor de Custo', align: 'right',
-                      render: m => (
+                      render: m => {
+                        const tabelaAtual = tabelas.find(t => t.id === f.tabelaPrecoId)
+                        const itemTabela = tabelaAtual?.itens.find(i => i.modeloId === m.id)
+                        if (itemTabela) {
+                          return (
+                            <input type="text" readOnly value={moeda(itemTabela.valorCusto)}
+                              title="Valor vindo da tabela de preço — edite a tabela em Configurações para mudar"
+                              className="w-28 px-2 py-1 border border-gray-200 rounded text-sm text-right bg-gray-100 text-gray-500"
+                            />
+                          )
+                        }
+                        return (
                         <input type="number" step="0.01" min="0"
                           value={comMap[m.id]?.valorCusto ?? ''}
                           onChange={e => setComissao(m.id, 'valorCusto', e.target.value)}
                           placeholder="—"
                           className="w-28 px-2 py-1 border border-gray-200 rounded text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                      ),
+                        )
+                      },
                     },
                   ]}
                 />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcularComissaoPedido, periodoMesAno } from './comissoes.lib'
+import { calcularComissaoPedido } from './comissoes.lib'
 
 describe('calcularComissaoPedido', () => {
   it('calcula a diferença entre valor de venda e valor de custo', () => {
@@ -25,22 +25,5 @@ describe('calcularComissaoPedido', () => {
 
   it('permite comissão zero quando custo e venda são iguais', () => {
     expect(calcularComissaoPedido({ valorCusto: 100, valorCliente: 100 })).toBe(0)
-  })
-})
-
-describe('periodoMesAno', () => {
-  it('retorna o primeiro dia do mês como início e o primeiro dia do mês seguinte como fim (exclusivo)', () => {
-    const { inicio, fim } = periodoMesAno(6, 2026)
-    expect(inicio.getFullYear()).toBe(2026)
-    expect(inicio.getMonth()).toBe(5) // junho = índice 5
-    expect(inicio.getDate()).toBe(1)
-    expect(fim.getMonth()).toBe(6) // julho
-    expect(fim.getDate()).toBe(1)
-  })
-
-  it('vira o ano corretamente em dezembro', () => {
-    const { fim } = periodoMesAno(12, 2026)
-    expect(fim.getFullYear()).toBe(2027)
-    expect(fim.getMonth()).toBe(0)
   })
 })

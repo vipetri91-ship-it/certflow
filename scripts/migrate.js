@@ -335,6 +335,51 @@ async function migrate() {
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "auditoria_robo_pkey" PRIMARY KEY ("id")
     )`,
+    `CREATE TABLE IF NOT EXISTS "tabelas_preco" (
+      "id" TEXT NOT NULL,
+      "nome" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "tabelas_preco_pkey" PRIMARY KEY ("id")
+    )`,
+    `DO $$ BEGIN
+      ALTER TABLE "tabelas_preco" ADD CONSTRAINT "tabelas_preco_nome_key" UNIQUE ("nome");
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `CREATE TABLE IF NOT EXISTS "tabela_preco_itens" (
+      "id" TEXT NOT NULL,
+      "tabelaPrecoId" TEXT NOT NULL,
+      "modeloId" TEXT NOT NULL,
+      "valorCusto" DECIMAL(10,2) NOT NULL,
+      CONSTRAINT "tabela_preco_itens_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "tabela_preco_itens_tabelaPrecoId_modeloId_key" UNIQUE ("tabelaPrecoId", "modeloId"),
+      CONSTRAINT "tabela_preco_itens_tabelaPrecoId_fkey" FOREIGN KEY ("tabelaPrecoId") REFERENCES "tabelas_preco"("id") ON DELETE CASCADE,
+      CONSTRAINT "tabela_preco_itens_modeloId_fkey" FOREIGN KEY ("modeloId") REFERENCES "modelos_certificado"("id")
+    )`,
+    `ALTER TABLE "parceiros" ADD COLUMN IF NOT EXISTS "tabelaPrecoId" TEXT`,
+    `DO $$ BEGIN
+      ALTER TABLE "parceiros" ADD CONSTRAINT "parceiros_tabelaPrecoId_fkey" FOREIGN KEY ("tabelaPrecoId") REFERENCES "tabelas_preco"("id");
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    // Substitui o fechamento mensal único (comissoes_fechamento, nunca usado
+    // com dados reais — confirmado em 29/06/2026, 0 registros) por comissão
+    // por pedido individual, com pagamento selecionável por cliente.
+    `CREATE TABLE IF NOT EXISTS "comissoes_pedido" (
+      "id" TEXT NOT NULL,
+      "pedidoId" TEXT NOT NULL,
+      "parceiroId" TEXT NOT NULL,
+      "valorCusto" DECIMAL(10,2) NOT NULL,
+      "valorCliente" DECIMAL(10,2) NOT NULL,
+      "valorComissao" DECIMAL(10,2) NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'PENDENTE',
+      "lancamentoId" TEXT,
+      "pagoEm" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "comissoes_pedido_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "comissoes_pedido_pedidoId_key" UNIQUE ("pedidoId"),
+      CONSTRAINT "comissoes_pedido_pedidoId_fkey" FOREIGN KEY ("pedidoId") REFERENCES "pedidos"("id"),
+      CONSTRAINT "comissoes_pedido_parceiroId_fkey" FOREIGN KEY ("parceiroId") REFERENCES "parceiros"("id"),
+      CONSTRAINT "comissoes_pedido_lancamentoId_fkey" FOREIGN KEY ("lancamentoId") REFERENCES "lancamentos"("id")
+    )`,
   ]
 
   for (const q of queries) {

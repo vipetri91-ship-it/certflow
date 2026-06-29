@@ -7,6 +7,53 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ## 29/06/2026
 
+### feat: tabelas de preço de custo + comissão por pedido individual
+- **Arquivos novos**: `prisma/schema.prisma` (models `TabelaPreco`,
+  `TabelaPrecoItem`, `ComissaoPedido` — substitui `ComissaoFechamento`,
+  nunca usado com dados reais, 0 registros confirmados em 29/06),
+  `src/lib/tabela-preco.lib.ts` (+ 4 testes), `src/lib/modelos-grupo.ts`
+  (agrupamento de modelos, extraído de `parceiros/[id]/editar` pra
+  reusar em `configuracoes/tabelas-preco`),
+  `src/app/(dashboard)/configuracoes/tabelas-preco/page.tsx`,
+  `src/components/tabela-preco-editor.tsx`,
+  `src/app/api/configuracoes/tabelas-preco/route.ts` (+ `[id]`).
+- **Arquivos reescritos**: `src/lib/comissoes.ts` (cálculo agora por
+  pedido, não por mês), `src/app/(dashboard)/financeiro/comissoes/page.tsx`,
+  `src/components/comissoes-parceiro-painel.tsx` (novo, substitui
+  `comissao-pagar-button.tsx`, removido), as 2 rotas de API de comissões.
+- **Pedido 1 do Vinicius**: em vez de cadastrar o custo modelo por modelo
+  pra cada parceiro, selecionar uma "tabela de preço" (1 a 5, da VEG
+  Certificadora) que preenche tudo de uma vez — e o vínculo é **ao vivo**:
+  editar a tabela depois atualiza automaticamente todos os parceiros
+  vinculados a ela (decisão dele, depois de eu apresentar a alternativa
+  "cópia única"). Dados das 5 tabelas vieram de PDFs reais que ele
+  enviou — nenhum valor foi inventado; achados confirmados com ele antes
+  de cadastrar: (a) modelos "Sem Mídia" no cadastro = "Renovação" nas
+  tabelas (mesmo preço, comprovado por igualdade exata); (b) tabelas têm
+  preço de 3 anos, que não existe no sistema (só 4/12/24 meses) — por
+  decisão dele, não criado; (c) tabelas 4 e 5 não cobrem Cartão+Leitora
+  nem Nuvem — esses modelos continuam com custo manual mesmo com tabela
+  vinculada (campo só fica cinza/automático para o que a tabela cobre).
+- **Pedido 2 do Vinicius**: a tela de comissões deveria listar, por
+  parceiro, cada cliente com protocolo/data/custo/venda/comissão, com
+  pagamento **selecionável por cliente** — porque às vezes 2 de 10
+  clientes ainda não pagaram a V&G, e ele quer pagar a comissão só dos
+  8 que já pagaram, deixando os outros 2 pendentes (sem prazo, por
+  decisão dele) até serem selecionados num pagamento futuro.
+- **Correção feita durante a auditoria de mapeamento**: confirmado por
+  comparação exata de preço que "E-CPF/E-CNPJ A3 Sem Mídia" no cadastro
+  correspondem à linha "Renovação" das tabelas (reaproveita cartão/token
+  existente do cliente, vende só o arquivo novo) — não é um modelo
+  duplicado por engano, é a nomenclatura real.
+- **Testes**: `src/lib/tabela-preco.lib.test.ts` (4 testes). `npx vitest
+  run` (97/97) e `npx next build` limpos.
+- **Risco**: médio (mexe em cálculo financeiro e remove uma tela
+  existente) — mitigado por: 0 dados reais existentes antes desta
+  mudança (confirmado), lógica de resolução extraída em função pura
+  testada, e pagamento sempre soma exata dos selecionados (sem campo de
+  valor livre, decisão do Vinicius pra evitar erro de digitação).
+- **Autor**: Vinicius (via Claude Code).
+
 ### fix crítico: e-mail e WhatsApp de vencimento quebrados desde 25/06
 - **Arquivos**: `src/app/api/jobs/processar-emails/route.ts`,
   `src/app/api/jobs/processar-whatsapp/route.ts`.

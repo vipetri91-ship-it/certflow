@@ -19,7 +19,3 @@ export function calcularComissaoPedido(comissao: DadosComissaoModelo | null | un
   const cliente = Number(comissao.valorCliente)
   return cliente - custo
 }
-
-export function periodoMesAno(mes: number, ano: number): { inicio: Date; fim: Date } {
-  return { inicio: new Date(ano, mes - 1, 1), fim: new Date(ano, mes, 1) }
-}
