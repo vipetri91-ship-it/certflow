@@ -4,6 +4,7 @@ import { enviarWhatsApp, gerarMensagemWhatsApp, gerarMensagemNutricaoWhatsApp } 
 import { marcoMaisUrgenteAplicavel, type Marco } from '@/lib/marco-mais-urgente'
 import { addDays, addMonths, differenceInCalendarDays, differenceInMonths, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { registrarHeartbeat } from '@/lib/robo/heartbeat'
 
 // Mesmos marcos (ordenados do mais urgente pro menos urgente) usados em
 // processar-emails/route.ts, aplicados aqui ao WhatsApp. O dedup usa
@@ -219,5 +220,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
   }
   const resultado = await executarJob()
+  await registrarHeartbeat('processar-whatsapp')
   return NextResponse.json({ ok: true, resultado, executadoEm: new Date().toISOString() })
 }

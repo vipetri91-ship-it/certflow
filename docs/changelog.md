@@ -5,6 +5,51 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 26/06/2026
+
+### feat: robô de auditoria interna (verificação leve + auditoria profunda)
+- **Arquivos novos**: `prisma/schema.prisma` (model `AuditoriaRobo` + 2
+  enums), `scripts/migrate.js`, `src/lib/robo/heartbeat.ts` (+ teste),
+  `src/lib/robo/verificacao-leve.ts`, `src/lib/robo/auditoria-profunda.ts`,
+  `src/lib/robo/auditoria-produtos.ts`,
+  `src/app/api/jobs/robo-verificacao-leve/route.ts`,
+  `src/app/api/jobs/robo-auditoria-profunda/route.ts`.
+- **Arquivos alterados**: `scripts/cron-worker.js` (2 novos agendamentos),
+  `relatorio-diario`/`processar-emails`/`processar-whatsapp` (gravam
+  heartbeat ao terminar com sucesso).
+- **Pedido do Vinicius**, depois do incidente de 25/06: um "robô interno"
+  que audita o sistema todo dia, identifica problemas e corrige sozinho
+  **só o que for baixo risco e reversível** — qualquer coisa que toque
+  dinheiro, Safeweb ou regra de negócio fica bloqueada esperando aprovação
+  (decisão explícita dele, depois de eu apresentar as opções).
+- **Verificação leve (a cada 20 min)**: jobs atrasados (heartbeat
+  guardado em `Configuracao`) disparam de novo como reforço; pedidos
+  travados em GERADO/VERIFICADO há mais de 48h são só relatados; e-mails
+  com falha (`EmailLog.status = ERRO`) entre 1h e 24h atrás têm o
+  registro de falha removido, pra deixar o `processar-emails` tentar de
+  novo no próximo ciclo — sem reimplementar envio, só desbloqueia o
+  reenvio natural.
+- **Auditoria profunda (1x/dia, 5h BRT — antes dos jobs de e-mail/
+  WhatsApp)**: roda `reconciliarEmitidos()` (já existente) e relata o que
+  corrigiu; reaudita **todos os modelos ativos × 3 tipos de atendimento**
+  contra o catálogo real da Safeweb (mesma técnica usada manualmente no
+  incidente de 25/06, agora automática e diária — só relata, nunca
+  corrige mapeamento de produto sozinho); smoke test confirma que as
+  rotas de job continuam exigindo `x-job-token`.
+- **Histórico persistido no banco** (`auditoria_robo`), não em log de
+  servidor — decisão direta do que travou o diagnóstico do incidente
+  anterior (logs se perdem a cada deploy).
+- **Relatório por Telegram**: verificação leve só avisa quando encontra
+  algo; auditoria profunda manda um resumo todo dia, mesmo sem problema
+  — ambos por decisão explícita do Vinicius.
+- **Testes**: `src/lib/robo/heartbeat.test.ts` (4 testes). `npx vitest
+  run` (95/95) e `npx next build` limpos.
+- **Risco**: baixo — toda correção automática é reversível (re-disparo
+  de job idempotente, remoção de um registro de falha que será
+  recriado). Nenhuma correção automática toca em mapeamento de produto,
+  dinheiro ou protocolo Safeweb.
+- **Autor**: Vinicius (via Claude Code).
+
 ## 25/06/2026
 
 ### fix: auditoria completa de produtos Safeweb encontra 2 problemas adicionais

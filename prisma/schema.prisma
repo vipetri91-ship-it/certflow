@@ -720,3 +720,32 @@ model PendenciaProjeto {
 
   @@map("pendencias_projeto")
 }
+
+// ─── ROBÔ DE AUDITORIA INTERNA ────────────────────────────────────────────────
+// Histórico persistido no banco (não em log de servidor) — decisão de
+// 26/06/2026, depois do incidente em que os logs de aplicação foram perdidos
+// a cada deploy e impediram o diagnóstico de um problema real.
+
+enum TipoAuditoriaRobo {
+  LEVE
+  PROFUNDA
+}
+
+enum StatusAuditoriaRobo {
+  OK
+  ACHADOS_SEM_CORRECAO
+  CORRIGIDO_AUTOMATICAMENTE
+  BLOQUEADO_AGUARDANDO_APROVACAO
+}
+
+model AuditoriaRobo {
+  id        String              @id @default(cuid())
+  tipo      TipoAuditoriaRobo
+  status    StatusAuditoriaRobo
+  achados   Json?
+  correcoes Json?
+  duracaoMs Int?
+  createdAt DateTime            @default(now())
+
+  @@map("auditoria_robo")
+}

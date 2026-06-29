@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { transporte } from '@/lib/email/transporte'
 import { startOfDay, endOfDay, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { registrarHeartbeat } from '@/lib/robo/heartbeat'
 
 function verificarToken(req: NextRequest): boolean {
   const token = req.headers.get('x-job-token') ?? req.nextUrl.searchParams.get('token')
@@ -195,6 +196,7 @@ export async function POST(req: NextRequest) {
       html,
     })
 
+    await registrarHeartbeat('relatorio-diario')
     return NextResponse.json({
       ok: true,
       resumo: {

@@ -319,6 +319,22 @@ async function migrate() {
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "ignorarMetricasVendas" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TYPE "TipoEmailAutomatico" ADD VALUE IF NOT EXISTS 'VENCIDO_1'`,
     `ALTER TYPE "TipoEmailAutomatico" ADD VALUE IF NOT EXISTS 'VENCIDO_7'`,
+    `DO $$ BEGIN
+      CREATE TYPE "TipoAuditoriaRobo" AS ENUM ('LEVE', 'PROFUNDA');
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `DO $$ BEGIN
+      CREATE TYPE "StatusAuditoriaRobo" AS ENUM ('OK', 'ACHADOS_SEM_CORRECAO', 'CORRIGIDO_AUTOMATICAMENTE', 'BLOQUEADO_AGUARDANDO_APROVACAO');
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `CREATE TABLE IF NOT EXISTS "auditoria_robo" (
+      "id" TEXT NOT NULL,
+      "tipo" "TipoAuditoriaRobo" NOT NULL,
+      "status" "StatusAuditoriaRobo" NOT NULL,
+      "achados" JSONB,
+      "correcoes" JSONB,
+      "duracaoMs" INTEGER,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "auditoria_robo_pkey" PRIMARY KEY ("id")
+    )`,
   ]
 
   for (const q of queries) {

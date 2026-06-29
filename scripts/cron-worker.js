@@ -35,6 +35,11 @@ const jobs = [
   { nome: 'processar-emails', cronExpr: '0 11 * * *', metodo: 'POST' }, // 8h BRT diário
   { nome: 'processar-whatsapp', cronExpr: '0 11 * * *', metodo: 'POST' }, // 8h BRT diário
   { nome: 'relatorio-atividade', cronExpr: '0 11 1 * *', metodo: 'GET' }, // 8h BRT, dia 1 do mês
+  // Robô de auditoria interna (26/06/2026, a pedido do Vinicius) — verificação
+  // leve a cada 20 min, auditoria profunda 1x/dia bem antes dos jobs de e-mail/
+  // WhatsApp (8h BRT), pra não competir por recursos no mesmo horário.
+  { nome: 'robo-verificacao-leve', cronExpr: '*/20 * * * *', metodo: 'POST' },
+  { nome: 'robo-auditoria-profunda', cronExpr: '0 8 * * *', metodo: 'POST' }, // 5h BRT diário
 ]
 
 for (const job of jobs) {

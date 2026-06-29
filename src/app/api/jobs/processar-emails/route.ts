@@ -6,6 +6,7 @@ import { marcoMaisUrgenteAplicavel, type Marco } from '@/lib/marco-mais-urgente'
 import type { TipoEmailAutomatico } from '@/generated/prisma/client'
 import { addDays, addMonths, differenceInCalendarDays, differenceInMonths, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { registrarHeartbeat } from '@/lib/robo/heartbeat'
 
 // Protege o endpoint com um secret de job (cron externo ou chamada interna)
 function verificarToken(req: NextRequest): boolean {
@@ -221,5 +222,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  await registrarHeartbeat('processar-emails')
   return NextResponse.json({ ok: true, resultado, processadoEm: new Date().toISOString() })
 }
