@@ -82,8 +82,10 @@ async function executarJob() {
     },
     include: {
       cliente: {
-        select: { id: true, nome: true, celular: true, telefone: true, parceiroId: true },
-        include: { parceiro: { select: { whatsappVencimentoAtivo: true } } },
+        select: {
+          id: true, nome: true, celular: true, telefone: true, parceiroId: true,
+          parceiro: { select: { whatsappVencimentoAtivo: true } },
+        },
       },
       modelo: { select: { nome: true } },
     },
@@ -129,8 +131,10 @@ async function executarJob() {
     },
     include: {
       cliente: {
-        select: { id: true, nome: true, celular: true, telefone: true, parceiroId: true },
-        include: { parceiro: { select: { whatsappVencimentoAtivo: true } } },
+        select: {
+          id: true, nome: true, celular: true, telefone: true, parceiroId: true,
+          parceiro: { select: { whatsappVencimentoAtivo: true } },
+        },
       },
       modelo: { select: { nome: true } },
     },
@@ -176,8 +180,10 @@ async function executarJob() {
     },
     include: {
       cliente: {
-        select: { id: true, nome: true, celular: true, telefone: true, parceiroId: true },
-        include: { parceiro: { select: { whatsappVencimentoAtivo: true } } },
+        select: {
+          id: true, nome: true, celular: true, telefone: true, parceiroId: true,
+          parceiro: { select: { whatsappVencimentoAtivo: true } },
+        },
       },
     },
   })

@@ -5,6 +5,45 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 29/06/2026
+
+### fix crítico: e-mail e WhatsApp de vencimento quebrados desde 25/06
+- **Arquivos**: `src/app/api/jobs/processar-emails/route.ts`,
+  `src/app/api/jobs/processar-whatsapp/route.ts`.
+- **Como foi descoberto**: na primeira execução real do robô de auditoria
+  (item anterior), a verificação leve tentou reforçar os jobs e recebeu
+  erro em `processar-emails` e `processar-whatsapp`.
+- **Causa raiz**: as consultas ao banco usavam `select` e `include` ao
+  mesmo tempo dentro do mesmo relacionamento (`cliente`) — o Prisma
+  rejeita isso em tempo de execução ("Please either use `include` or
+  `select`, but not both at the same time"). O TypeScript e os testes
+  automatizados **não pegam esse erro**, só aparece quando a consulta
+  roda de verdade contra o banco.
+- **Impacto real**: os dois jobs vinham **falhando silenciosamente todos
+  os dias** desde que esse padrão foi escrito — nenhum e-mail nem
+  WhatsApp de vencimento, pós-vencimento ou nutrição foi enviado nesse
+  período (o `EmailLog` vazio que eu já tinha encontrado em 25/06 tinha
+  essa causa, além da falta de clientes na janela de vencimento).
+- **Correção**: o filtro do parceiro (`emailVencimentoAtivo` /
+  `whatsappVencimentoAtivo`) passou a ficar dentro do mesmo `select` do
+  cliente, em vez de um `include` separado — mesmo resultado, sintaxe
+  válida.
+- **Testes**: `npx vitest run` (95/95) e `npx next build` limpos —
+  nenhum dos dois detecta esse tipo de erro (é só de execução real), por
+  isso a verificação ponta-a-ponta feita manualmente depois do deploy é
+  obrigatória neste caso.
+- **Autor**: Vinicius (via Claude Code).
+
+### fix: linguagem simples nos relatórios do robô (Telegram)
+- **Arquivos**: `src/lib/robo/verificacao-leve.ts`,
+  `src/lib/robo/auditoria-profunda.ts`, `src/lib/robo/auditoria-produtos.ts`.
+- **Pedido do Vinicius**: tudo que chega pra ele (relatórios do robô
+  incluídos) tem que estar em linguagem simples, sem termo técnico de
+  programação — senão ele não entende o que foi feito.
+- **Mudança**: textos de achados/correções reescritos em português
+  direto (sem "HTTP 500", "select/include", "token", "EmailLog" etc.).
+- **Autor**: Vinicius (via Claude Code).
+
 ## 26/06/2026
 
 ### feat: robô de auditoria interna (verificação leve + auditoria profunda)

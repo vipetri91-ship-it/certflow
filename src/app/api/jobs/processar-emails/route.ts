@@ -58,8 +58,10 @@ export async function POST(req: NextRequest) {
     },
     include: {
       cliente: {
-        select: { id: true, nome: true, email: true, parceiroId: true },
-        include: { parceiro: { select: { emailVencimentoAtivo: true } } },
+        select: {
+          id: true, nome: true, email: true, parceiroId: true,
+          parceiro: { select: { emailVencimentoAtivo: true } },
+        },
       },
       modelo: { select: { nome: true } },
       emailsEnviados: { select: { tipo: true } },
@@ -108,8 +110,10 @@ export async function POST(req: NextRequest) {
     },
     include: {
       cliente: {
-        select: { id: true, nome: true, email: true, parceiroId: true },
-        include: { parceiro: { select: { emailVencimentoAtivo: true } } },
+        select: {
+          id: true, nome: true, email: true, parceiroId: true,
+          parceiro: { select: { emailVencimentoAtivo: true } },
+        },
       },
       modelo: { select: { nome: true } },
       emailsEnviados: { select: { tipo: true } },

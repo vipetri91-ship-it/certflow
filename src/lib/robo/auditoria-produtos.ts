@@ -76,7 +76,7 @@ export async function auditarProdutosSafeweb(): Promise<AchadoAuditoriaProduto[]
           modelo: m.nome,
           tipoAtendimento: NOMES_TIPO_EMISSAO[idTipoEmissao],
           situacao: 'ambiguo',
-          detalhe: `${total} produtos batem com os mesmos critérios — risco de escolher o errado.`,
+          detalhe: `Encontrei ${total} produtos diferentes na Safeweb que servem igualmente pra esse certificado — risco de pegar o errado, como aconteceu antes. Precisa de uma decisão sua pra resolver.`,
         })
         continue
       }
@@ -94,7 +94,7 @@ export async function auditarProdutosSafeweb(): Promise<AchadoAuditoriaProduto[]
           modelo: m.nome,
           tipoAtendimento: NOMES_TIPO_EMISSAO[idTipoEmissao],
           situacao: 'bloqueado',
-          detalhe: resultado.erro ?? 'Produto não encontrado.',
+          detalhe: 'Não existe esse certificado cadastrado na Safeweb pra esse tipo de atendimento — se alguém tentar vender assim, o sistema vai bloquear a venda (certo) em vez de usar o produto errado.',
         })
       }
     }
