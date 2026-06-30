@@ -62,9 +62,26 @@ export async function executarAuditoriaProfunda(): Promise<ResultadoAuditoriaPro
   // atendimento, contra o catálogo real. Só relata — nunca corrige sozinho.
   try {
     const achadosProdutos = await auditarProdutosSafeweb()
+
+    // Agrupa por modelo+situacao para não repetir a mesma mensagem 3x quando
+    // todos os tipos de atendimento do mesmo modelo estão com o mesmo problema.
+    const grupos = new Map<string, { modelo: string; situacao: string; detalhe: string; tipos: string[] }>()
     for (const a of achadosProdutos) {
-      const situacao = a.situacao === 'ambiguo' ? 'risco de produto errado' : 'sem produto cadastrado'
-      achados.push(`Certificado "${a.modelo}", atendimento ${a.tipoAtendimento} (${situacao}): ${a.detalhe}`)
+      const chave = `${a.modelo}||${a.situacao}`
+      const existente = grupos.get(chave)
+      if (existente) {
+        existente.tipos.push(a.tipoAtendimento)
+      } else {
+        const situacao = a.situacao === 'ambiguo' ? 'risco de produto errado' : 'sem produto cadastrado'
+        grupos.set(chave, { modelo: a.modelo, situacao, detalhe: a.detalhe, tipos: [a.tipoAtendimento] })
+      }
+    }
+
+    for (const [, g] of grupos) {
+      const todosTipos = ['presencial', 'videoconferência', 'online']
+      const todosAusentes = todosTipos.every(t => g.tipos.includes(t))
+      const atendimentos = todosAusentes ? 'todos os tipos de atendimento' : g.tipos.join(', ')
+      achados.push(`Certificado "${g.modelo}" (${g.situacao}, ${atendimentos}): ${g.detalhe}`)
     }
   } catch (e) {
     achados.push(`Não consegui revisar os certificados contra o cadastro da Safeweb: ${String(e)}`)
