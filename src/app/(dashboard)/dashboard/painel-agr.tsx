@@ -18,7 +18,8 @@ const AGR_COLORS: Record<string, { bg: string; light: string; darkLight: string;
 }
 
 interface AGRPerf {
-  agr: string; vendas: number; valorVendas: number; emissoes: number; mediadiaria: number; vendasHoje: number
+  agr: string; vendas: number; valorVendas: number; emissoes: number; mediadiaria: number
+  vendasHoje: number; emissoesHoje: number; valorVendasHoje: number
 }
 
 interface Props {
@@ -214,13 +215,13 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact 
         <div className="p-4 space-y-3 flex-1">
           <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wide">
             <TrendingUp className="w-3.5 h-3.5" />
-            Produção do Mês
+            Produção de Hoje
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: 'Vendas', valor: agrAtual.vendas.toString() },
-              { label: 'Emissões', valor: agrAtual.emissoes.toString() },
+              { label: 'Vendas', valor: agrAtual.vendasHoje.toString() },
+              { label: 'Emissões', valor: agrAtual.emissoesHoje.toString() },
             ].map(s => (
               <div key={s.label} className={`${cor.light} ${cor.darkLight} rounded-xl p-3`}>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mb-0.5">{s.label}</p>
@@ -231,8 +232,8 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact 
 
           <div className={`${cor.light} ${cor.darkLight} rounded-xl p-3`}>
             <p className="text-xs text-gray-500 dark:text-slate-400 mb-0.5">Faturamento</p>
-            <p className={`text-lg font-black ${cor.text} ${cor.darkText}`}>{fmt(agrAtual.valorVendas)}</p>
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Média: {agrAtual.mediadiaria.toFixed(1)} vendas/dia</p>
+            <p className={`text-lg font-black ${cor.text} ${cor.darkText}`}>{fmt(agrAtual.valorVendasHoje)}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Média do mês: {agrAtual.mediadiaria.toFixed(1)} vendas/dia</p>
           </div>
 
           {/* Barra de progresso comparativa — só admin */}

@@ -99,11 +99,10 @@ async function getDashboardData() {
         where: { agr, createdAt: { gte: inicioMes, lte: fimMes }, status: { not: 'CANCELADO' }, ignorarMetricasVendas: false },
         select: { valorFinal: true, emitidoEm: true, createdAt: true },
       })
-      // Meta é DIÁRIA (10 certificados/dia) — o "humor"/emoji do AGR deve
-      // refletir só as vendas de HOJE, não uma média acumulada do mês
-      // (senão nunca zera no dia seguinte). mediadiaria continua sendo a
-      // média do mês, usada só como informação complementar na UI.
-      const vendasHoje = pedidos.filter(p => p.createdAt >= inicioDia && p.createdAt <= fimDia).length
+      const pedidosHoje = pedidos.filter(p => p.createdAt >= inicioDia && p.createdAt <= fimDia)
+      const vendasHoje = pedidosHoje.length
+      const emissoesHoje = pedidosHoje.filter(p => p.emitidoEm).length
+      const valorVendasHoje = pedidosHoje.reduce((acc, p) => acc + Number(p.valorFinal), 0)
       return {
         agr,
         vendas: pedidos.length,
@@ -111,6 +110,8 @@ async function getDashboardData() {
         emissoes: pedidos.filter(p => p.emitidoEm).length,
         mediadiaria: pedidos.length / diasDecorridos,
         vendasHoje,
+        emissoesHoje,
+        valorVendasHoje,
       }
     })
   )
