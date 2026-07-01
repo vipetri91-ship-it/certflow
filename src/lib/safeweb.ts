@@ -378,7 +378,7 @@ export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; 
       body: JSON.stringify({
         protocol:             String(protocolo),
         attendancePlaceId,
-        aciRemovalCandidate:  true,
+        aciRemovalCandidate:  false,
       }),
       signal: AbortSignal.timeout(12000),
     })
