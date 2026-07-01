@@ -1,6 +1,6 @@
 'use client'
 
-import { ShoppingCart, DollarSign, Fingerprint, Cake, Info, Users, Menu, Monitor, LogOut, UserCog, ChevronDown } from 'lucide-react'
+import { ShoppingCart, DollarSign, Fingerprint, Cake, Info, Users, Menu, Monitor, LogOut, UserCog, ChevronDown, Bell } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
 import { useMobileMenu } from './dashboard-shell'
 import { ThemeToggle } from './theme-toggle'
@@ -44,6 +44,21 @@ export function Header({ titulo }: HeaderProps) {
     { icon: Fingerprint,  label: 'Consultar Biometria PSbio', href: '/biometria',                 cor: 'hover:text-purple-600 hover:bg-purple-50' },
     { icon: Cake,         label: 'Aniversários de Parceiros', href: '/parceiros?filtro=aniversario', cor: 'hover:text-pink-600 hover:bg-pink-50' },
   ]
+
+  const [naoLidas, setNaoLidas] = useState(0)
+
+  useEffect(() => {
+    async function buscar() {
+      try {
+        const r = await fetch('/api/notificacoes/nao-lidas')
+        const j = await r.json()
+        setNaoLidas(j.total ?? 0)
+      } catch { /* silencioso */ }
+    }
+    buscar()
+    const t = setInterval(buscar, 60_000) // atualiza a cada 1 min
+    return () => clearInterval(t)
+  }, [])
 
   const nomeUsuario = session?.user?.name ?? 'Usuário'
   const roleLabel = ROLE_LABELS[session?.user?.role ?? ''] ?? session?.user?.role ?? ''
@@ -107,6 +122,20 @@ export function Header({ titulo }: HeaderProps) {
           <Users style={{ width: 18, height: 18 }} />
           <span className="text-xs font-medium">1</span>
         </button>
+
+        {/* Notificações Safeweb */}
+        <Link
+          href="/eventos-safeweb"
+          title="Eventos Safeweb"
+          className="relative p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
+        >
+          <Bell style={{ width: 18, height: 18 }} />
+          {naoLidas > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+              {naoLidas > 99 ? '99+' : naoLidas}
+            </span>
+          )}
+        </Link>
 
         {/* Modo claro / escuro */}
         <ThemeToggle />

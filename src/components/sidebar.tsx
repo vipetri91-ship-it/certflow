@@ -35,8 +35,9 @@ const MENU_PADRAO: MenuEntry[] = [
     tipo: 'grupo', label: 'Certificado Digital', icon: Monitor,
     itens: [
       { label: 'Nova Venda',     href: '/pedidos/nova-venda',      icon: Plus },
-      { label: 'Monitoramento',  href: '/pedidos/monitoramento',   icon: Monitor },
+      { label: 'Monitoramento',    href: '/pedidos/monitoramento',   icon: Monitor },
       { label: 'Notificações',   href: '/pedidos/notificacoes',    icon: BellRing },
+      { label: 'Eventos Safeweb', href: '/eventos-safeweb',         icon: Bell },
       { label: 'Recibo',         href: '/recibo',                  icon: Receipt },
       { label: 'Orçamento',      href: '/orcamento',               icon: ClipboardList },
       { label: 'Resp. RFB',      href: '/pedidos/rfb',             icon: Search },

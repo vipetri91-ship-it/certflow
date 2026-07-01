@@ -512,10 +512,11 @@ model Pedido {
   cliente      Cliente      @relation(fields: [clienteId], references: [id])
   parceiro     Parceiro?    @relation(fields: [parceiroId], references: [id])
   usuario      Usuario      @relation(fields: [usuarioId], references: [id])
-  itens        ItemPedido[]
-  certificados Certificado[]
-  lancamentos  Lancamento[]
+  itens          ItemPedido[]
+  certificados   Certificado[]
+  lancamentos    Lancamento[]
   comissaoPedido ComissaoPedido?
+  eventosWebhook EventoWebhook[]
 
   @@map("pedidos")
 }
@@ -636,6 +637,31 @@ model AuditLog {
   usuario Usuario? @relation(fields: [usuarioId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ─── EVENTOS WEBHOOK SAFEWEB ─────────────────────────────────────────────────
+
+model EventoWebhook {
+  id           String   @id @default(cuid())
+  evento       String   // ex.: "emissao", "verificacao", "cancelamento"
+  acao         String?  // ex.: "aprovado", "Reprovado"
+  protocolo    String
+  numeroPedido String?
+  clienteNome  String?
+  agr          String?
+  statusAntes  String?
+  statusDepois String?
+  motivoRecusa String?
+  lido         Boolean  @default(false)
+  payload      Json?
+  pedidoId     String?
+  createdAt    DateTime @default(now())
+
+  pedido Pedido? @relation(fields: [pedidoId], references: [id])
+
+  @@index([lido])
+  @@index([createdAt])
+  @@map("eventos_webhook")
 }
 
 // ─── CONFIGURAÇÕES ────────────────────────────────────────────────────────────

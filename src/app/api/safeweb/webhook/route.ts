@@ -93,12 +93,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Protocolo não informado' }, { status: 400 })
   }
 
+  // Salva o evento bruto antes de qualquer processamento para não perder o histórico
+  // mesmo se o pedido não for encontrado ou o processamento falhar.
+  const eventoLog = await prisma.eventoWebhook.create({
+    data: {
+      evento,
+      acao:        acao ?? null,
+      protocolo,
+      motivoRecusa: motivoRecusa ?? null,
+      payload:     payload as object,
+    },
+  }).catch(() => null) // Falha no log não deve interromper o processamento principal
+
   const pedido = await prisma.pedido.findFirst({
     where: { OR: [{ numeroCompra: protocolo }, { safewebProtocolo: protocolo } as any] },
     select: {
       id:             true,
       numero:         true,
       status:         true,
+      agr:            true,
       clienteId:      true,
       parceiroId:     true,
       numeroCompra:   true,
@@ -115,9 +128,22 @@ export async function POST(req: NextRequest) {
   })
 
   if (!pedido) {
-    // Protocolo não encontrado — retorna 200 para não acumular na fila Safeweb
     console.warn(`[Safeweb Webhook] Protocolo ${protocolo} não encontrado no CertFlow`)
     return NextResponse.json({ ok: true, aviso: 'Protocolo não encontrado' })
+  }
+
+  // Complementa o log com os dados do pedido agora que o encontramos
+  if (eventoLog) {
+    prisma.eventoWebhook.update({
+      where: { id: eventoLog.id },
+      data: {
+        pedidoId:    pedido.id,
+        numeroPedido: pedido.numero,
+        clienteNome: pedido.cliente.nome,
+        agr:         pedido.agr ?? null,
+        statusAntes: pedido.status,
+      },
+    }).catch(() => null)
   }
 
   const statusEvento = motivoRecusa
@@ -236,6 +262,14 @@ export async function POST(req: NextRequest) {
       where: { id: pedido.id },
       data:  { safewebStatus: statusEvento } as any,
     })
+  }
+
+  // Registra o status final do processamento no log do evento
+  if (eventoLog && novoStatus) {
+    prisma.eventoWebhook.update({
+      where: { id: eventoLog.id },
+      data:  { statusDepois: novoStatus },
+    }).catch(() => null)
   }
 
   return NextResponse.json({ ok: true })
