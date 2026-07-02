@@ -179,6 +179,12 @@ model Cliente {
   parceiro   Parceiro? @relation(fields: [parceiroId], references: [id])
   parceiroId String?
 
+  // PJ → PF: quando um PJ é criado junto com seu responsável PF, gravamos o vínculo aqui
+  responsavelCliente   Cliente?  @relation("PJResponsavel", fields: [responsavelClienteId], references: [id])
+  responsavelClienteId String?
+  // PF → PJs: lista de empresas das quais este PF é responsável
+  empresasResponsavel  Cliente[] @relation("PJResponsavel")
+
   certificados      Certificado[]
   pedidos           Pedido[]
   emails            EmailLog[]

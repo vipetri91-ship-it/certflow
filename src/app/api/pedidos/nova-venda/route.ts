@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 1b. Para PJ: criar/atualizar cliente PF (responsável) separadamente
+  // 1b. Para PJ: criar/atualizar cliente PF (responsável) e gravar vínculo PJ → PF
   if (clienteDados.tipoPessoa === 'PJ' && responsavelDados?.cpf) {
     const cpfPF = responsavelDados.cpf
     const dadosPF = {
@@ -163,12 +163,17 @@ export async function POST(req: NextRequest) {
       cidade:        responsavelDados.cidade     || null,
       estado:        responsavelDados.estado     || null,
     }
+    let pfId: string
     const pfExistente = await prisma.cliente.findUnique({ where: { cpf: cpfPF } })
     if (pfExistente) {
       await prisma.cliente.update({ where: { cpf: cpfPF }, data: dadosPF })
+      pfId = pfExistente.id
     } else {
-      await prisma.cliente.create({ data: { ...dadosPF, cpf: cpfPF } })
+      const novoPF = await prisma.cliente.create({ data: { ...dadosPF, cpf: cpfPF } })
+      pfId = novoPF.id
     }
+    // Grava vínculo no PJ: qual PF é seu responsável
+    await prisma.cliente.update({ where: { id: idCliente }, data: { responsavelClienteId: pfId } })
   }
 
   // 2. Protocolo Safeweb automático (videoconferência, presencial ou emissão

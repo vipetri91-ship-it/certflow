@@ -29,6 +29,7 @@ interface ClienteRow {
   cnpj?: string
   grupo?: string | null
   parceiro?: { nome: string }
+  empresasResponsavel: { id: string; nome: string; razaoSocial: string | null }[]
   _count: { certificados: number }
 }
 
@@ -60,8 +61,14 @@ export function ClientesTabela({ clientes, total, pagina, porPagina, isAdmin }: 
     startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }
 
-  async function excluirCliente(id: string, nome: string) {
-    if (!confirm(`Excluir o cliente "${nome}"?\n\nEsta ação não pode ser desfeita.`)) return
+  async function excluirCliente(id: string, nome: string, empresas: { nome: string; razaoSocial: string | null }[]) {
+    const empresaNome = empresas.length > 0
+      ? (empresas[0].razaoSocial || empresas[0].nome)
+      : null
+    const aviso = empresaNome
+      ? `Este cliente é responsável pela empresa "${empresaNome}".\n\nDeseja excluir mesmo assim?\n\nEsta ação não pode ser desfeita.`
+      : `Excluir o cliente "${nome}"?\n\nEsta ação não pode ser desfeita.`
+    if (!confirm(aviso)) return
     setExcluindo(id)
     try {
       const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' })
@@ -188,7 +195,9 @@ export function ClientesTabela({ clientes, total, pagina, porPagina, isAdmin }: 
                         <p className="text-xs text-gray-400">
                           {cliente.tipoPessoa === 'PJ'
                             ? (cliente.nomeFantasia || 'Pessoa Jurídica')
-                            : 'Pessoa Física'}
+                            : cliente.empresasResponsavel.length > 0
+                              ? <span className="text-indigo-500 font-medium">Responsável por: {cliente.empresasResponsavel[0].razaoSocial || cliente.empresasResponsavel[0].nome}</span>
+                              : 'Pessoa Física'}
                         </p>
                       </div>
                     </div>
@@ -239,7 +248,7 @@ export function ClientesTabela({ clientes, total, pagina, porPagina, isAdmin }: 
                       </Link>
                       {isAdmin && (
                         <button
-                          onClick={() => excluirCliente(cliente.id, cliente.razaoSocial || cliente.nome)}
+                          onClick={() => excluirCliente(cliente.id, cliente.razaoSocial || cliente.nome, cliente.empresasResponsavel)}
                           disabled={excluindo === cliente.id}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
                           title="Excluir cliente"

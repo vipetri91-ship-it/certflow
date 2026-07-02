@@ -39,7 +39,8 @@ export default async function ClientesPage({ searchParams }: Props) {
     prisma.cliente.findMany({
       where,
       include: {
-        parceiro: { select: { nome: true } },
+        parceiro:           { select: { nome: true } },
+        empresasResponsavel: { select: { id: true, nome: true, razaoSocial: true } },
         _count: { select: { certificados: true } },
       },
       orderBy: { nome: 'asc' },
@@ -79,13 +80,14 @@ export default async function ClientesPage({ searchParams }: Props) {
           isAdmin={isAdmin}
           clientes={clientes.map((c) => ({
             ...c,
-            cpf:         c.cpf         ?? undefined,
-            cnpj:        c.cnpj        ?? undefined,
-            email:       c.email       ?? undefined,
-            celular:     c.celular     ?? undefined,
-            razaoSocial: c.razaoSocial ?? undefined,
+            cpf:          c.cpf          ?? undefined,
+            cnpj:         c.cnpj         ?? undefined,
+            email:        c.email        ?? undefined,
+            celular:      c.celular      ?? undefined,
+            razaoSocial:  c.razaoSocial  ?? undefined,
             nomeFantasia: c.nomeFantasia ?? undefined,
-            parceiro:    c.parceiro    ?? undefined,
+            parceiro:     c.parceiro     ?? undefined,
+            empresasResponsavel: c.empresasResponsavel,
           }))}
           total={total}
           pagina={pagina}
