@@ -175,7 +175,7 @@ export default function NovoClientePage() {
       })
       const data = await res.json()
       if (res.ok) {
-        router.push(`/clientes/${data.id}`)
+        router.push('/clientes')
       } else {
         setErro(data.erro ?? 'Erro ao salvar cliente')
       }

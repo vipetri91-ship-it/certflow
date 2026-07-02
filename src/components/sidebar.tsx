@@ -128,7 +128,15 @@ export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
   const [gruposAbertos, setGruposAbertos] = useState<Record<string, boolean>>(gruposAbertosInicial)
 
   function toggleGrupo(label: string) {
-    setGruposAbertos(prev => ({ ...prev, [label]: !prev[label] }))
+    setGruposAbertos(prev => {
+      const abrindo = !prev[label]
+      // Accordion: fecha todos os outros grupos ao abrir um novo
+      if (abrindo) {
+        const todos = Object.fromEntries(Object.keys(prev).map(k => [k, false]))
+        return { ...todos, [label]: true }
+      }
+      return { ...prev, [label]: false }
+    })
   }
 
   return (

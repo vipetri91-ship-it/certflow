@@ -199,7 +199,7 @@ export default function EditarClientePage() {
       })
       const data = await res.json()
       if (res.ok) {
-        router.push(`/clientes/${id}`)
+        router.push('/clientes')
       } else {
         setErro(data.erro ?? 'Erro ao salvar')
       }
