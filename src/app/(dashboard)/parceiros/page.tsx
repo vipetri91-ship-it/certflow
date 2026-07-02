@@ -87,14 +87,14 @@ export default async function ParceirosPage() {
                     <span>{p._count.pedidos} pedidos</span>
                   </div>
 
-                  {p.comissoes.length > 0 && (
+                  {p.comissoes.filter(c => Number(c.percentual) > 0).length > 0 && (
                     <div className="border-t border-gray-100 pt-3">
                       <p className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1.5">
                         <Percent className="w-3 h-3" />
                         Comissões
                       </p>
                       <div className="flex flex-wrap gap-1">
-                        {p.comissoes.map((c) => (
+                        {p.comissoes.filter(c => Number(c.percentual) > 0).map((c) => (
                           <span key={c.id} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
                             {c.modelo.nome}: {Number(c.percentual).toFixed(0)}%
                           </span>
