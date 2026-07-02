@@ -16,6 +16,8 @@ import { registrarAuditoria } from '@/lib/audit'
 import { enviarWhatsApp } from '@/lib/digisac'
 import { transporte } from '@/lib/email/transporte'
 import { enviarTelegram } from '@/lib/telegram'
+import { enviarEmail } from '@/lib/email/enviar'
+import { templatePosEmissao } from '@/lib/email/templates'
 
 // Alerta crítico em três canais independentes (WhatsApp, e-mail, Telegram).
 // Em 17/06/2026 descobrimos que dois dos três podem estar fora do ar ao
@@ -123,7 +125,7 @@ export async function POST(req: NextRequest) {
           modelo:   { select: { validadeMeses: true, tipoCertificado: true } },
         },
       },
-      cliente: { select: { nome: true } },
+      cliente: { select: { nome: true, email: true } },
     },
   })
 
@@ -231,6 +233,26 @@ export async function POST(req: NextRequest) {
         })
 
         console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → EMITIDO (${evento})`)
+
+        // E-mail automático pós-emissão — disparo imediato, sem aguardar o job diário
+        if (pedido.cliente?.email) {
+          const modeloNome = pedido.itens[0] ? (pedido.itens[0] as any).modelo?.nome ?? 'Certificado Digital' : 'Certificado Digital'
+          const { assunto, html } = templatePosEmissao({
+            nomeCliente:       pedido.cliente.nome,
+            modeloCertificado: modeloNome,
+            protocolo:         pedido.numeroCompra ?? protocolo,
+          })
+          // Busca o certificado recém-criado para registrar no EmailLog
+          const certNovo = await prisma.certificado.findFirst({ where: { pedidoId: pedido.id } })
+          enviarEmail({
+            clienteId:     pedido.clienteId,
+            certificadoId: certNovo?.id,
+            tipo:          'POS_EMISSAO',
+            destinatario:  pedido.cliente.email,
+            assunto,
+            html,
+          }).catch(err => console.error('[Webhook] falha ao enviar e-mail pós-emissão:', err))
+        }
       } catch (e) {
         // As 3 tentativas falharam — nada foi gravado (transação atômica), então
         // o pedido permanece no status anterior. Isso é crítico: a Safeweb já

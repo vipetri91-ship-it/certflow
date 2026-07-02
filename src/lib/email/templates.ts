@@ -5,6 +5,8 @@ export interface TemplateVars {
   diasRestantes?: number
   linkRenovacao?: string
   nomeEmpresa?: string
+  protocolo?: string
+  cpfCnpj?: string
 }
 
 function base(conteudo: string): string {
@@ -90,20 +92,99 @@ export function templateVencido(vars: TemplateVars, diasVencido: number): { assu
 export function templatePosEmissao(vars: TemplateVars): { assunto: string; html: string } {
   return {
     assunto: `✅ Certificado digital emitido com sucesso!`,
-    html: base(`
-      <h2>Parabéns, ${vars.nomeCliente}! 🎉</h2>
-      <p>Seu certificado digital foi emitido com sucesso.</p>
-      <p><strong>Certificado:</strong> ${vars.modeloCertificado ?? 'Certificado Digital'}</p>
-      <p>Agradecemos a sua confiança! Com o certificado digital você pode:</p>
-      <ul>
-        <li>Assinar documentos com validade jurídica</li>
-        <li>Acessar sistemas governamentais com segurança</li>
-        <li>Emitir notas fiscais eletrônicas (e-NF)</li>
-        <li>Assinar contratos e declarações</li>
-        <li>E muito mais...</li>
-      </ul>
-      <p>Em caso de dúvidas sobre o uso do seu certificado, estamos à disposição!</p>
-    `),
+    html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <tr>
+          <td style="background:linear-gradient(135deg,#16a34a,#059669);padding:40px 40px 30px;text-align:center;">
+            <img src="https://4uvdfywq1qlqpdri.public.blob.vercel-storage.com/vg-logo-jEQ8b69Sfi9ucfePhmxuMoHLc6BUCG.png" width="160" alt="V&G Certificação Digital" style="display:block;margin:0 auto 20px;" />
+            <div style="width:64px;height:64px;background:rgba(255,255,255,0.2);border-radius:50%;margin:0 auto 16px;">
+              <span style="font-size:32px;line-height:64px;">✅</span>
+            </div>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:bold;">Certificado Emitido!</h1>
+            <p style="color:#bbf7d0;margin:8px 0 0;font-size:15px;">Processo concluído com sucesso</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="color:#374151;font-size:16px;margin:0 0 24px;">
+              Parabéns, <strong>${vars.nomeCliente.split(' ')[0]}</strong>! 🎉
+            </p>
+            <p style="color:#374151;font-size:15px;margin:0 0 28px;line-height:1.6;">
+              Seu certificado digital foi emitido com sucesso e já está ativo.
+            </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;margin-bottom:28px;">
+              <tr><td style="padding:24px;">
+                <table width="100%" cellpadding="0" cellspacing="6">
+                  <tr>
+                    <td style="color:#6b7280;font-size:13px;padding:4px 0;">Titular:</td>
+                    <td style="color:#111827;font-size:13px;font-weight:bold;text-align:right;padding:4px 0;">${vars.nomeCliente}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#6b7280;font-size:13px;padding:4px 0;">Tipo:</td>
+                    <td style="color:#111827;font-size:13px;text-align:right;padding:4px 0;">${vars.modeloCertificado ?? 'Certificado Digital'}</td>
+                  </tr>
+                  ${vars.protocolo ? `
+                  <tr>
+                    <td style="color:#6b7280;font-size:13px;padding:4px 0;">Protocolo:</td>
+                    <td style="color:#2563eb;font-size:13px;font-weight:bold;font-family:monospace;text-align:right;padding:4px 0;">${vars.protocolo}</td>
+                  </tr>` : ''}
+                  <tr>
+                    <td style="color:#6b7280;font-size:13px;padding:4px 0;">Status:</td>
+                    <td style="text-align:right;padding:4px 0;">
+                      <span style="background:#dcfce7;color:#16a34a;font-size:12px;font-weight:bold;padding:3px 10px;border-radius:20px;">✓ Aprovado</span>
+                    </td>
+                  </tr>
+                </table>
+              </td></tr>
+            </table>
+
+            <p style="color:#111827;font-size:15px;font-weight:bold;margin:0 0 12px;">Com seu certificado digital você pode:</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              ${[
+                ['📝', 'Assinar documentos com validade jurídica'],
+                ['🏛️', 'Acessar o e-CAC e portais da Receita Federal'],
+                ['🧾', 'Emitir Notas Fiscais Eletrônicas (NF-e)'],
+                ['📋', 'Cumprir obrigações fiscais (SPED, eSocial, DCTF)'],
+                ['🤝', 'Assinar contratos à distância com validade legal'],
+              ].map(([emoji, texto]) => `
+              <tr>
+                <td style="padding:5px 0;vertical-align:top;width:28px;font-size:15px;">${emoji}</td>
+                <td style="padding:5px 0;color:#374151;font-size:14px;line-height:1.5;">${texto}</td>
+              </tr>`).join('')}
+            </table>
+
+            <p style="color:#6b7280;font-size:14px;margin:0;line-height:1.6;">
+              Em caso de dúvidas ou se precisar de suporte, entre em contato conosco.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:24px 40px;text-align:center;">
+            <p style="color:#6b7280;font-size:13px;margin:0 0 8px;font-weight:bold;">V&G Certificação Digital</p>
+            <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.8;">
+              💬 <a href="https://wa.me/5511933323003" style="color:#16a34a;text-decoration:none;">WhatsApp: (11) 93332-3003 / (11) 94315-6015</a><br>
+              📸 <a href="https://instagram.com/vegcertificadora" style="color:#9ca3af;text-decoration:none;">@vegcertificadora</a><br>
+              🌐 <a href="https://www.vegcertificadora.com.br" style="color:#9ca3af;text-decoration:none;">www.vegcertificadora.com.br</a><br>
+              ✉️ <a href="mailto:piracaia@vegcertificado.com.br" style="color:#9ca3af;text-decoration:none;">piracaia@vegcertificado.com.br</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
   }
 }
 

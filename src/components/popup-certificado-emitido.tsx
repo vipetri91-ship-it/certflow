@@ -48,22 +48,43 @@ export function PopupCertificadoEmitido({ pedidoId, onFechar }: Props) {
       .then(setPedido)
   }, [pedidoId])
 
-  async function enviar(tipo: 'whatsapp' | 'email', destinatario: 'cliente' | 'parceiro') {
-    const chave = `${tipo}-${destinatario}`
+  async function enviarUm(destinatario: 'cliente' | 'parceiro') {
+    const chave = `whatsapp-${destinatario}`
     setEnviando(chave)
     setErro(null)
     try {
       const res = await fetch(`/api/pedidos/${pedidoId}/notificar`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tipo, destinatario }),
+        body:    JSON.stringify({ tipo: 'whatsapp', destinatario }),
       })
       const data = await res.json()
-      if (res.ok) {
-        setSucesso(prev => [...prev, chave])
+      if (res.ok) setSucesso(prev => [...prev, chave])
+      else setErro(data.erro || 'Erro ao enviar')
+    } finally {
+      setEnviando(null)
+    }
+  }
+
+  async function enviarAmbos() {
+    setEnviando('whatsapp-ambos')
+    setErro(null)
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch(`/api/pedidos/${pedidoId}/notificar`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo: 'whatsapp', destinatario: 'cliente' }),
+        }),
+        fetch(`/api/pedidos/${pedidoId}/notificar`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo: 'whatsapp', destinatario: 'parceiro' }),
+        }),
+      ])
+      if (r1.ok && r2.ok) {
+        setSucesso(prev => [...prev, 'whatsapp-cliente', 'whatsapp-parceiro', 'whatsapp-ambos'])
         setAcao(null)
       } else {
-        setErro(data.erro || 'Erro ao enviar notificação')
+        setErro('Erro ao enviar para um dos destinatários')
       }
     } finally {
       setEnviando(null)
@@ -73,8 +94,9 @@ export function PopupCertificadoEmitido({ pedidoId, onFechar }: Props) {
   const nomeTitular = pedido?.cliente.razaoSocial || pedido?.cliente.nome || ''
   const doc = fmtDoc(pedido?.cliente.cpf, pedido?.cliente.cnpj)
   const modelo = pedido?.itens[0]?.modelo.nome || ''
-  const temWA  = !!(pedido?.cliente.celular || pedido?.parceiro?.celular)
-  const temMail = !!(pedido?.cliente.email  || pedido?.parceiro?.email)
+  const temWA        = !!pedido?.cliente.celular
+  const temWAParceiro = !!pedido?.parceiro?.celular
+  const temMail = !!(pedido?.cliente.email || pedido?.parceiro?.email)
 
   return (
     <div
@@ -118,46 +140,49 @@ export function PopupCertificadoEmitido({ pedidoId, onFechar }: Props) {
                 </div>
               </div>
 
-              {/* Ações */}
-              {(temWA || temMail) && (
+              {/* WhatsApp */}
+              {(temWA || temWAParceiro) && (
                 <div className="space-y-2">
                   <p className="text-xs text-center text-gray-400 font-medium uppercase tracking-wide mb-3">
-                    Notificar sobre a emissão
+                    Notificar via WhatsApp
                   </p>
 
-                  {/* WhatsApp */}
-                  {temWA && (
-                    <AcaoEnvio
-                      tipo="whatsapp"
-                      aberto={acao === 'whatsapp'}
-                      onAbrir={() => setAcao('whatsapp')}
-                      onFechar={() => setAcao(null)}
-                      temCliente={!!pedido.cliente.celular}
-                      temParceiro={!!pedido.parceiro?.celular}
-                      nomeCliente={nomeTitular}
-                      nomeParceiro={pedido.parceiro?.razaoSocial || pedido.parceiro?.nome}
-                      enviando={enviando}
-                      sucesso={sucesso}
-                      onEnviar={enviar}
-                    />
-                  )}
+                  <div className="flex gap-2">
+                    {/* Cliente */}
+                    {temWA && (
+                      <button
+                        onClick={() => enviarUm('cliente')}
+                        disabled={!!enviando || sucesso.includes('whatsapp-cliente')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-50 ${sucesso.includes('whatsapp-cliente') ? 'bg-green-600 text-white' : 'bg-white border border-green-300 text-green-700 hover:bg-green-50'}`}
+                      >
+                        {enviando === 'whatsapp-cliente' ? <Loader2 className="w-3 h-3 animate-spin" /> : sucesso.includes('whatsapp-cliente') ? '✓' : <MessageSquare className="w-3 h-3" />}
+                        {nomeTitular.split(' ')[0]}
+                      </button>
+                    )}
 
-                  {/* E-mail */}
-                  {temMail && (
-                    <AcaoEnvio
-                      tipo="email"
-                      aberto={acao === 'email'}
-                      onAbrir={() => setAcao('email')}
-                      onFechar={() => setAcao(null)}
-                      temCliente={!!pedido.cliente.email}
-                      temParceiro={!!pedido.parceiro?.email}
-                      nomeCliente={nomeTitular}
-                      nomeParceiro={pedido.parceiro?.razaoSocial || pedido.parceiro?.nome}
-                      enviando={enviando}
-                      sucesso={sucesso}
-                      onEnviar={enviar}
-                    />
-                  )}
+                    {/* Parceiro */}
+                    {temWAParceiro && (
+                      <button
+                        onClick={() => enviarUm('parceiro')}
+                        disabled={!!enviando || sucesso.includes('whatsapp-parceiro')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-50 ${sucesso.includes('whatsapp-parceiro') ? 'bg-green-600 text-white' : 'bg-white border border-green-300 text-green-700 hover:bg-green-50'}`}
+                      >
+                        {enviando === 'whatsapp-parceiro' ? <Loader2 className="w-3 h-3 animate-spin" /> : sucesso.includes('whatsapp-parceiro') ? '✓' : <Building2 className="w-3 h-3" />}
+                        {(pedido.parceiro?.razaoSocial || pedido.parceiro?.nome || '').split(' ')[0]}
+                      </button>
+                    )}
+
+                    {/* Ambos */}
+                    {temWA && temWAParceiro && (
+                      <button
+                        onClick={enviarAmbos}
+                        disabled={!!enviando || sucesso.includes('whatsapp-ambos')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-50 ${sucesso.includes('whatsapp-ambos') ? 'bg-green-600 text-white' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                      >
+                        {enviando === 'whatsapp-ambos' ? <Loader2 className="w-3 h-3 animate-spin" /> : sucesso.includes('whatsapp-ambos') ? '✓ Enviado' : 'Ambos'}
+                      </button>
+                    )}
+                  </div>
 
                   {erro && <p className="text-xs text-red-500 text-center mt-1">{erro}</p>}
                 </div>
