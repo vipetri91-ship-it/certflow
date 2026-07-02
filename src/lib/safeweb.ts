@@ -219,6 +219,16 @@ export async function realizarConsultaPrevia(params: {
 
 // ── 1. Adicionar Solicitação — Videoconferência (Add/3) ou Presencial (Add/1) ─
 
+// Converte data de YYYY-MM-DD para DD/MM/YYYY (formato exigido pela Safeweb no Add/1 e Add/3)
+// O DataValid usa a data de nascimento para validar o CPF automaticamente — formato errado
+// faz o DataValid falhar silenciosamente e o protocolo cai em conferência ACI.
+function toDataBR(data?: string): string {
+  if (!data) return ''
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) return data  // já está em DD/MM/YYYY
+  const m = data.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : data
+}
+
 // Monta o objeto Endereco no formato exigido pela Safeweb (com códigos IBGE)
 async function montarEndereco(end?: EnderecoSafeweb) {
   if (!end) return undefined
@@ -304,7 +314,7 @@ export async function adicionarVideoconferencia(
         Titular: resp ? {
           Nome:            resp.nome,
           CPF:             resp.cpf.replace(/\D/g, ''),
-          DataNascimento:  resp.dataNascimento ?? '',
+          DataNascimento:  toDataBR(resp.dataNascimento),
           Contato:         montarContato(resp.ddd, resp.telefone, resp.email),
           PaisTelefone:    { CodigoAlpha2: 'BR' },
           Endereco:        await montarEndereco(resp.endereco ?? params.endereco),
@@ -325,7 +335,7 @@ export async function adicionarVideoconferencia(
         idProduto:         Number(params.produtoId),
         Nome:              params.nome,
         CPF:               (params.cpf ?? '').replace(/\D/g, ''),
-        DataNascimento:    params.dataNascimento ?? '',
+        DataNascimento:    toDataBR(params.dataNascimento),
         Contato:           montarContato(params.ddd, params.telefone, params.email),
         PaisTelefone:      { CodigoAlpha2: 'BR' },
         Endereco:          await montarEndereco(params.endereco),
