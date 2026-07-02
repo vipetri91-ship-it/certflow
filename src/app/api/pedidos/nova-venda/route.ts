@@ -260,13 +260,14 @@ export async function POST(req: NextRequest) {
           const end: EnderecoSafeweb = {
             cep:         dados.cep || db.cep || '',
             logradouro:  dados.logradouro || db.logradouro || '',
-            numero:      dados.numero || db.numero || '',
+            numero:      dados.numero || db.numero || 'S/N',
             complemento: dados.complemento || db.complemento || '',
             bairro:      dados.bairro || db.bairro || '',
             cidade:      dados.cidade || db.cidade || '',
             estado:      dados.estado || db.estado || '',
           }
-          const completo = end.cep && end.logradouro && end.numero && end.bairro && end.cidade && end.estado
+          // numero agora tem fallback 'S/N' — só descarta o endereço se campos essenciais faltarem
+          const completo = end.cep && end.logradouro && end.bairro && end.cidade && end.estado
           return completo ? end : undefined
         }
 

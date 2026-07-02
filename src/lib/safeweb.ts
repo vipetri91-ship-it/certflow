@@ -309,14 +309,12 @@ export async function adicionarVideoconferencia(
         NomeFantasia:      params.nomeFantasia ?? '',
         CNPJ:              params.cnpj.replace(/\D/g, ''),
         Contato:           montarContato(params.ddd, params.telefone, params.email),
-        PaisTelefone:      { CodigoAlpha2: 'BR' },
         Endereco:          await montarEndereco(params.endereco),
         Titular: resp ? {
           Nome:            resp.nome,
           CPF:             resp.cpf.replace(/\D/g, ''),
           DataNascimento:  toDataBR(resp.dataNascimento),
           Contato:         montarContato(resp.ddd, resp.telefone, resp.email),
-          PaisTelefone:    { CodigoAlpha2: 'BR' },
           Endereco:        await montarEndereco(resp.endereco ?? params.endereco),
         } : undefined,
         ClienteNotaFiscal: await montarClienteNotaFiscal(
@@ -337,7 +335,6 @@ export async function adicionarVideoconferencia(
         CPF:               (params.cpf ?? '').replace(/\D/g, ''),
         DataNascimento:    toDataBR(params.dataNascimento),
         Contato:           montarContato(params.ddd, params.telefone, params.email),
-        PaisTelefone:      { CodigoAlpha2: 'BR' },
         Endereco:          await montarEndereco(params.endereco),
         ClienteNotaFiscal: await montarClienteNotaFiscal(
           params.nome,
