@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Bell, CheckCircle2, XCircle, AlertCircle, Search, RefreshCw, X, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
@@ -156,8 +157,15 @@ function ModalDetalhe({ evento, onFechar }: { evento: Evento; onFechar: () => vo
 }
 
 export function EventosSafewebClient({ eventos }: { eventos: Evento[] }) {
+  const router = useRouter()
   const [busca, setBusca] = useState('')
   const [selecionado, setSelecionado] = useState<Evento | null>(null)
+
+  // Auto-refresh: busca novos eventos a cada 15s enquanto a página está aberta
+  useEffect(() => {
+    const t = setInterval(() => router.refresh(), 15_000)
+    return () => clearInterval(t)
+  }, [router])
 
   const filtrados = eventos.filter(e => {
     if (!busca) return true

@@ -56,7 +56,7 @@ export function Header({ titulo }: HeaderProps) {
       } catch { /* silencioso */ }
     }
     buscar()
-    const t = setInterval(buscar, 60_000) // atualiza a cada 1 min
+    const t = setInterval(buscar, 10_000) // atualiza a cada 10s
     return () => clearInterval(t)
   }, [])
 
