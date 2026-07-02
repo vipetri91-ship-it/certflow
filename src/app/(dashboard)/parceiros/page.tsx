@@ -87,7 +87,7 @@ export default async function ParceirosPage() {
                     <span>{p._count.pedidos} pedidos</span>
                   </div>
 
-                  {p.comissoes.filter(c => Number(c.percentual) > 0).length > 0 && (
+                  {p.tipoParceria && p.comissoes.filter(c => Number(c.percentual) > 0).length > 0 && (
                     <div className="border-t border-gray-100 pt-3">
                       <p className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1.5">
                         <Percent className="w-3 h-3" />
