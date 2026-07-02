@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PopupCertificadoEmitido } from './popup-certificado-emitido'
 
-const POLL_INTERVAL_MS = 25_000
+const POLL_INTERVAL_MS = 8_000
 
 export function NotificacaoEmissaoWatcher() {
   const [pedidoId, setPedidoId] = useState<string | null>(null)
