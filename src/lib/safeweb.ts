@@ -378,9 +378,9 @@ export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        protocol:          String(protocolo),
+        protocol:             String(protocolo),
         attendancePlaceId,
-        // aciRemovalCandidate omitido — false causava ACI igual a true (Safeweb 02/07/2026)
+        aciRemovalCandidate:  true,  // true = bypassar ACI (candidato para remoção da fila ACI)
       }),
       signal: AbortSignal.timeout(12000),
     })
