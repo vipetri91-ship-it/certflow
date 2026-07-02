@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       itens: {
         select: {
           modeloId: true,
-          modelo:   { select: { validadeMeses: true } },
+          modelo:   { select: { validadeMeses: true, tipoCertificado: true } },
         },
       },
       cliente: { select: { nome: true } },
@@ -150,7 +150,16 @@ export async function POST(req: NextRequest) {
     ? `${evento}: ${motivoRecusa}`
     : acao ? `${evento} (${acao})` : evento
 
-  const novoStatus = eventoParaStatus(evento, acao)
+  // Para certificados A1 (arquivo), a Safeweb NÃO envia evento "Emissão" —
+  // o evento "Validação" é o equivalente da emissão nesse fluxo.
+  // Confirmado em 02/07/2026: A3 recebe Validação + Emissão juntos;
+  // A1 recebe apenas Validação e o certificado já foi enviado ao cliente.
+  const tipocert = pedido.itens[0]?.modelo?.tipoCertificado ?? ''
+  const isA1 = tipocert === 'A1'
+  const evNorm = normalizar(evento)
+  const novoStatus = (isA1 && evNorm.includes('validacao'))
+    ? 'EMITIDO'
+    : eventoParaStatus(evento, acao)
 
   if (novoStatus && novoStatus !== pedido.status) {
     const agora = new Date()
