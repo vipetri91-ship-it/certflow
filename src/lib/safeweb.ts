@@ -344,7 +344,9 @@ export async function adicionarVideoconferencia(
       payload.Protocolo = protocoloOrigem
     }
 
+    console.log(`[Safeweb] Add/${idTipoEmissao} REQUEST:`, JSON.stringify(payload))
     const { ok, data } = await req('POST', `/Shared/Partner/api/Add/${idTipoEmissao}`, payload)
+    console.log(`[Safeweb] Add/${idTipoEmissao} RESPONSE (${ok ? 'ok' : 'erro'}):`, JSON.stringify(data))
 
     if (!ok) return { ok: false, erro: String(data.Message ?? data.mensagem ?? data.message ?? 'Erro ao criar protocolo'), raw: data }
 
@@ -383,6 +385,8 @@ export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; 
       signal: AbortSignal.timeout(12000),
     })
     const raw = await res.text()
+    console.log(`[Safeweb] HOPE REQUEST: protocol=${protocolo} attendancePlaceId=${attendancePlaceId}`)
+    console.log(`[Safeweb] HOPE RESPONSE (HTTP ${res.status}):`, raw.slice(0, 500))
     let data: Record<string, unknown> = {}
     try { data = JSON.parse(raw) } catch { data = { _raw: raw } }
     if (!res.ok) return { ok: false, erro: String(data.mensagem ?? data.message ?? `Erro ao vincular ao HOPE (HTTP ${res.status})`) }
