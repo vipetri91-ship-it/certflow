@@ -90,12 +90,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const antigo = await prisma.parceiro.findUnique({ where: { id } })
   if (!antigo) return NextResponse.json({ erro: 'Não encontrado' }, { status: 404 })
 
-  const { email, senhaParceiro, responsavelId, tabelaPrecoId, ...rest } = parsed.data
+  const { email, senhaParceiro, responsavelId, tabelaPrecoId, segmento, ...rest } = parsed.data
   const data: Record<string, unknown> = { ...rest }
 
-  if (email !== undefined) data.email = email || null
+  if (email !== undefined)        data.email        = email || null
   if (responsavelId !== undefined) data.responsavelId = responsavelId || null
   if (tabelaPrecoId !== undefined) data.tabelaPrecoId = tabelaPrecoId || null
+  if (segmento !== undefined)      data.segmento      = segmento || null
   if (senhaParceiro) data.senhaParceiro = await bcrypt.hash(senhaParceiro, 10)
 
   const parceiro = await prisma.parceiro.update({ where: { id }, data })
