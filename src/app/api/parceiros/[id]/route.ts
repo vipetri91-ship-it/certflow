@@ -19,6 +19,7 @@ const schemaUpdate = z.object({
   tipo:                optStr,
   nivel:               optStr,
   tipoParceria:        optStr,
+  segmento:            optStr,
   renovacoes:          optStr,
   responsavelId:       z.string().optional().or(z.literal('')).nullable(),
   contadorResponsavel: optStr,

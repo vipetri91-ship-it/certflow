@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/header'
 import Link from 'next/link'
 import {
@@ -174,6 +174,7 @@ function TabelaModelos({ modelosPJ, modelosPF, colunas }: {
 
 export default function EditarParceiroPage() {
   const params = useParams()
+  const router = useRouter()
   const id = params.id as string
 
   const [aba, setAba]           = useState<Aba>('dados')
@@ -353,9 +354,7 @@ export default function EditarParceiroPage() {
       ])
 
       if (r1.ok && r2.ok) {
-        setOk('Salvo com sucesso!')
-        set('senhaParceiro', '') // limpa campo de senha após salvar
-        carregar()
+        router.push('/parceiros')
       } else {
         const d = !r1.ok ? await r1.json() : await r2.json()
         setErro(d.erro ?? 'Erro ao salvar')
