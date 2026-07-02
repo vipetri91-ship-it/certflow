@@ -237,6 +237,7 @@ model Parceiro {
   nomeFantasia         String?
   nivel                String?
   tipoParceria         String?
+  segmento             String?   // ramo de atuação do parceiro (Contabilidade, Correspondente, etc.)
   renovacoes           String?
   responsavelId        String?
   contadorResponsavel  String?

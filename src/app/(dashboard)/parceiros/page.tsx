@@ -14,14 +14,19 @@ export default async function ParceirosPage() {
     orderBy: { nome: 'asc' },
   })
 
-  // Agrupa por tipo, ordenando os grupos alfabeticamente
+  // Agrupa por segmento (ramo de atuação), ordenando os grupos alfabeticamente
+  // Parceiros sem segmento ficam em "Sem segmento"
   const grupos = parceiros.reduce<Record<string, typeof parceiros>>((acc, p) => {
-    const grupo = p.tipo || 'Outros'
+    const grupo = p.segmento || 'Sem segmento'
     if (!acc[grupo]) acc[grupo] = []
     acc[grupo].push(p)
     return acc
   }, {})
-  const gruposOrdenados = Object.entries(grupos).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+  const gruposOrdenados = Object.entries(grupos).sort(([a], [b]) => {
+    if (a === 'Sem segmento') return 1
+    if (b === 'Sem segmento') return -1
+    return a.localeCompare(b, 'pt-BR')
+  })
 
   return (
     <div>

@@ -10,6 +10,7 @@ import { BuscaCancelavel } from '@/lib/busca-cancelavel'
 import { mascararCPF as formatarCPF, mascararCNPJ as formatarCNPJ, mascararTelefone as formatarTelefone } from '@/lib/mascaras'
 
 const TIPOS_PARCEIRO = ['Indicador', 'Revendedor', 'Agente', 'Distribuidor', 'Outro']
+const SEGMENTOS      = ['Contabilidade', 'Correspondente Bancário', 'Imobiliária', 'Associação', 'Pessoa Física', 'Passarinheiro', 'Outro']
 const TIPOS_CONTA = ['Corrente', 'Poupança']
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
@@ -51,7 +52,7 @@ export default function NovoParceiro() {
   const [form, setForm] = useState({
     nome: '', email: '', telefone: '', celular: '',
     cpf: '', cnpj: '', razaoSocial: '',
-    tipo: 'Indicador',
+    tipo: 'Indicador', segmento: '',
     banco: '', agencia: '', conta: '', tipoConta: 'Corrente', chavePix: '',
     observacoes: '',
   })
@@ -108,6 +109,7 @@ export default function NovoParceiro() {
       cnpj: tipo === 'PJ' ? form.cnpj.replace(/\D/g,'') || undefined : undefined,
       razaoSocial: tipo === 'PJ' ? form.razaoSocial || undefined : undefined,
       tipo: form.tipo,
+      segmento: form.segmento || undefined,
       banco: form.banco || undefined,
       agencia: form.agencia || undefined,
       conta: form.conta || undefined,
@@ -198,6 +200,12 @@ export default function NovoParceiro() {
               <Campo label="Tipo de parceiro *">
                 <Select value={form.tipo} onChange={e => set('tipo', e.target.value)}>
                   {TIPOS_PARCEIRO.map(t => <option key={t} value={t}>{t}</option>)}
+                </Select>
+              </Campo>
+              <Campo label="Segmento">
+                <Select value={form.segmento} onChange={e => set('segmento', e.target.value)}>
+                  <option value="">—</option>
+                  {SEGMENTOS.map(s => <option key={s} value={s}>{s}</option>)}
                 </Select>
               </Campo>
               <Campo label="E-mail">

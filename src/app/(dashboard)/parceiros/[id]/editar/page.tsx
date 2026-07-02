@@ -36,7 +36,7 @@ interface ParceiroData {
   email?: string; emailAlternativo?: string
   telefone?: string; telefone2?: string; celular?: string
   cpf?: string; cnpj?: string; razaoSocial?: string; nomeFantasia?: string
-  tipo: string; nivel?: string; tipoParceria?: string; renovacoes?: string
+  tipo: string; nivel?: string; tipoParceria?: string; segmento?: string; renovacoes?: string
   responsavelId?: string; responsavel?: { id: string; nome: string }
   contadorResponsavel?: string; pessoaContato?: string
   informacoesEnvio?: string; observacoes?: string
@@ -109,6 +109,7 @@ const PERMISSOES = [
 
 const NIVEIS      = ['Pequeno', 'Médio', 'Grande', 'Estratégico']
 const TIPOS_PARC  = ['Comissão', 'Valor de Custo', 'Venda de Lote', 'Outro']
+const SEGMENTOS   = ['Contabilidade', 'Correspondente Bancário', 'Imobiliária', 'Associação', 'Pessoa Física', 'Passarinheiro', 'Outro']
 const TIPOS_CONTA = ['Corrente', 'Poupança']
 const TIPOS_COM   = ['Percentual', 'Valor Fixo', 'Percentual Fixo']
 
@@ -228,6 +229,7 @@ export default function EditarParceiroPage() {
         tipo:               p.tipo ?? 'Indicador',
         nivel:              p.nivel ?? '',
         tipoParceria:       p.tipoParceria ?? '',
+        segmento:           p.segmento ?? '',
         renovacoes:         p.renovacoes ?? '',
         responsavelId:      p.responsavelId ?? '',
         contadorResponsavel: p.contadorResponsavel ?? '',
@@ -295,6 +297,7 @@ export default function EditarParceiroPage() {
         tipo:                f.tipo,
         nivel:               f.nivel,
         tipoParceria:        f.tipoParceria,
+        segmento:            f.segmento,
         renovacoes:          f.renovacoes,
         responsavelId:       f.responsavelId || '',
         contadorResponsavel: f.contadorResponsavel,
@@ -479,6 +482,12 @@ export default function EditarParceiroPage() {
                     <Sel value={String(f.tipoParceria ?? '')} onChange={e => set('tipoParceria', e.target.value)}>
                       <option value="">—</option>
                       {TIPOS_PARC.map(t => <option key={t} value={t}>{t}</option>)}
+                    </Sel>
+                  </Campo>
+                  <Campo label="Segmento">
+                    <Sel value={String(f.segmento ?? '')} onChange={e => set('segmento', e.target.value)}>
+                      <option value="">—</option>
+                      {SEGMENTOS.map(s => <option key={s} value={s}>{s}</option>)}
                     </Sel>
                   </Campo>
                   <Campo label="Renovações">

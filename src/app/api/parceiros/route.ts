@@ -14,6 +14,7 @@ const schemaParceiro = z.object({
   cnpj: z.string().optional(),
   razaoSocial: z.string().optional(),
   tipo: z.string().min(1),
+  segmento: z.string().optional(),
   banco: z.string().optional(),
   agencia: z.string().optional(),
   conta: z.string().optional(),
