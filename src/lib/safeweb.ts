@@ -412,7 +412,7 @@ export async function cancelarSolicitacao(
   const { cnpjAR } = cfg()
   try {
     const { ok, data } = await req('POST', '/Shared/Partner/api/CancelarSolicitacao', {
-      Protocolo:      Number(protocolo),
+      Protocolo:      String(protocolo),
       CnpjAR:         cnpjAR,
       idJustificativa,
     })
