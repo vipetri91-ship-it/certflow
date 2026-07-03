@@ -275,11 +275,21 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, erro: 'Falha crítica ao processar emissão' }, { status: 500 })
       }
     } else if (novoStatus === 'VERIFICADO') {
-      await prisma.pedido.update({
-        where: { id: pedido.id },
-        data:  { safewebStatus: statusEvento, status: 'VERIFICADO', verificadoEm: agora } as any,
-      })
-      console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → VERIFICADO (${evento})`)
+      if (pedido.status === 'EMITIDO') {
+        // Safeweb às vezes envia "Confirmação de Cadastro" ou "Verificação" depois de já ter
+        // emitido (especialmente A1 e A3 presencial). Nunca regridir de EMITIDO para VERIFICADO.
+        console.log(`[Safeweb Webhook] ${pedido.numero}: ignorando ${evento} — já está EMITIDO (evitando regressão)`)
+        await prisma.pedido.update({
+          where: { id: pedido.id },
+          data:  { safewebStatus: statusEvento } as any,
+        })
+      } else {
+        await prisma.pedido.update({
+          where: { id: pedido.id },
+          data:  { safewebStatus: statusEvento, status: 'VERIFICADO', verificadoEm: agora } as any,
+        })
+        console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → VERIFICADO (${evento})`)
+      }
     } else if (novoStatus === 'CANCELADO') {
       await prisma.pedido.update({
         where: { id: pedido.id },
