@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
     const idTipoEmissao = ehPresencial ? 1 : ehEmissaoOnline ? 5 : 3
 
     type ResultadoProtocoloGeracao =
-      | { ok: true; protocolo: string }
+      | { ok: true; protocolo: string; usouAdd5ParaA1: boolean }
       | { ok: false; motivo: string }
 
     async function gerarProtocoloAutomatico(): Promise<ResultadoProtocoloGeracao> {
@@ -223,11 +223,21 @@ export async function POST(req: NextRequest) {
           return { ok: false, motivo: 'Modelo ou cliente não encontrado para montar a solicitação Safeweb.' }
         }
 
+        // A1 (arquivo) é sempre emissão online (Add/5) — sem video, sem ACI.
+        // Add/3 ou Add/1 para A1 podem acionar conferência ACI porque esses
+        // endpoints pressupõem verificação presencial ou via videoconferência.
+        // O AGR não precisa selecionar "emissão online"; o sistema redireciona automaticamente.
+        const isA1 = modeloDb.tipoCertificado === 'A1'
+        const idTipoEmissaoEfetivoBusca = isA1 ? 5 : idTipoEmissao
+        if (isA1 && idTipoEmissao !== 5) {
+          console.log(`[Safeweb] A1 detectado — redirecionando de Add/${idTipoEmissao} para Add/5 (emissão online automática)`)
+        }
+
         const prod = await buscarProduto({
           tipoPessoa:      clienteDados.tipoPessoa,
           tipoCertificado: modeloDb.tipoCertificado as 'A1' | 'A3',
           validadeMeses:   modeloDb.validadeMeses,
-          idTipoEmissao,
+          idTipoEmissao:   idTipoEmissaoEfetivoBusca,
           suporte:         modeloDb.suporte ?? undefined,
           // Único jeito hoje de saber se o modelo inclui leitora de cartão é
           // pelo nome cadastrado (não existe campo próprio) — confirmado com
@@ -332,7 +342,7 @@ export async function POST(req: NextRequest) {
           return { ok: false, motivo: motivo.slice(0, 500) }
         }
 
-        return { ok: true, protocolo: resultado.protocolo }
+        return { ok: true, protocolo: resultado.protocolo, usouAdd5ParaA1: isA1 }
       } catch (err) {
         const motivo = err instanceof Error ? err.message : String(err)
         console.error('[Safeweb][diag] EXCEÇÃO NÃO TRATADA no fluxo de protocolo', err instanceof Error ? { message: err.message, stack: err.stack } : err)
@@ -356,11 +366,9 @@ export async function POST(req: NextRequest) {
 
     safewebProtocolo = resultadoProtocolo.protocolo
 
-    // Integração HOPE — exclusiva do fluxo de videoconferência (gera o link
-    // de upload de documentos); no presencial o cliente leva os documentos à
-    // AR. Falha aqui não invalida o protocolo já obtido, então não bloqueia
-    // a criação do pedido (diferente da falha de protocolo em si).
-    if (ehVideoconferencia) {
+    // Integração HOPE — exclusiva do fluxo de videoconferência (Add/3).
+    // A1 (arquivo) usa Add/5 automaticamente — sem videoconferência, sem Hope.
+    if (ehVideoconferencia && !resultadoProtocolo.usouAdd5ParaA1) {
       try {
         const hope = await integracaoHope(safewebProtocolo)
         if (!hope.ok) {
