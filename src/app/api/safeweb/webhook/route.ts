@@ -152,16 +152,15 @@ export async function POST(req: NextRequest) {
     ? `${evento}: ${motivoRecusa}`
     : acao ? `${evento} (${acao})` : evento
 
-  // Para certificados A1 (arquivo), a Safeweb NÃO envia evento "Emissão" —
-  // o evento "Validação" é o equivalente da emissão nesse fluxo.
-  // Confirmado em 02/07/2026: A3 recebe Validação + Emissão juntos;
-  // A1 recebe apenas Validação e o certificado já foi enviado ao cliente.
-  const tipocert = pedido.itens[0]?.modelo?.tipoCertificado ?? ''
-  const isA1 = tipocert === 'A1'
-  const evNorm = normalizar(evento)
-  const novoStatus = (isA1 && evNorm.includes('validacao'))
-    ? 'EMITIDO'
-    : eventoParaStatus(evento, acao)
+  // Mapeamento de eventos por tipo de emissão (documentação oficial Safeweb — auditado 03/07/2026):
+  // - Add/1 (presencial):       Solicitação → Validação → Emissão
+  // - Add/3 (videoconferência): Solicitação → Confirmação de Cadastro → [Verificação se ACI] → Emissão
+  // - Add/5 (online, A1):       Solicitação → Emissão
+  //
+  // "validacao" é evento presencial ("no momento da validação presencial" — docs Safeweb).
+  // "Confirmação de Cadastro" é evento de videoconferência ("no final da video conferência").
+  // Para A1 via Add/5, o evento de emissão é "emissao" — igual A3. Nenhuma exceção por tipoCertificado.
+  const novoStatus = eventoParaStatus(evento, acao)
 
   if (novoStatus && novoStatus !== pedido.status) {
     const agora = new Date()
