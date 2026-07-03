@@ -5,6 +5,25 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 03/07/2026
+
+### fix(crítico): aciRemovalCandidate false + A1→Add/5 + status EMITIDO não regride
+
+**Origem:** Venda PED-202607-39860 (Tiago Nazare, e-CNPJ A1) foi para ACI e o status regrediu de EMITIDO para VERIFICADO após emissão.
+
+- **`src/lib/safeweb.ts`** — `aciRemovalCandidate` corrigido de `true` para `false`.
+  Confirmado com Safeweb 01/07/2026: `true` causa ACI obrigatória em TODOS os pedidos. O comentário anterior estava invertido.
+- **`src/app/api/pedidos/nova-venda/route.ts`** (commit anterior) — certificados A1 (arquivo) agora são SEMPRE enviados como Add/5 (Emissão Online), independente do tipo selecionado na venda. A1 via Add/3 disparava ACI por diferença de fluxo.
+- **`src/app/api/safeweb/webhook/route.ts`** (commit anterior) — dois comportamentos:
+  - Para A1: evento `validacao` → EMITIDO (A1 via Add/5 não envia evento `emissao`)
+  - Para todos: pedido EMITIDO nunca regride para VERIFICADO (Safeweb envia "Confirmação de Cadastro" depois da emissão em alguns fluxos)
+- **`docs/protocolo.md`** — atualizado com todos os comportamentos acima, formato correto do DataNascimento (DD/MM/YYYY), remoção da tentativa 5→3→1 (removida em 25/06/2026).
+- **Status PED-202607-39860** — corrigido manualmente para EMITIDO via script direto no banco (certificado já existia, emitido em 03/07/2026 às 18:37).
+
+**Auditoria completa** `src/lib/safeweb.ts` vs `docs/protocolo.md` executada. Pontos pendentes de confirmação com Safeweb: formato DataNascimento (DD/MM/YYYY — código diz que funciona), `PaisTelefone` (está no payload dos docs mas ausente no código — verificar se obrigatório), endpoint ConsultaPrevia (caminho diverge entre docs e código).
+
+---
+
 ## 29/06/2026
 
 ### feat: tabelas de preço de custo + comissão por pedido individual

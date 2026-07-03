@@ -387,7 +387,7 @@ export async function integracaoHope(protocolo: string): Promise<{ ok: boolean; 
       body: JSON.stringify({
         protocol:             String(protocolo),
         attendancePlaceId,
-        aciRemovalCandidate:  true,  // true = bypassar ACI (candidato para remoção da fila ACI)
+        aciRemovalCandidate:  false, // NUNCA true — confirmado Safeweb 01/07/2026: true CAUSA ACI obrigatória em todos os pedidos
       }),
       signal: AbortSignal.timeout(12000),
     })

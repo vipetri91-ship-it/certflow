@@ -49,7 +49,9 @@ GET /Shared/Product/api/GetListProdutoByAR/{idTipoEmissao}/{SAFEWEB_CNPJ_AR}
 ```
 A correspondência é feita por: tipo de pessoa (PF/PJ), modelo (A1/A3), validade (1 ano / 2 anos) e suporte (NUVEM/TOKEN/CARTAO/ARQUIVO).
 
-Para certificados do tipo **NUVEM**, o sistema tenta os tipos de emissão `5 → 3 → 1` em sequência até encontrar o produto.
+**Certificados A1 (arquivo) são SEMPRE roteados para Add/5 (Emissão Online)**, independente do tipo de atendimento selecionado na venda. O redirecionamento ocorre automaticamente no fluxo de nova venda antes da busca de produto. (Adicionado 03/07/2026 — A1 via Add/3 disparava ACI.)
+
+Para certificados do tipo **NUVEM**, o tipo de emissão é o selecionado na venda — o sistema NÃO tenta `5 → 3 → 1` em sequência. Se o produto não for encontrado com o tipo informado, a venda falha com erro claro. (Comportamento alterado em 25/06/2026 para evitar troca silenciosa de tipo de emissão.)
 
 ### Passo 3 — [Somente Emissão Online] Validação do Certificado A3 PF
 ```
@@ -70,7 +72,7 @@ POST /Shared/Partner/api/Add/{idTipoEmissao}
   "idProduto":      12345,
   "Nome":           "Nome completo do titular",
   "CPF":            "00000000000",
-  "DataNascimento": "YYYY-MM-DD",
+  "DataNascimento": "DD/MM/YYYY",
   "Contato": {
     "DDD":      "11",
     "Telefone": "999999999",
@@ -129,7 +131,7 @@ POST /Shared/Partner/api/Add/{idTipoEmissao}
   "Titular": {
     "Nome":           "Nome do responsável PF",
     "CPF":            "00000000000",
-    "DataNascimento": "YYYY-MM-DD",
+    "DataNascimento": "DD/MM/YYYY",
     "Contato":        { "DDD": "11", "Telefone": "999999999", "Email": "email@dominio.com" },
     "PaisTelefone":   { "CodigoAlpha2": "BR" },
     "Endereco":       { "...mesmos campos..." }
@@ -180,7 +182,7 @@ Retorna a URL do portal de documentos (`hopeUrlDocumentos`), que é exibida ao a
 
 ## Onde os Dados São Armazenados
 
-Tabela: `Pedido` no banco PostgreSQL (Supabase)
+Tabela: `pedidos` no banco PostgreSQL (Neon)
 
 | Campo | Descrição |
 |---|---|
@@ -207,10 +209,11 @@ Mapeamento de eventos para status:
 | Evento Safeweb | Status no CertFlow |
 |---|---|
 | `emissao` | `EMITIDO` |
+| `validacao` (somente certificados **A1 arquivo**) | `EMITIDO` (A1 via Add/5 não recebe evento `emissao` — confirmado 03/07/2026) |
 | `cancelamento` / `revogacao` | `CANCELADO` |
-| `verificacao` / `confirmacao` (aprovado) | `VERIFICADO` |
+| `verificacao` / `confirmacao` (aprovado) | `VERIFICADO` (nunca regride de EMITIDO — adicionado 03/07/2026) |
 | `verificacao` / `confirmacao` (recusado) | sem mudança de status |
-| `Solicitação`, `Validação` e demais | sem mudança de status |
+| `Solicitação`, `Validação` (demais tipos) e outros | sem mudança de status |
 
 A comparação de eventos ignora acentos e maiúsculas (normalização NFD).
 
@@ -253,3 +256,8 @@ A comparação de eventos ignora acentos e maiúsculas (normalização NFD).
 | 08/06/2026 | Protocolo automático funcionando em produção pela primeira vez (commit `2cf79a7`) |
 | 09/06/2026 | Quebrado por refatorações indevidas; restaurado para o estado original (commit `520a622`) |
 | 09/06/2026 | Este documento criado para evitar regressões futuras |
+| 25/06/2026 | Removida tentativa automática 5→3→1 para NUVEM — troca silenciosa de tipo de emissão causou incidente |
+| 03/07/2026 | A1 (arquivo) sempre Add/5 — corrige ACI ativada erroneamente em e-CNPJ A1 (PED-202607-39860) |
+| 03/07/2026 | Corrigido `aciRemovalCandidate: true → false` no Hope — confirmado com Safeweb que `true` CAUSA ACI obrigatória |
+| 03/07/2026 | Adicionada regra: `validacao` + A1 → EMITIDO; `verificacao/confirmacao` nunca regride EMITIDO |
+| 03/07/2026 | Corrigido formato DataNascimento: o código envia DD/MM/YYYY (não YYYY-MM-DD) — documentação corrigida |
