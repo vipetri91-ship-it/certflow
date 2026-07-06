@@ -4,7 +4,8 @@ import { prisma } from '../prisma'
 import { buscarUltimaExecucao, estaAtrasado } from './heartbeat'
 
 export interface ResultadoVerificacaoLeve {
-  achados: string[]
+  achados: string[]         // urgentes — falha técnica, dispara Telegram
+  achadosInformativos: string[] // pedidos parados — só log no banco, vai para o e-mail diário
   correcoes: string[]
 }
 
@@ -44,6 +45,7 @@ async function dispararCatchUp(job: string): Promise<{ ok: boolean; erro?: strin
 
 export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLeve> {
   const achados: string[] = []
+  const achadosInformativos: string[] = []
   const correcoes: string[] = []
   const agora = new Date()
 
@@ -64,8 +66,9 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     }
   }
 
-  // 2. Pedidos travados há muito tempo em GERADO/VERIFICADO — só relata,
-  // decidir o que fazer com uma venda parada é decisão de negócio.
+  // 2. Pedidos travados há muito tempo em GERADO/VERIFICADO — informativo apenas.
+  // Vai para o e-mail diário, NÃO para o Telegram, para evitar spam a cada 20 min
+  // quando o cliente simplesmente não retornou para concluir o processo.
   const limiteTravado = new Date(agora.getTime() - 48 * 60 * 60 * 1000)
   const travados = await prisma.pedido.findMany({
     where: { status: { in: ['GERADO', 'VERIFICADO'] }, createdAt: { lt: limiteTravado } },
@@ -75,7 +78,7 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
   })
   for (const p of travados) {
     const quando = format(p.createdAt, "dd/MM 'às' HH:mm", { locale: ptBR })
-    achados.push(`O pedido ${p.numero} está parado (${NOME_STATUS_PEDIDO[p.status] ?? p.status}) desde ${quando} — já passou de 2 dias sem avançar.`)
+    achadosInformativos.push(`O pedido ${p.numero} está parado (${NOME_STATUS_PEDIDO[p.status] ?? p.status}) desde ${quando} — já passou de 2 dias sem avançar.`)
   }
 
   // 3. E-mails com erro recente: limpa o registro de falha (não reenvia
@@ -95,5 +98,5 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     }
   }
 
-  return { achados, correcoes }
+  return { achados, achadosInformativos, correcoes }
 }

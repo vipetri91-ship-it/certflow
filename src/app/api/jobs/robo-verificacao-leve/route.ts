@@ -15,13 +15,15 @@ export async function POST(req: NextRequest) {
   }
 
   const inicio = Date.now()
-  const { achados, correcoes } = await executarVerificacaoLeve()
+  const { achados, achadosInformativos, correcoes } = await executarVerificacaoLeve()
   const duracaoMs = Date.now() - inicio
 
   const status = achados.length === 0 ? 'OK' : correcoes.length > 0 ? 'CORRIGIDO_AUTOMATICAMENTE' : 'ACHADOS_SEM_CORRECAO'
 
+  // achadosInformativos (pedidos travados) são gravados no banco mas NÃO disparam
+  // Telegram — o relatório diário já os lista uma vez por dia, evitando spam.
   await prisma.auditoriaRobo.create({
-    data: { tipo: 'LEVE', status, achados, correcoes, duracaoMs },
+    data: { tipo: 'LEVE', status, achados: [...achados, ...achadosInformativos], correcoes, duracaoMs },
   })
   await registrarHeartbeat('robo-verificacao-leve')
 
@@ -34,5 +36,5 @@ export async function POST(req: NextRequest) {
     await enviarTelegram(linhas.join('\n'))
   }
 
-  return NextResponse.json({ ok: true, status, achados, correcoes, duracaoMs })
+  return NextResponse.json({ ok: true, status, achados, achadosInformativos, correcoes, duracaoMs })
 }

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const dataFormatada = format(hoje, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })
 
   // Buscar dados do dia
-  const [pedidosDia, clientesDia, certificadosDia, receitaDia, vencendo7] = await Promise.all([
+  const [pedidosDia, clientesDia, certificadosDia, receitaDia, vencendo7, pedidosTravados] = await Promise.all([
     prisma.pedido.findMany({
       where: { createdAt: { gte: inicio, lte: fim }, ignorarMetricasVendas: false },
       include: { cliente: { select: { nome: true } }, itens: { include: { modelo: { select: { nome: true } } } } },
@@ -49,6 +49,15 @@ export async function POST(req: NextRequest) {
       },
       include: { cliente: { select: { nome: true } }, modelo: { select: { nome: true } } },
       take: 10,
+    }),
+    prisma.pedido.findMany({
+      where: {
+        status: { in: ['GERADO', 'VERIFICADO'] },
+        createdAt: { lt: new Date(hoje.getTime() - 48 * 60 * 60 * 1000) },
+      },
+      select: { numero: true, status: true, createdAt: true, cliente: { select: { nome: true } } },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
     }),
   ])
 
@@ -177,6 +186,16 @@ export async function POST(req: NextRequest) {
       <div class="venc-item">
         <strong>${c.cliente.nome}</strong> — ${c.modelo.nome}
         &nbsp; <span class="badge-warn">Vence ${format(c.dataVencimento, 'dd/MM/yyyy')}</span>
+      </div>`).join('')}
+    </div>` : ''}
+
+    ${pedidosTravados.length > 0 ? `
+    <div class="section">
+      <h2>🕐 Pedidos parados há mais de 2 dias</h2>
+      ${pedidosTravados.map(p => `
+      <div class="venc-item">
+        <strong>${p.cliente.nome}</strong> — ${p.numero}
+        &nbsp; <span class="badge-warn">${p.status} desde ${format(p.createdAt, 'dd/MM/yyyy')}</span>
       </div>`).join('')}
     </div>` : ''}
 
