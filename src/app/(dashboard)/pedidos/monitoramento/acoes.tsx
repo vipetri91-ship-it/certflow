@@ -10,6 +10,7 @@ interface Props {
   tipo: 'status' | 'protocolo'
   statusAtual?: string
   tipoAtendimento?: string | null
+  isPJ?: boolean  // UpdateLiberacao (Safeweb) é exclusivo para PJ (CNPJ)
 }
 
 // REGRA (18/06/2026): emissão é 100% automática via webhook Safeweb. Não
@@ -17,7 +18,7 @@ interface Props {
 // protocolo aqui — isso criava certificados fictícios sem protocolo real
 // (ver memória feedback_safeweb_sagrado) e confundia os AGRs, que pensavam
 // precisar "aprovar" algo que o sistema já resolve sozinho.
-export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendimento }: Props) {
+export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendimento, isPJ = false }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [mostrarPopup, setMostrarPopup] = useState(false)
@@ -64,7 +65,8 @@ export function MonitoramentoAcoes({ pedidoId, tipo, statusAtual, tipoAtendiment
   // Emissão Online: único caso com checkpoint humano legítimo — confirmar
   // pagamento antes de liberar a emissão na Safeweb (não é "aprovar
   // certificado", é liberar o processamento financeiro).
-  if (tipoAtendimento === 'emissao-online' && (statusAtual === 'GERADO' || statusAtual === 'VERIFICADO')) {
+  // UpdateLiberacao é exclusivo para PJ (CNPJ) conforme doc oficial Safeweb.
+  if (tipoAtendimento === 'emissao-online' && isPJ && (statusAtual === 'GERADO' || statusAtual === 'VERIFICADO')) {
     return (
       <button onClick={liberarEmissaoOnline} disabled={loading}
         title="Confirmar pagamento e liberar emissão na Safeweb"

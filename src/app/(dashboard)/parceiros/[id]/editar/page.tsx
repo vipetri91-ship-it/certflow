@@ -45,6 +45,7 @@ interface ParceiroData {
   loginParceiro?: string; statusPainel: boolean; permissoesPainel?: Record<string, boolean>
   whatsappVencimentoAtivo: boolean; emailVencimentoAtivo: boolean
   tabelaPrecoId?: string | null
+  dataNascimento?: string | null
   temSenha?: boolean; ativo: boolean
   comissoes: Comissao[]
   contatosParceiro: ContatoP[]
@@ -250,6 +251,7 @@ export default function EditarParceiroPage() {
         whatsappVencimentoAtivo: p.whatsappVencimentoAtivo ?? true,
         emailVencimentoAtivo:    p.emailVencimentoAtivo    ?? true,
         tabelaPrecoId:           p.tabelaPrecoId ?? '',
+        dataNascimento:          p.dataNascimento ? new Date(p.dataNascimento).toISOString().slice(0, 10) : '',
         ativo:                   p.ativo,
       })
 
@@ -324,6 +326,7 @@ export default function EditarParceiroPage() {
         whatsappVencimentoAtivo: f.whatsappVencimentoAtivo,
         emailVencimentoAtivo:    f.emailVencimentoAtivo,
         tabelaPrecoId:           f.tabelaPrecoId || '',
+        dataNascimento:          f.dataNascimento ? String(f.dataNascimento) : null,
         ativo:                   f.ativo,
       }
 
@@ -551,6 +554,9 @@ export default function EditarParceiroPage() {
                   </Campo>
                   <Campo label="Celular">
                     <Input value={String(f.celular ?? '')} onChange={e => set('celular', formatarTel(e.target.value))} maxLength={15} />
+                  </Campo>
+                  <Campo label="Data de Nascimento">
+                    <Input type="date" value={String(f.dataNascimento ?? '')} onChange={e => set('dataNascimento', e.target.value)} />
                   </Campo>
                 </div>
 

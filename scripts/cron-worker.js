@@ -40,6 +40,7 @@ const jobs = [
   // WhatsApp (8h BRT), pra não competir por recursos no mesmo horário.
   { nome: 'robo-verificacao-leve', cronExpr: '*/20 * * * *', metodo: 'POST' },
   { nome: 'robo-auditoria-profunda', cronExpr: '0 8 * * *', metodo: 'POST' }, // 5h BRT diário
+  { nome: 'aniversario-parceiros', cronExpr: '0 12 * * *', metodo: 'POST' }, // 9h BRT diário
 ]
 
 for (const job of jobs) {

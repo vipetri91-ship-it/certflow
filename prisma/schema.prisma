@@ -259,6 +259,8 @@ model Parceiro {
   // cadastrar modelo por modelo. Modelos que não estão na tabela continuam
   // editáveis manualmente em Comissao.valorCusto (ver tabela-preco.lib.ts).
   tabelaPrecoId        String?
+  dataNascimento           DateTime?  // para envio automático de parabéns no aniversário
+  ultimoAniversarioEnviado Int?       // ano (ex: 2026) do último envio de parabéns, para dedup
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 

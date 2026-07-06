@@ -130,7 +130,9 @@ export default async function ContasReceberPage({ searchParams }: Props) {
   }
 
   function unidade(c: typeof contas[0]) {
-    return c.centroCusto ?? c.pedido?.unidadeAtendimento ?? '—'
+    // Pedido sempre tem a cidade real (Piracaia/Bragança Paulista); centroCusto
+    // só é usado em lançamentos manuais sem pedido vinculado.
+    return c.pedido?.unidadeAtendimento ?? c.centroCusto ?? '—'
   }
 
   return (
@@ -208,7 +210,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
             <table className="w-full text-sm min-w-[750px]">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
-                  {['Cliente', 'Certificado', 'Forma Pgto', 'AGR', 'Unidade', 'Data', 'Valor', 'Status', 'Ação'].map(h => (
+                  {['Cliente', 'Categoria', 'Forma Pgto', 'AGR', 'Unidade', 'Data', 'Valor', 'Status', 'Ação'].map(h => (
                     <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
                       {h}
                     </th>

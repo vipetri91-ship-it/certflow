@@ -39,6 +39,7 @@ const schemaUpdate = z.object({
   observacoes:         optStr,
   ativo:               z.boolean().optional(),
   tabelaPrecoId:       z.string().optional().or(z.literal('')).nullable(),
+  dataNascimento:      z.string().optional().nullable(), // ISO date string
 })
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

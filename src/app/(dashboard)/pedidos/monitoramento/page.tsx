@@ -228,7 +228,7 @@ export default async function MonitoramentoPage({ searchParams }: Props) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <MonitoramentoAcoes pedidoId={p.id} statusAtual={p.status} tipo="status" tipoAtendimento={p.tipoAtendimento} />
+                        <MonitoramentoAcoes pedidoId={p.id} statusAtual={p.status} tipo="status" tipoAtendimento={p.tipoAtendimento} isPJ={p.cliente.tipoPessoa === 'PJ' || !!p.cliente.cnpj} />
                       </td>
                     </tr>
                   )
