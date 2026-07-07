@@ -13,8 +13,8 @@ export async function GET() {
   const meuAgr = deriveAgr(session.user.name ?? session.user.email ?? '')
 
   const pedido = await prisma.pedido.findFirst({
-    where: { agr: meuAgr, status: 'EMITIDO', popupNotificacaoVisto: false },
-    orderBy: { emitidoEm: 'asc' },
+    where: { agr: meuAgr, status: { in: ['VERIFICADO', 'EMITIDO'] }, popupNotificacaoVisto: false },
+    orderBy: { updatedAt: 'asc' },
     select: { id: true },
   })
 

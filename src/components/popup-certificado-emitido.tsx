@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, MessageSquare, Mail, CheckCircle2, Loader2, ChevronRight, User, Building2 } from 'lucide-react'
+import { X, MessageSquare, Mail, CheckCircle2, Loader2, ChevronRight, User, Building2, ShieldCheck } from 'lucide-react'
 
 interface PedidoEmitido {
   id: string
   numero: string
+  status?: string | null
   numeroCompra?: string | null
   cliente: {
     nome: string
@@ -98,6 +99,17 @@ export function PopupCertificadoEmitido({ pedidoId, onFechar }: Props) {
   const temWAParceiro = !!pedido?.parceiro?.celular
   const temMail = !!(pedido?.cliente.email || pedido?.parceiro?.email)
 
+  const isVerificado = pedido?.status === 'VERIFICADO'
+  const headerGradient = isVerificado
+    ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
+    : 'bg-gradient-to-br from-green-500 to-emerald-600'
+  const headerIconColor = isVerificado ? 'text-blue-100' : 'text-green-100'
+  const headerTitle = isVerificado ? 'Aprovado pela Safeweb!' : 'Certificado Emitido!'
+  const headerSubtitle = isVerificado
+    ? 'Avise o cliente que pode fazer a instalação'
+    : 'Processo concluído com sucesso'
+  const HeaderIcon = isVerificado ? ShieldCheck : CheckCircle2
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
@@ -108,15 +120,15 @@ export function PopupCertificadoEmitido({ pedidoId, onFechar }: Props) {
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-br from-green-500 to-emerald-600 px-6 py-6 text-center relative">
+        <div className={`${headerGradient} px-6 py-6 text-center relative`}>
           <button onClick={onFechar} className="absolute top-3 right-3 text-white/70 hover:text-white transition">
             <X className="w-4 h-4" />
           </button>
           <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <CheckCircle2 className="w-8 h-8 text-white" />
+            <HeaderIcon className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-white">Certificado Emitido!</h2>
-          <p className="text-green-100 text-sm mt-1">Processo concluído com sucesso</p>
+          <h2 className="text-xl font-bold text-white">{headerTitle}</h2>
+          <p className={`${headerIconColor} text-sm mt-1`}>{headerSubtitle}</p>
         </div>
 
         {/* Detalhes do certificado */}
@@ -134,9 +146,15 @@ export function PopupCertificadoEmitido({ pedidoId, onFechar }: Props) {
                 {pedido.numeroCompra && <Row label="Protocolo" value={pedido.numeroCompra} mono blue />}
                 <div className="flex justify-between items-center pt-1">
                   <span className="text-xs text-gray-500">Status</span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-                    <CheckCircle2 className="w-3 h-3" /> Aprovado
-                  </span>
+                  {isVerificado ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                      <ShieldCheck className="w-3 h-3" /> Aprovado — Aguardando Instalação
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                      <CheckCircle2 className="w-3 h-3" /> Emitido
+                    </span>
+                  )}
                 </div>
               </div>
 

@@ -5,6 +5,21 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 07/07/2026
+
+### feat: popup de aprovação dispara no status VERIFICADO (não só EMITIDO)
+
+**Origem:** Pedido Safe ID (protocolo 1010978885) ficou em VERIFICADO após a videoconferência ser aprovada pela Safeweb, mas o popup não aparecia porque aguardava EMITIDO.
+
+**Regra de negócio confirmada por Vinicius:** VERIFICADO = Safeweb aprovou o pedido → AGR deve avisar o cliente que pode fazer a instalação. O popup deve aparecer neste momento.
+
+- **`src/app/api/pedidos/notificacoes-pendentes/route.ts`** — filtro ampliado de `status: 'EMITIDO'` para `status: { in: ['VERIFICADO', 'EMITIDO'] }`. `orderBy` trocado de `emitidoEm` para `updatedAt` (VERIFICADO não tem `emitidoEm`).
+- **`src/components/popup-certificado-emitido.tsx`** — header e badge dinâmicos por status:
+  - `VERIFICADO`: gradiente azul/índigo, ícone `ShieldCheck`, título "Aprovado pela Safeweb!", legenda "Avise o cliente que pode fazer a instalação"
+  - `EMITIDO`: gradiente verde/esmeralda, ícone `CheckCircle2`, título "Certificado Emitido!", comportamento anterior preservado
+
+---
+
 ## 03/07/2026
 
 ### fix(crítico): aciRemovalCandidate false + A1→Add/5 + status EMITIDO não regride
