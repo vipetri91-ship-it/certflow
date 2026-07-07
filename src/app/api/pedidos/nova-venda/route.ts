@@ -463,21 +463,35 @@ export async function POST(req: NextRequest) {
         safewebProtocolo ? `Protocolo Safeweb: ${safewebProtocolo}` : null,
       ].filter(Boolean).join('\n')
 
-      const respAgenda = await fetch(`${process.env.NEXTAUTH_URL}/api/agenda`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': req.headers.get('cookie') ?? '' },
-        body: JSON.stringify({
-          titulo: `${cliente?.nome} — ${modelo?.nome}`,
-          descricao,
-          inicio: inicio.toISOString(),
-          duracao: agendamento.duracao,
-          agr: agrAgenda ?? 'vinicius',
-          tipo: tipoAgenda,
-          pedidoId: pedido.id,
-        }),
-      })
-      if (!respAgenda.ok) {
-        console.error('[Agenda] falha ao criar evento para o pedido', pedido.numero, await respAgenda.text())
+      const scriptUrl   = process.env.APPS_SCRIPT_URL
+      const scriptToken = process.env.APPS_SCRIPT_TOKEN
+
+      if (!scriptUrl) {
+        console.warn('[Agenda] APPS_SCRIPT_URL não configurado — evento não criado para', pedido.numero)
+      } else {
+        // Chama o Apps Script diretamente (sem passar pelo /api/agenda que exige
+        // autenticação via cookie — chamadas servidor-a-servidor podem falhar).
+        const respAgenda = await fetch(scriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            titulo:    `${cliente?.nome} — ${modelo?.nome}`,
+            descricao,
+            inicio:    inicio.toISOString(),
+            duracao:   agendamento.duracao,
+            agr:       agrAgenda ?? 'vinicius',
+            tipo:      tipoAgenda,
+            pedidoId:  pedido.id,
+            token:     scriptToken,
+          }),
+          redirect: 'follow',
+        })
+        const dadosAgenda = await respAgenda.json().catch(() => ({}))
+        if (!dadosAgenda.ok) {
+          console.error('[Agenda] falha ao criar evento para', pedido.numero, dadosAgenda)
+        } else {
+          console.log('[Agenda] evento criado', pedido.numero, dadosAgenda.eventoId)
+        }
       }
     } catch (err) {
       console.error('[Agenda] exceção ao criar evento para o pedido', pedido.numero, err)
