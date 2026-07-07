@@ -53,24 +53,28 @@ interface WizardDados {
   observacoesFinanceiro: string; observacoesAgendamento: string
 }
 
-const INITIAL = (defaultAgr: string): WizardDados => ({
-  tipoPessoa: 'PJ', cnpj: '', cpfResponsavel: '', dataNascimento: '',
-  nomeEmpresa: '', nomeResponsavel: '', clienteId: '', validado: false,
-  modeloId: '', modeloNome: '', modeloPreco: 0,
-  nome: '', cpf: '', dataNasc: '', email: '', ddd: '', telefone: '',
-  pisNis: '', cei: '', caepf: '',
-  cep: '', logradouro: '', numero: '', complemento: '', bairro: '', municipio: '', estado: '',
-  razaoSocial: '', fantasia: '', respContato: '',
-  emailEmpresa: '', dddEmpresa: '', telEmpresa: '', ie: '',
-  cepEmpresa: '', logradouroEmpresa: '', numeroEmpresa: '',
-  complementoEmpresa: '', bairroEmpresa: '', municipioEmpresa: '', estadoEmpresa: '',
-  parceiroId: '', contabilidade: '', voucher: '', unidadeAtendimento: '',
-  valorVenda: 0, formaPagamento: 'Pix', tipoAtendimento: 'videoconferencia',
-  atendimentoExterno: false, valorDeslocamento: 0,
-  agr: defaultAgr, agendar: true,
-  dataAgendamento: new Date().toISOString().split('T')[0], horaAgendamento: '09:00',
-  duracaoAgendamento: 60, observacoesFinanceiro: '', observacoesAgendamento: '',
-})
+const INITIAL = (defaultAgr: string): WizardDados => {
+  const agora = new Date()
+  const horaAtual = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
+  return {
+    tipoPessoa: 'PJ', cnpj: '', cpfResponsavel: '', dataNascimento: '',
+    nomeEmpresa: '', nomeResponsavel: '', clienteId: '', validado: false,
+    modeloId: '', modeloNome: '', modeloPreco: 0,
+    nome: '', cpf: '', dataNasc: '', email: '', ddd: '', telefone: '',
+    pisNis: '', cei: '', caepf: '',
+    cep: '', logradouro: '', numero: '', complemento: '', bairro: '', municipio: '', estado: '',
+    razaoSocial: '', fantasia: '', respContato: '',
+    emailEmpresa: '', dddEmpresa: '', telEmpresa: '', ie: '',
+    cepEmpresa: '', logradouroEmpresa: '', numeroEmpresa: '',
+    complementoEmpresa: '', bairroEmpresa: '', municipioEmpresa: '', estadoEmpresa: '',
+    parceiroId: '', contabilidade: '', voucher: '', unidadeAtendimento: '',
+    valorVenda: 0, formaPagamento: 'Pix', tipoAtendimento: 'videoconferencia',
+    atendimentoExterno: false, valorDeslocamento: 0,
+    agr: defaultAgr, agendar: true,
+    dataAgendamento: agora.toISOString().split('T')[0], horaAgendamento: horaAtual,
+    duracaoAgendamento: 60, observacoesFinanceiro: '', observacoesAgendamento: '',
+  }
+}
 
 const AGR_OPTIONS = [
   { value: 'vinicius',     label: 'Vinicius' },

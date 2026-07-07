@@ -5,6 +5,19 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 07/07/2026 (2)
+
+### fix: agendamento automático na agenda ao gerar protocolo
+
+**Causa raiz 1:** `tipoAtendimento === 'emissao-online'` era passado como `tipo` diretamente para a API da agenda, que só aceita `presencial | videoconferencia | bonificado | pessoal | pre-agendado`. Isso gerava um 422 silencioso e nenhum evento era criado. Corrigido com mapeamento explícito: `emissao-online → videoconferencia`, `externo → presencial`.
+
+**Causa raiz 2:** O horário padrão no wizard era fixo em `09:00`, em vez do horário atual quando a venda é aberta.
+
+- **`src/app/api/pedidos/nova-venda/route.ts`** — adicionado `TIPO_ATEND_PARA_AGENDA` que converte `tipoAtendimento` para um tipo válido no schema da agenda antes de chamar a API.
+- **`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`** — `horaAgendamento` agora usa `new Date()` formatado (HH:MM) como valor inicial.
+
+---
+
 ## 07/07/2026
 
 ### feat: popup de aprovação dispara no status VERIFICADO (não só EMITIDO)

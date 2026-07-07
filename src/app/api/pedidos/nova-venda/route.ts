@@ -442,8 +442,20 @@ export async function POST(req: NextRequest) {
         arlen: 'arlen',
         'ana.karolina': 'ana',
       }
+      // Mapeamento tipoAtendimento → tipo válido no schema da agenda.
+      // 'emissao-online' e 'externo' não existem no enum da agenda —
+      // mapear aqui evita o 422 silencioso que impedia a criação do evento.
+      const TIPO_ATEND_PARA_AGENDA: Record<string, 'presencial' | 'videoconferencia' | 'bonificado' | 'pessoal'> = {
+        presencial:       'presencial',
+        videoconferencia: 'videoconferencia',
+        'emissao-online': 'videoconferencia',
+        externo:          'presencial',
+        bonificado:       'bonificado',
+      }
       const agrAgenda = AGR_PARA_AGENDA[pedidoDados.agr]
-      const tipoAgenda = agrAgenda ? (pedidoDados.tipoAtendimento ?? 'videoconferencia') : 'pessoal'
+      const tipoAgenda = agrAgenda
+        ? (TIPO_ATEND_PARA_AGENDA[pedidoDados.tipoAtendimento ?? ''] ?? 'videoconferencia')
+        : 'pessoal'
 
       const descricao = [
         `Pedido: ${pedido.numero}`,
