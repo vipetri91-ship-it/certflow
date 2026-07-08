@@ -223,15 +223,8 @@ export async function POST(req: NextRequest) {
           return { ok: false, motivo: 'Modelo ou cliente não encontrado para montar a solicitação Safeweb.' }
         }
 
-        // A1 (arquivo) é sempre emissão online (Add/5) — sem video, sem ACI.
-        // Add/3 ou Add/1 para A1 podem acionar conferência ACI porque esses
-        // endpoints pressupõem verificação presencial ou via videoconferência.
-        // O AGR não precisa selecionar "emissão online"; o sistema redireciona automaticamente.
         const isA1 = modeloDb.tipoCertificado === 'A1'
-        const idTipoEmissaoEfetivoBusca = isA1 ? 5 : idTipoEmissao
-        if (isA1 && idTipoEmissao !== 5) {
-          console.log(`[Safeweb] A1 detectado — redirecionando de Add/${idTipoEmissao} para Add/5 (emissão online automática)`)
-        }
+        const idTipoEmissaoEfetivoBusca = idTipoEmissao
 
         const prod = await buscarProduto({
           tipoPessoa:      clienteDados.tipoPessoa,
@@ -342,7 +335,7 @@ export async function POST(req: NextRequest) {
           return { ok: false, motivo: motivo.slice(0, 500) }
         }
 
-        return { ok: true, protocolo: resultado.protocolo, usouAdd5ParaA1: isA1 }
+        return { ok: true, protocolo: resultado.protocolo, usouAdd5ParaA1: false }
       } catch (err) {
         const motivo = err instanceof Error ? err.message : String(err)
         console.error('[Safeweb][diag] EXCEÇÃO NÃO TRATADA no fluxo de protocolo', err instanceof Error ? { message: err.message, stack: err.stack } : err)
