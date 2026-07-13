@@ -119,8 +119,13 @@ export async function GET(req: NextRequest) {
       })
     )
 
-    // 3. Consolida todos os eventos
+    // 3. Consolida todos os eventos — loga calendários que falharam
     type EventoItem = { id: string; titulo: string; descricao: string; localizacao: string; inicio: string; fim: string; colorId: string; calendarId: string; cor?: string }
+    todosEventos.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error('[Agenda] falha ao buscar eventos do calendário', calendarios[i]?.summary, calendarios[i]?.id, r.reason?.message ?? r.reason)
+      }
+    })
     const eventos = (todosEventos
       .filter((r) => r.status === 'fulfilled')
       .flatMap(r => (r as PromiseFulfilledResult<EventoItem[]>).value) as EventoItem[])
