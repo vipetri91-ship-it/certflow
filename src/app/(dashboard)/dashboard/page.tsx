@@ -179,10 +179,10 @@ async function getVencimentosData() {
   )
 
   return {
-    vencidos: vencidos.map(c => ({ ...c, dataVencimento: c.dataVencimento.toISOString() })),
-    em7:      em7.map(c => ({ ...c, dataVencimento: c.dataVencimento.toISOString() })),
-    em15:     em15.map(c => ({ ...c, dataVencimento: c.dataVencimento.toISOString() })),
-    em30:     em30.map(c => ({ ...c, dataVencimento: c.dataVencimento.toISOString() })),
+    vencidos: vencidos.map(c => ({ ...c, dataVencimento: c.dataVencimento!.toISOString() })),
+    em7:      em7.map(c => ({ ...c, dataVencimento: c.dataVencimento!.toISOString() })),
+    em15:     em15.map(c => ({ ...c, dataVencimento: c.dataVencimento!.toISOString() })),
+    em30:     em30.map(c => ({ ...c, dataVencimento: c.dataVencimento!.toISOString() })),
     proximosMeses,
   }
 }

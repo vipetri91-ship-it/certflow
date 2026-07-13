@@ -13,7 +13,8 @@ function paraHorarioBrasilia(data: Date | string): Date {
   return new Date(d.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 }
 
-export function formatarData(data: Date | string): string {
+export function formatarData(data: Date | string | null | undefined): string {
+  if (!data) return '—'
   return format(paraHorarioBrasilia(data), 'dd/MM/yyyy', { locale: ptBR })
 }
 
@@ -46,7 +47,8 @@ export function formatarTelefone(tel: string): string {
   return nums.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
 }
 
-export function diasParaVencimento(dataVencimento: Date | string): number {
+export function diasParaVencimento(dataVencimento: Date | string | null | undefined): number {
+  if (!dataVencimento) return Infinity
   return differenceInDays(new Date(dataVencimento), new Date())
 }
 

@@ -5,10 +5,12 @@ import { prisma } from '@/lib/prisma'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-function fmtData(d: Date | string) {
+function fmtData(d: Date | string | null | undefined) {
+  if (!d) return '—'
   return new Date(d).toLocaleDateString('pt-BR')
 }
-function diasRestantes(d: Date | string) {
+function diasRestantes(d: Date | string | null | undefined) {
+  if (!d) return Infinity
   return Math.floor((new Date(d).getTime() - Date.now()) / 86_400_000)
 }
 function fmtCNPJ(s: string) {

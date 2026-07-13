@@ -66,11 +66,11 @@ export default async function RenovacoesPage({ searchParams }: Props) {
   function serializar(lista: typeof certificadosMes) {
     return lista.map(c => ({
       ...c,
-      dataVencimento: c.dataVencimento.toISOString(),
-      dataEmissao:    c.dataEmissao.toISOString(),
+      dataVencimento: c.dataVencimento!.toISOString(),
+      dataEmissao:    c.dataEmissao?.toISOString() ?? null,
       createdAt:      c.createdAt.toISOString(),
       updatedAt:      c.updatedAt.toISOString(),
-      diasRestantes:  diasRestantes(c.dataVencimento),
+      diasRestantes:  diasRestantes(c.dataVencimento!),
       cliente: {
         ...c.cliente,
         cpf:         c.cliente.cpf         ?? null,

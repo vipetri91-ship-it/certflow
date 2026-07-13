@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
       ${vencendo7.map(c => `
       <div class="venc-item">
         <strong>${c.cliente.nome}</strong> — ${c.modelo.nome}
-        &nbsp; <span class="badge-warn">Vence ${format(c.dataVencimento, 'dd/MM/yyyy')}</span>
+        &nbsp; <span class="badge-warn">Vence ${format(c.dataVencimento!, 'dd/MM/yyyy')}</span>
       </div>`).join('')}
     </div>` : ''}
 

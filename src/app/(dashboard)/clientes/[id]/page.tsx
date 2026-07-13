@@ -223,8 +223,8 @@ export default async function ClienteDetalhePage({ params }: Props) {
                             cert={{
                               id: cert.id,
                               modeloId: cert.modeloId,
-                              dataEmissao: cert.dataEmissao.toISOString(),
-                              dataVencimento: cert.dataVencimento.toISOString(),
+                              dataEmissao: cert.dataEmissao?.toISOString() ?? '',
+                              dataVencimento: cert.dataVencimento?.toISOString() ?? '',
                               numeroSerie: cert.numeroSerie,
                               valorManual: cert.valorManual !== null ? Number(cert.valorManual) : null,
                             }}

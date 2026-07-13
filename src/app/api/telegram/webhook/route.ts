@@ -89,8 +89,8 @@ const TOOLS: Anthropic.Messages.Tool[] = [
 // ── Executar ferramenta ───────────────────────────────────────────────────────
 
 function fmtValor(v: number) { return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }
-function fmtData(d: Date | string) { return new Date(d).toLocaleDateString('pt-BR') }
-function diasRestantes(d: Date | string) { return Math.floor((new Date(d).getTime() - Date.now()) / 86_400_000) }
+function fmtData(d: Date | string | null | undefined) { if (!d) return '—'; return new Date(d).toLocaleDateString('pt-BR') }
+function diasRestantes(d: Date | string | null | undefined) { if (!d) return Infinity; return Math.floor((new Date(d).getTime() - Date.now()) / 86_400_000) }
 function statusCert(dias: number) {
   if (dias < 0)   return `🔴 VENCIDO há ${Math.abs(dias)} dias`
   if (dias <= 7)  return `🟠 Vence em ${dias} dias (URGENTE)`

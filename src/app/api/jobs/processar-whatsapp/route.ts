@@ -96,7 +96,7 @@ async function executarJob() {
     if (!telefone) { resultado.pulados++; continue }
     if (cert.cliente.parceiro?.whatsappVencimentoAtivo === false) { resultado.pulados++; continue }
 
-    const diasRestantes = differenceInCalendarDays(cert.dataVencimento, hoje)
+    const diasRestantes = differenceInCalendarDays(cert.dataVencimento!, hoje)
     const textosEnviados = await buscarMarcasJaEnviadas(cert.id, Object.values(MARCA_TEXTO))
     const jaEnviados = new Set([...textosEnviados].map((t) => TEXTO_PARA_MARCA[t]))
     const marca = marcoMaisUrgenteAplicavel(MARCOS_ANTES, (limite) => diasRestantes <= limite, jaEnviados)
@@ -105,7 +105,7 @@ async function executarJob() {
     const mensagem = gerarMensagemWhatsApp({
       nomeCliente: cert.cliente.nome,
       modeloCertificado: cert.modelo.nome,
-      dataVencimento: format(cert.dataVencimento, 'dd/MM/yyyy', { locale: ptBR }),
+      dataVencimento: format(cert.dataVencimento!, 'dd/MM/yyyy', { locale: ptBR }),
       diasRestantes,
     })
 
@@ -145,7 +145,7 @@ async function executarJob() {
     if (!telefone) { resultado.pulados++; continue }
     if (cert.cliente.parceiro?.whatsappVencimentoAtivo === false) { resultado.pulados++; continue }
 
-    const diasVencido = differenceInCalendarDays(hoje, cert.dataVencimento)
+    const diasVencido = differenceInCalendarDays(hoje, cert.dataVencimento!)
     const textosEnviados = await buscarMarcasJaEnviadas(cert.id, Object.values(MARCA_TEXTO))
     const jaEnviados = new Set([...textosEnviados].map((t) => TEXTO_PARA_MARCA[t]))
     const marca = marcoMaisUrgenteAplicavel(MARCOS_DEPOIS, (limite) => diasVencido >= limite, jaEnviados)
@@ -154,7 +154,7 @@ async function executarJob() {
     const mensagem = gerarMensagemWhatsApp({
       nomeCliente: cert.cliente.nome,
       modeloCertificado: cert.modelo.nome,
-      dataVencimento: format(cert.dataVencimento, 'dd/MM/yyyy', { locale: ptBR }),
+      dataVencimento: format(cert.dataVencimento!, 'dd/MM/yyyy', { locale: ptBR }),
       diasRestantes: -diasVencido,
     })
 
@@ -193,7 +193,7 @@ async function executarJob() {
     if (!telefone) { resultado.pulados++; continue }
     if (cert.cliente.parceiro?.whatsappVencimentoAtivo === false) { resultado.pulados++; continue }
 
-    const mesesPassados = differenceInMonths(hoje, cert.dataEmissao)
+    const mesesPassados = differenceInMonths(hoje, cert.dataEmissao!)
     const textosEnviados = await buscarMarcasJaEnviadas(cert.id, Object.values(MARCA_NUTRICAO))
     const jaEnviados = new Set([...textosEnviados].map((t) => TEXTO_PARA_TRIMESTRE[t]))
     const trimestre = marcoMaisUrgenteAplicavel(MARCOS_NUTRICAO, (limite) => mesesPassados >= limite, jaEnviados)

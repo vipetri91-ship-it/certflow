@@ -109,10 +109,12 @@ Use quando o usuário perguntar:
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtData(d: Date | string) {
+function fmtData(d: Date | string | null | undefined) {
+  if (!d) return '—'
   return new Date(d).toLocaleDateString('pt-BR')
 }
-function diasRestantes(d: Date | string) {
+function diasRestantes(d: Date | string | null | undefined) {
+  if (!d) return Infinity
   return Math.floor((new Date(d).getTime() - Date.now()) / 86_400_000)
 }
 function fmtCNPJ(s: string) {
@@ -169,7 +171,7 @@ async function executarFerramenta(nome: string, input: Record<string, string>): 
   // ── buscar_empresas_responsavel ─────────────────────────────────────────────
   if (nome === 'buscar_empresas_responsavel') {
     const { cpf, nome: nomeBusca } = input
-    type ClienteResult = { id: string; razaoSocial: string | null; cnpj: string | null; responsavel: string | null; cpf: string | null; certificados: { dataVencimento: Date; status: string; modelo: { nome: string } }[] }
+    type ClienteResult = { id: string; razaoSocial: string | null; cnpj: string | null; responsavel: string | null; cpf: string | null; certificados: { dataVencimento: Date | null; status: string; modelo: { nome: string } }[] }
     let clientes: ClienteResult[] = []
 
     if (cpf) {

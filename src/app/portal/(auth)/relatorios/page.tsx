@@ -2,11 +2,13 @@ import { getPortalSession } from '@/lib/portal-session'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 
-function fmtData(d: Date | string) {
+function fmtData(d: Date | string | null | undefined) {
+  if (!d) return '—'
   return new Date(d).toLocaleDateString('pt-BR')
 }
 
-function diasRestantes(vencimento: Date | string) {
+function diasRestantes(vencimento: Date | string | null | undefined) {
+  if (!vencimento) return Infinity
   const diff = new Date(vencimento).getTime() - new Date().setHours(0,0,0,0)
   return Math.ceil(diff / 86400000)
 }

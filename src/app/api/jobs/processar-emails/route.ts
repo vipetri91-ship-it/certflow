@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     if (!cert.cliente.email) continue
     if (cert.cliente.parceiro?.emailVencimentoAtivo === false) continue
 
-    const diasRestantes = differenceInCalendarDays(cert.dataVencimento, hoje)
+    const diasRestantes = differenceInCalendarDays(cert.dataVencimento!, hoje)
     const jaEnviados = new Set(cert.emailsEnviados.map((e) => e.tipo))
     const tipo = marcoMaisUrgenteAplicavel(MARCOS_ANTES, (limite) => diasRestantes <= limite, jaEnviados)
     if (!tipo) continue
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
         {
           nomeCliente: cert.cliente.nome,
           modeloCertificado: cert.modelo.nome,
-          dataVencimento: format(cert.dataVencimento, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+          dataVencimento: format(cert.dataVencimento!, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
           diasRestantes,
         },
         diasRestantes
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     if (!cert.cliente.email) continue
     if (cert.cliente.parceiro?.emailVencimentoAtivo === false) continue
 
-    const diasVencido = differenceInCalendarDays(hoje, cert.dataVencimento)
+    const diasVencido = differenceInCalendarDays(hoje, cert.dataVencimento!)
     const jaEnviados = new Set(cert.emailsEnviados.map((e) => e.tipo))
     const tipo = marcoMaisUrgenteAplicavel(MARCOS_DEPOIS, (limite) => diasVencido >= limite, jaEnviados)
     if (!tipo) continue
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
         {
           nomeCliente: cert.cliente.nome,
           modeloCertificado: cert.modelo.nome,
-          dataVencimento: format(cert.dataVencimento, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+          dataVencimento: format(cert.dataVencimento!, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
         },
         diasVencido
       )
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
   for (const cert of candidatosNutricao) {
     if (!cert.cliente.email) continue
 
-    const mesesPassados = differenceInMonths(hoje, cert.dataEmissao)
+    const mesesPassados = differenceInMonths(hoje, cert.dataEmissao!)
     const jaEnviados = new Set(cert.emailsEnviados.map((e) => e.tipo))
     const marcos = MARCOS_NUTRICAO.map((m) => m.marco)
     const tipo = marcoMaisUrgenteAplicavel(marcos, (limite) => mesesPassados >= limite, jaEnviados)
