@@ -12,7 +12,7 @@ interface Modelo {
 
 const TIPOS_PESSOA = ['PF', 'PJ']
 const TIPOS_CERT   = ['A1', 'A3']
-const SUPORTES     = ['ARQUIVO', 'CARTAO', 'TOKEN', 'NUVEM']
+const SUPORTES     = ['ARQUIVO', 'CARTAO', 'TOKEN', 'NUVEM', 'SEM_MIDIA']
 
 // Ordem de exibição dos grupos
 const GRUPO_ORDEM = [

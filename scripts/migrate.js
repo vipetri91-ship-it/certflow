@@ -362,6 +362,8 @@ async function migrate() {
     // Substitui o fechamento mensal único (comissoes_fechamento, nunca usado
     // com dados reais — confirmado em 29/06/2026, 0 registros) por comissão
     // por pedido individual, com pagamento selecionável por cliente.
+    // Sem Mídia — cliente já possui token/cartão e quer só o arquivo
+    `ALTER TYPE "SuporteCertificado" ADD VALUE IF NOT EXISTS 'SEM_MIDIA'`,
     `CREATE TABLE IF NOT EXISTS "comissoes_pedido" (
       "id" TEXT NOT NULL,
       "pedidoId" TEXT NOT NULL,

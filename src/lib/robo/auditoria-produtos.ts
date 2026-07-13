@@ -83,12 +83,10 @@ export async function auditarProdutosSafeweb(): Promise<AchadoAuditoriaProduto[]
 
       if (resultado.ok) continue
 
-      // Mídia física (token/cartão/arquivo) não tem produto de vídeo/online
-      // por desenho da Safeweb — confirmado na auditoria de 25/06/2026, não é
-      // achado, é esperado. Só reporta bloqueio quando: é a linha NUVEM
-      // (deveria funcionar em qualquer tipo) ou é o tipo presencial (todo
-      // modelo deveria ter pelo menos a opção presencial).
-      const ehRuidoEsperado = m.suporte !== 'NUVEM' && idTipoEmissao !== 1
+      // TOKEN e CARTAO são mídias físicas: não têm produto de vídeo/online na Safeweb.
+      // SEM_MIDIA, ARQUIVO e NUVEM devem funcionar em vídeo e online — se falhar, é bug.
+      const ehMidiaFisica = m.suporte === 'TOKEN' || m.suporte === 'CARTAO'
+      const ehRuidoEsperado = ehMidiaFisica && idTipoEmissao !== 1
       if (!ehRuidoEsperado) {
         achados.push({
           modelo: m.nome,

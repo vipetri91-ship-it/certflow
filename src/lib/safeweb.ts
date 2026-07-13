@@ -482,6 +482,7 @@ const MIDIA_TIPO_POR_SUPORTE: Record<string, string> = {
   TOKEN: 'Token',
   CARTAO: 'Cartão',
   ARQUIVO: 'Arquivo',
+  SEM_MIDIA: 'Sem mídia',
 }
 
 const DIAS_PERIODO_USO_POR_VALIDADE: Record<number, number> = {
