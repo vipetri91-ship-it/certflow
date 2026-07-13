@@ -13,13 +13,14 @@ import { ptBR } from 'date-fns/locale'
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
+  const { id } = await params
   const log = await prisma.emailLog.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       cliente: { select: { id: true, nome: true, email: true } },
       certificado: {
