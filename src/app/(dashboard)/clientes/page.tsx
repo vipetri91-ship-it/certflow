@@ -6,15 +6,18 @@ import Link from 'next/link'
 import { UserPlus, Upload } from 'lucide-react'
 
 interface Props {
-  searchParams: Promise<{ q?: string; tipo?: string; grupo?: string; page?: string }>
+  searchParams: Promise<{ q?: string; tipo?: string; grupo?: string; page?: string; limit?: string }>
 }
+
+const LIMITES_VALIDOS = [25, 50, 100]
 
 export default async function ClientesPage({ searchParams }: Props) {
   const params = await searchParams
   const session = await auth()
   const isAdmin = session?.user?.role === 'ADMIN'
   const pagina = Number(params.page ?? 1)
-  const porPagina = 20
+  const limiteSolicitado = Number(params.limit ?? 50)
+  const porPagina = LIMITES_VALIDOS.includes(limiteSolicitado) ? limiteSolicitado : 50
   const skip = (pagina - 1) * porPagina
 
   const where = {

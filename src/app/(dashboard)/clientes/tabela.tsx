@@ -51,13 +51,13 @@ export function ClientesTabela({ clientes, total, pagina, porPagina, isAdmin }: 
   const [, startTransition] = useTransition()
   const [excluindo, setExcluindo] = useState<string | null>(null)
 
-  function navegar(novoParams: Record<string, string>) {
+  function navegar(novoParams: Record<string, string>, resetarPagina = false) {
     const params = new URLSearchParams(searchParams.toString())
     Object.entries(novoParams).forEach(([k, v]) => {
       if (v) params.set(k, v)
       else params.delete(k)
     })
-    params.set('page', '1')
+    if (resetarPagina) params.set('page', '1')
     startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }
 
@@ -87,7 +87,7 @@ export function ClientesTabela({ clientes, total, pagina, porPagina, isAdmin }: 
 
   function aplicarBusca(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    navegar({ q: busca, tipo, grupo })
+    navegar({ q: busca, tipo, grupo }, true)
   }
 
   const totalPaginas = Math.ceil(total / porPagina)
@@ -268,32 +268,48 @@ export function ClientesTabela({ clientes, total, pagina, porPagina, isAdmin }: 
         </div>
 
         {/* Paginação */}
-        {totalPaginas > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
-              Mostrando {(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, total)} de {total}
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                disabled={pagina <= 1}
-                onClick={() => navegar({ page: String(pagina - 1) })}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 gap-3 flex-wrap">
+          <p className="text-xs text-gray-500">
+            {total > 0
+              ? `Mostrando ${(pagina - 1) * porPagina + 1}–${Math.min(pagina * porPagina, total)} de ${total}`
+              : 'Nenhum cliente encontrado'}
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500">Por página:</span>
+              <select
+                value={porPagina}
+                onChange={e => navegar({ limit: e.target.value }, true)}
+                className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="px-3 text-xs text-gray-700">
-                {pagina} / {totalPaginas}
-              </span>
-              <button
-                disabled={pagina >= totalPaginas}
-                onClick={() => navegar({ page: String(pagina + 1) })}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
             </div>
+            {totalPaginas > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={pagina <= 1}
+                  onClick={() => navegar({ page: String(pagina - 1) })}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="px-3 text-xs text-gray-700">
+                  {pagina} / {totalPaginas}
+                </span>
+                <button
+                  disabled={pagina >= totalPaginas}
+                  onClick={() => navegar({ page: String(pagina + 1) })}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
