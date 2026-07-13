@@ -289,6 +289,28 @@ export async function POST(req: NextRequest) {
       })
       console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → CANCELADO (${evento})`)
     }
+  } else if (novoStatus === 'EMITIDO' && pedido.status === 'EMITIDO') {
+    // Pedido já finalizado — evento "Emissão" chegou (cliente instalou o certificado).
+    // Não muda o status do pedido (continua em Finalizados), mas atualiza as datas
+    // do certificado para refletir a data real de instalação, garantindo que o
+    // controle de vencimentos seja baseado em quando o cliente instalou, não quando
+    // confirmamos a identidade na videoconferência/presencial.
+    const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: pedido.id } })
+    if (certExistente && pedido.itens[0]) {
+      const agora = new Date()
+      const item = pedido.itens[0]
+      const dataVencimento = new Date(agora)
+      dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
+      await prisma.certificado.update({
+        where: { id: certExistente.id },
+        data:  { dataEmissao: agora, dataVencimento },
+      })
+      console.log(`[Safeweb Webhook] ${pedido.numero}: certificado atualizado com data real de instalação — vence ${dataVencimento.toLocaleDateString('pt-BR')}`)
+    }
+    await prisma.pedido.update({
+      where: { id: pedido.id },
+      data:  { safewebStatus: statusEvento } as any,
+    })
   } else {
     // Evento informativo ou recusa — registra sem mudar status
     await prisma.pedido.update({
