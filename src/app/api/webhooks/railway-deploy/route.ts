@@ -11,9 +11,9 @@ const STATUS_EMOJI: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   const secret = process.env.RAILWAY_WEBHOOK_SECRET
-  const tokenRecebido = req.headers.get('x-railway-signature') ?? req.headers.get('authorization')?.replace('Bearer ', '')
+  const tokenUrl = req.nextUrl.searchParams.get('token')
 
-  if (secret && tokenRecebido !== secret) {
+  if (secret && tokenUrl !== secret) {
     return NextResponse.json({ erro: 'Token inválido' }, { status: 401 })
   }
 
