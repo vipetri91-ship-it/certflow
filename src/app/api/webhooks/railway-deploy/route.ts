@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enviarTelegram } from '@/lib/telegram'
 
-const STATUS_EMOJI: Record<string, string> = {
-  SUCCESS: '✅',
-  FAILED:  '❌',
-  CRASHED: '💥',
-  REMOVED: '🗑️',
-  SLEEPING: '😴',
+// Mapeia type do Railway → emoji e label
+const TIPO_INFO: Record<string, { emoji: string; label: string; sucesso: boolean }> = {
+  DEPLOYED:    { emoji: '✅', label: 'CONCLUÍDO',  sucesso: true  },
+  DEPLOY:      { emoji: '✅', label: 'CONCLUÍDO',  sucesso: true  },
+  SUCCESS:     { emoji: '✅', label: 'CONCLUÍDO',  sucesso: true  },
+  FAILED:      { emoji: '❌', label: 'FALHOU',     sucesso: false },
+  DEPLOY_FAIL: { emoji: '❌', label: 'FALHOU',     sucesso: false },
+  CRASHED:     { emoji: '💥', label: 'TRAVOU',     sucesso: false },
+  CRASH:       { emoji: '💥', label: 'TRAVOU',     sucesso: false },
+  OOM_KILLED:  { emoji: '💥', label: 'SEM MEMÓRIA', sucesso: false },
 }
 
 export async function POST(req: NextRequest) {
@@ -24,33 +28,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Payload inválido' }, { status: 400 })
   }
 
-  const type       = body.type as string | undefined
+  // Railway pode mandar o tipo no campo "type" ou "status" dentro de deployment
+  const typeRaw    = (body.type as string | undefined)?.toUpperCase()
   const deployment = body.deployment as Record<string, unknown> | undefined
-  const service    = body.service    as Record<string, unknown> | undefined
-  const status     = deployment?.status as string | undefined
+  const statusRaw  = (deployment?.status as string | undefined)?.toUpperCase()
+  const service    = body.service as Record<string, unknown> | undefined
 
-  // Só notifica eventos de deploy concluído (sucesso ou falha)
-  if (type !== 'DEPLOY' || !status) {
+  const chave = typeRaw && TIPO_INFO[typeRaw] ? typeRaw : (statusRaw ?? '')
+  const info  = TIPO_INFO[chave]
+
+  // Ignora eventos que não são de deploy concluído/falhado
+  if (!info) {
+    console.log('[Railway webhook] evento ignorado:', typeRaw, statusRaw, JSON.stringify(body).slice(0, 200))
     return NextResponse.json({ ok: true, ignorado: true })
   }
 
-  if (!['SUCCESS', 'FAILED', 'CRASHED'].includes(status)) {
-    return NextResponse.json({ ok: true, ignorado: true })
-  }
-
-  const emoji       = STATUS_EMOJI[status] ?? '🔔'
   const nomeServico = (service?.name as string | undefined) ?? 'certflow'
-  const commit      = (deployment?.meta as Record<string, unknown> | undefined)?.commitMessage as string | undefined
-  const commitHash  = (deployment?.meta as Record<string, unknown> | undefined)?.commitHash as string | undefined
+  const meta        = deployment?.meta as Record<string, unknown> | undefined
+  const commit      = meta?.commitMessage as string | undefined
+  const commitHash  = meta?.commitHash   as string | undefined
   const hashCurto   = commitHash ? commitHash.slice(0, 7) : ''
 
-  const statusLabel = status === 'SUCCESS' ? 'CONCLUÍDO' : status === 'FAILED' ? 'FALHOU' : 'TRAVOU'
-
   const linhas = [
-    `${emoji} *Deploy ${statusLabel}* — \`${nomeServico}\``,
+    `${info.emoji} *Deploy ${info.label}* — \`${nomeServico}\``,
     commit    ? `📝 ${commit}` : null,
     hashCurto ? `🔖 \`${hashCurto}\`` : null,
-    status === 'SUCCESS'
+    info.sucesso
       ? '🌐 Em produção: https://www.vazcertflow.com.br'
       : '⚠️ Verifique os logs no Railway.',
   ].filter(Boolean).join('\n')
