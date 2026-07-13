@@ -68,16 +68,25 @@ function normalizar(s: string): string {
 }
 
 // Mapeamento de evento Safeweb → status no CertFlow.
+//
+// Regra de negócio (13/07/2026): o monitoramento interno finaliza o protocolo
+// no momento em que a V&G confirma a identidade do cliente — não quando o cliente
+// instala o certificado. Por isso:
+// - Confirmação de Cadastro (Aprovado) → EMITIDO  (vídeo: fim da videoconferência)
+// - Validação                          → EMITIDO  (presencial: AGR validou documentos)
+// - Verificação (Aprovado)             → EMITIDO  (ACI aprovada: identidade confirmada)
+// - Emissão                            → EMITIDO  (Add/5 online — evento de emissão direta)
+// O evento "Emissão" real (instalação pelo cliente) é irrelevante para o monitoramento.
 function eventoParaStatus(evento: string, acao?: string): string | null {
   const ev = normalizar(evento)
   const aprovado = !acao || normalizar(acao).startsWith('aprovad')
 
   if (ev.includes('emissao'))                                  return 'EMITIDO'
   if (ev.includes('cancelamento') || ev.includes('revogacao')) return 'CANCELADO'
-  if (ev.includes('verificacao') || ev.includes('confirmacao'))
-    return aprovado ? 'VERIFICADO' : null
+  if ((ev.includes('confirmacao') || ev.includes('verificacao')) && aprovado) return 'EMITIDO'
+  if (ev.includes('validacao'))                                return 'EMITIDO'
 
-  return null  // Solicitação, Validação e demais eventos informativos — sem mudança de status
+  return null  // Solicitação e demais eventos informativos — sem mudança de status
 }
 
 export async function POST(req: NextRequest) {
@@ -272,22 +281,6 @@ export async function POST(req: NextRequest) {
         )
 
         return NextResponse.json({ ok: false, erro: 'Falha crítica ao processar emissão' }, { status: 500 })
-      }
-    } else if (novoStatus === 'VERIFICADO') {
-      if (pedido.status === 'EMITIDO') {
-        // Safeweb às vezes envia "Confirmação de Cadastro" ou "Verificação" depois de já ter
-        // emitido (especialmente A1 e A3 presencial). Nunca regridir de EMITIDO para VERIFICADO.
-        console.log(`[Safeweb Webhook] ${pedido.numero}: ignorando ${evento} — já está EMITIDO (evitando regressão)`)
-        await prisma.pedido.update({
-          where: { id: pedido.id },
-          data:  { safewebStatus: statusEvento } as any,
-        })
-      } else {
-        await prisma.pedido.update({
-          where: { id: pedido.id },
-          data:  { safewebStatus: statusEvento, status: 'VERIFICADO', verificadoEm: agora } as any,
-        })
-        console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → VERIFICADO (${evento})`)
       }
     } else if (novoStatus === 'CANCELADO') {
       await prisma.pedido.update({
