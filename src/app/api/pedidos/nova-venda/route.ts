@@ -421,6 +421,11 @@ export async function POST(req: NextRequest) {
   // PATCH /api/pedidos/[id], docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md)
 
   // 4. Agendar no Google Calendar se solicitado
+  if (!agendamento) {
+    console.log('[Agenda] sem agendamento no pedido', pedido.numero, '— evento não criado')
+  } else if (!pedidoDados.agr) {
+    console.warn('[Agenda] agr ausente no pedido', pedido.numero, '— evento não criado')
+  }
   if (agendamento && pedidoDados.agr) {
     try {
       const modelo = await prisma.modeloCertificado.findUnique({ where: { id: modeloId }, select: { nome: true } })
@@ -479,11 +484,14 @@ export async function POST(req: NextRequest) {
           }),
           redirect: 'follow',
         })
-        const dadosAgenda = await respAgenda.json().catch(() => ({}))
+        const textoResposta = await respAgenda.text().catch(() => '')
+        let dadosAgenda: Record<string, unknown> = {}
+        try { dadosAgenda = JSON.parse(textoResposta) } catch { /* resposta não é JSON (ex: HTML de erro) */ }
         if (!dadosAgenda.ok) {
-          console.error('[Agenda] falha ao criar evento para', pedido.numero, dadosAgenda)
+          const resumo = textoResposta.length > 200 ? textoResposta.slice(0, 200) + '…' : textoResposta
+          console.error('[Agenda] falha ao criar evento para', pedido.numero, dadosAgenda.msg ?? resumo)
         } else {
-          console.log('[Agenda] evento criado', pedido.numero, dadosAgenda.eventoId)
+          console.log('[Agenda] evento criado', pedido.numero, dadosAgenda.eventoId, 'em', dadosAgenda.calendario)
         }
       }
     } catch (err) {
