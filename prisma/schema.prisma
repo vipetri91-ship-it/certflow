@@ -402,8 +402,8 @@ model Certificado {
   modeloId       String
   pedidoId       String?
   numeroSerie    String?
-  dataEmissao    DateTime
-  dataVencimento DateTime
+  dataEmissao    DateTime?
+  dataVencimento DateTime?
   status         StatusCertificado @default(ATIVO)
   safewebId      String?
   observacoes    String?

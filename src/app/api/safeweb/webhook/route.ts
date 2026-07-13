@@ -187,17 +187,23 @@ export async function POST(req: NextRequest) {
             } as any,
           })
 
+          // Cria o certificado sem datas (dataEmissao e dataVencimento ficam nulos).
+          // Isso sinaliza que o atendimento foi feito mas o cliente ainda não instalou.
+          // As datas serão preenchidas quando o evento "Emissão" chegar (cliente instalou),
+          // garantindo que o controle de vencimentos use a data real de instalação.
+          // Exceção: se o gatilho for o próprio evento "Emissão" (Add/5 online),
+          // as datas já são preenchidas agora pois a instalação é imediata.
+          const eventoEhEmissao = normalizar(evento).includes('emissao')
           const certExistente = await tx.certificado.findFirst({ where: { pedidoId: pedido.id } })
           if (!certExistente && pedido.itens[0]) {
             const item = pedido.itens[0]
-            const dataVencimento = new Date(agora)
-            dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
+            const dataVencimento = eventoEhEmissao ? (() => { const d = new Date(agora); d.setMonth(d.getMonth() + item.modelo.validadeMeses); return d })() : null
             await tx.certificado.create({
               data: {
                 clienteId:     pedido.clienteId,
                 modeloId:      item.modeloId,
                 pedidoId:      pedido.id,
-                dataEmissao:   agora,
+                dataEmissao:   eventoEhEmissao ? agora : null,
                 dataVencimento,
                 status:        'ATIVO',
                 numeroSerie:   pedido.numeroCompra ?? undefined,
@@ -290,22 +296,34 @@ export async function POST(req: NextRequest) {
       console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → CANCELADO (${evento})`)
     }
   } else if (novoStatus === 'EMITIDO' && pedido.status === 'EMITIDO') {
-    // Pedido já finalizado — evento "Emissão" chegou (cliente instalou o certificado).
-    // Não muda o status do pedido (continua em Finalizados), mas atualiza as datas
-    // do certificado para refletir a data real de instalação, garantindo que o
-    // controle de vencimentos seja baseado em quando o cliente instalou, não quando
-    // confirmamos a identidade na videoconferência/presencial.
-    const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: pedido.id } })
-    if (certExistente && pedido.itens[0]) {
+    // Pedido já em Finalizados — evento "Emissão" chegou (cliente instalou).
+    // Cria ou atualiza o certificado com a data real de instalação.
+    // O pedido não muda de status.
+    if (pedido.itens[0]) {
       const agora = new Date()
       const item = pedido.itens[0]
       const dataVencimento = new Date(agora)
       dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
-      await prisma.certificado.update({
-        where: { id: certExistente.id },
-        data:  { dataEmissao: agora, dataVencimento },
-      })
-      console.log(`[Safeweb Webhook] ${pedido.numero}: certificado atualizado com data real de instalação — vence ${dataVencimento.toLocaleDateString('pt-BR')}`)
+      const certExistente = await prisma.certificado.findFirst({ where: { pedidoId: pedido.id } })
+      if (certExistente) {
+        await prisma.certificado.update({
+          where: { id: certExistente.id },
+          data:  { dataEmissao: agora, dataVencimento },
+        })
+      } else {
+        await prisma.certificado.create({
+          data: {
+            clienteId:     pedido.clienteId,
+            modeloId:      item.modeloId,
+            pedidoId:      pedido.id,
+            dataEmissao:   agora,
+            dataVencimento,
+            status:        'ATIVO',
+            numeroSerie:   pedido.numeroCompra ?? undefined,
+          },
+        })
+      }
+      console.log(`[Safeweb Webhook] ${pedido.numero}: certificado com data real de instalação — vence ${dataVencimento.toLocaleDateString('pt-BR')}`)
     }
     await prisma.pedido.update({
       where: { id: pedido.id },

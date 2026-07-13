@@ -364,6 +364,9 @@ async function migrate() {
     // por pedido individual, com pagamento selecionável por cliente.
     // Sem Mídia — cliente já possui token/cartão e quer só o arquivo
     `ALTER TYPE "SuporteCertificado" ADD VALUE IF NOT EXISTS 'SEM_MIDIA'`,
+    // Datas do certificado tornam-se opcionais: ficam nulas até o cliente instalar
+    `ALTER TABLE certificados ALTER COLUMN "dataEmissao" DROP NOT NULL`,
+    `ALTER TABLE certificados ALTER COLUMN "dataVencimento" DROP NOT NULL`,
     `CREATE TABLE IF NOT EXISTS "comissoes_pedido" (
       "id" TEXT NOT NULL,
       "pedidoId" TEXT NOT NULL,
