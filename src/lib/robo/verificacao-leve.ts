@@ -81,18 +81,31 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     achadosInformativos.push(`O pedido ${p.numero} está parado (${NOME_STATUS_PEDIDO[p.status] ?? p.status}) desde ${quando} — já passou de 2 dias sem avançar.`)
   }
 
-  // 3. E-mails com erro recente: limpa o registro de falha (não reenvia
-  // diretamente — só desbloqueia o reenvio natural do processar-emails, que
-  // já tem toda a lógica de template e deduplicação certa).
+  // 3. E-mails com erro recente.
+  // Sempre deleta o log de ERRO para evitar alertas repetidos a cada 20 min
+  // durante as 23h que o log ficaria na janela de 1-24h.
+  // - Falha permanente (hard bounce, endereço inválido, bloqueado): alerta com
+  //   motivo e instrução para corrigir o e-mail no cadastro — não promete reenvio.
+  // - Falha transiente (erro de rede, timeout): deleta e desbloqueia reenvio
+  //   natural pelo processar-emails.
+  const FALHA_PERMANENTE = ['hardbounce', 'hard_bounce', 'blocked', 'invalidemail', 'invalid']
   const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000)
   const vinteQuatroHorasAtras = new Date(agora.getTime() - 24 * 60 * 60 * 1000)
   const comErro = await prisma.emailLog.findMany({
     where: { status: 'ERRO', createdAt: { lt: umaHoraAtras, gte: vinteQuatroHorasAtras } },
-    select: { id: true, tipo: true, destinatario: true, certificadoId: true },
+    select: { id: true, tipo: true, destinatario: true, certificadoId: true, motivoFalha: true },
   })
   for (const log of comErro) {
-    achados.push(`Um e-mail automático não foi entregue pro cliente ${log.destinatario}.`)
-    if (log.certificadoId) {
+    const motivo = log.motivoFalha ?? ''
+    const ehPermanente = FALHA_PERMANENTE.some(kw => motivo.toLowerCase().includes(kw))
+    const razaoTexto = motivo ? ` (motivo: ${motivo})` : ''
+
+    if (ehPermanente) {
+      achados.push(`E-mail pro cliente ${log.destinatario} foi rejeitado permanentemente pelo servidor de destino${razaoTexto}. O endereço pode estar errado — verifique no cadastro do cliente.`)
+      await prisma.emailLog.delete({ where: { id: log.id } })
+      correcoes.push(`Descartei o registro de falha de ${log.destinatario}. Endereços com rejeição permanente não são reenviados automaticamente — corrija o cadastro do cliente.`)
+    } else {
+      achados.push(`Um e-mail automático não foi entregue pro cliente ${log.destinatario}${razaoTexto}.`)
       await prisma.emailLog.delete({ where: { id: log.id } })
       correcoes.push(`Liberei o e-mail de ${log.destinatario} pra ser enviado de novo automaticamente na próxima rodada.`)
     }
