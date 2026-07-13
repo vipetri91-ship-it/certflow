@@ -33,7 +33,7 @@ export async function WidgetMonitoramentoNotificacoes() {
           <BellRing className="w-4 h-4 text-blue-500" />
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Notificações Automáticas</p>
         </div>
-        <Link href="/configuracoes/emails"
+        <Link href={totalErros > 0 ? '/monitoramento/emails?status=ERRO' : '/monitoramento/emails'}
           className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1 transition">
           Detalhes <ArrowRight className="w-3 h-3" />
         </Link>
