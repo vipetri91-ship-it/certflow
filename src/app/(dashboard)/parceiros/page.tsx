@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { UserPlus, Percent, Users } from 'lucide-react'
 import { formatarCPF, formatarCNPJ } from '@/lib/utils'
+import { BotaoExcluirParceiro } from './botao-excluir'
 
 export default async function ParceirosPage() {
   const parceiros = await prisma.parceiro.findMany({
@@ -75,7 +76,10 @@ export default async function ParceirosPage() {
                         <p className="text-xs text-gray-400 mt-0.5">{p.nomeFantasia}</p>
                       )}
                     </div>
-                    <span className="text-xs text-gray-400">{p.tipoPessoa}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-400">{p.tipoPessoa}</span>
+                      <BotaoExcluirParceiro id={p.id} nome={p.nome} />
+                    </div>
                   </div>
 
                   <div className="space-y-1 text-sm text-gray-600 mb-4">
