@@ -5,6 +5,21 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026 (4)
+
+### fix(agenda): título do evento mostra cliente + contabilidade, não mais o produto
+
+**Origem:** Vinicius pediu pra identificar o cliente na agenda sem abrir o evento — hoje o título é "Nome — Modelo do Certificado", e o modelo já aparece na descrição (redundante). Pediu: título = nome do cliente/empresa + contabilidade vinculada na venda (se houver); sem contabilidade, só o nome.
+
+- **`src/app/api/pedidos/nova-venda/route.ts`** — título do evento passa de `${cliente.nome} — ${modelo.nome}` para `${cliente.nome} — ${contabilidade}` (quando preenchida no pedido) ou só `${cliente.nome}`. O campo `contabilidade` já existia no pedido (preenchido no wizard), só não estava sendo usado na agenda.
+- **`src/app/(dashboard)/pedidos/novo/form.tsx`** — mesmo padrão encontrado (Regra 4) numa segunda tela de criação de pedido; essa não coleta contabilidade, então título vira só o nome do cliente.
+
+**Testado:** `tsc --noEmit` sem erros; `eslint` sem novos erros nos arquivos alterados (2 avisos pré-existentes no arquivo, não relacionados a esta mudança). Não foi possível testar criando uma venda real sem gerar um pedido de teste em produção — mudança é troca de string simples, sem lógica nova.
+
+**Risco:** Baixo — só a string do título do evento do Google Calendar muda; descrição, vínculo com o pedido e todo o resto do fluxo de venda ficam iguais.
+
+---
+
 ## 14/07/2026 (3)
 
 ### feat: setor Auditor + expansão do AGR Digital (aniversário, lembrete, reativação, NPS)

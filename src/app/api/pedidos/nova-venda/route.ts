@@ -461,6 +461,14 @@ export async function POST(req: NextRequest) {
         safewebProtocolo ? `Protocolo Safeweb: ${safewebProtocolo}` : null,
       ].filter(Boolean).join('\n')
 
+      // Título do evento: nome do cliente/empresa e, se houver contabilidade
+      // vinculada na venda, o nome dela ao lado — ajuda a identificar o
+      // cliente na agenda sem precisar abrir o evento. O modelo do
+      // certificado não entra mais no título porque já está na descrição.
+      const tituloEvento = pedidoDados.contabilidade
+        ? `${cliente?.nome} — ${pedidoDados.contabilidade}`
+        : `${cliente?.nome}`
+
       const scriptUrl   = process.env.APPS_SCRIPT_URL
       const scriptToken = process.env.APPS_SCRIPT_TOKEN
 
@@ -473,7 +481,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            titulo:    `${cliente?.nome} — ${modelo?.nome}`,
+            titulo:    tituloEvento,
             descricao,
             inicio:    inicio.toISOString(),
             duracao:   agendamento.duracao,

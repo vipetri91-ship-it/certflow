@@ -127,7 +127,10 @@ export function NovoPedidoForm({ clientes, modelos, parceiros }: {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            titulo: `${cliente?.nome} — ${modelosNomes}`,
+            // Sem o modelo no título (já vai na descrição) — mesmo padrão do
+            // fluxo principal em nova-venda/route.ts. Esta tela não coleta
+            // contabilidade vinculada, então o título aqui é só o cliente.
+            titulo: `${cliente?.nome}`,
             descricao: `Pedido: ${pedido.numero}\nCertificado: ${modelosNomes}${form.observacoes ? '\n' + form.observacoes : ''}`,
             inicio: inicio.toISOString(),
             duracao: form.duracaoAtendimento,
