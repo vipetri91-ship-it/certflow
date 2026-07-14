@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026
+
+### fix: falso "CNPJ não encontrado" quando o provedor externo está indisponível
+
+**Origem:** Vinicius reportou erro "CNPJ não encontrado na Receita Federal" na tela Nova Venda para um CNPJ que ele já havia confirmado manualmente na Receita Federal.
+
+**Causa raiz:** `src/app/api/cnpj/[cnpj]/route.ts` consultava só a BrasilAPI (fonte: minhareceita.org) e tratava qualquer resposta não-2xx — 404 real ou 503 de indisponibilidade do provedor — com a mesma mensagem "não encontrado". Testado diretamente: minhareceita.org retornava 503 "Serviço temporariamente indisponível" para esse CNPJ específico, enquanto outro provedor (cnpj.ws) respondia 200 com os dados corretos para o mesmo CNPJ.
+
+**Padrão já existente no projeto (Regra 4):** `src/app/api/rfb/responsavel/route.ts` já usava BrasilAPI com fallback para cnpj.ws pelo mesmo motivo. `src/app/api/cpf/[cpf]/route.ts` tem fallback (para os dados do próprio banco) em vez de segundo provedor — não alterado, pois é um caso diferente (CPF não tem provedor alternativo público equivalente).
+
+- **`src/app/api/cnpj/[cnpj]/route.ts`** — adicionado fallback para `cnpj.ws` quando a BrasilAPI falha (mesmo padrão do `rfb/responsavel`). A mensagem "CNPJ não encontrado na Receita Federal" (404) só é exibida se os dois provedores concordarem que o CNPJ não existe; qualquer outra falha (timeout, 5xx) agora retorna "Serviço de consulta à Receita Federal está temporariamente indisponível... use 'Sem Validação'" (503). Também adicionado timeout de 10s nas requisições (faltava na BrasilAPI).
+
+**Testado:** `npx tsc --noEmit` e `npx eslint` sem erros no arquivo. Servidor local (`next dev`) subiu sem erro de compilação/runtime; rota respondeu 401 sem sessão (comportamento esperado). Mapeamento de campos do cnpj.ws (endereço, telefone, sócios) validado manualmente contra o payload real da API para dois CNPJs distintos, incluindo o formato do CPF mascarado dos sócios (`***571038**`), que é idêntico ao da BrasilAPI e é o que o `wizard.tsx` usa para validar o responsável.
+
+**Risco:** Baixo — endpoint isolado, não toca Safeweb, mudança aditiva (fallback), não altera contrato de resposta em caso de sucesso.
+
+---
+
 ## 07/07/2026 (2)
 
 ### fix: agendamento automático na agenda ao gerar protocolo
