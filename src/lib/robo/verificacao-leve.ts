@@ -42,6 +42,34 @@ const JOBS_MONITORADOS: { job: string; intervaloMin: number; toleranciaMin: numb
   { job: 'pesquisa-nps', intervaloMin: 24 * 60, toleranciaMin: 30 },
 ]
 
+// Conta quantas vezes seguidas (numa janela de 24h) a mesma falha de
+// configuração aconteceu — usado pra diferenciar "primeira vez, deixa
+// tentar de novo" de "isso já falhou antes e continua falhando, não é
+// passageiro". Agrupado por tipo de e-mail (não por destinatário), já que
+// falha de configuração é do sistema, não do cadastro de um cliente
+// específico — se falhar pro tipo VENCIMENTO_7, vai falhar pra todo mundo.
+async function contarFalhaConfiguracaoRecente(tipo: string): Promise<number> {
+  const chave = `robo:falha-config:${tipo}`
+  const agora = Date.now()
+  const registro = await prisma.configuracao.findUnique({ where: { chave } })
+
+  let anterior = { contagem: 0, ultima: 0 }
+  if (registro?.valor) {
+    try { anterior = JSON.parse(registro.valor) } catch { /* valor corrompido, trata como zerado */ }
+  }
+
+  const dentroDaJanela = agora - anterior.ultima < 24 * 60 * 60 * 1000
+  const contagem = dentroDaJanela ? anterior.contagem + 1 : 1
+
+  await prisma.configuracao.upsert({
+    where: { chave },
+    update: { valor: JSON.stringify({ contagem, ultima: agora }) },
+    create: { chave, valor: JSON.stringify({ contagem, ultima: agora }) },
+  })
+
+  return contagem
+}
+
 async function dispararCatchUp(job: string): Promise<{ ok: boolean; erro?: string }> {
   const baseUrl = process.env.JOB_BASE_URL || 'https://www.vazcertflow.com.br'
   const token = process.env.AUTH_SECRET
@@ -100,9 +128,15 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
   // durante as 23h que o log ficaria na janela de 1-24h.
   // - Falha permanente (hard bounce, endereço inválido, bloqueado): alerta com
   //   motivo e instrução para corrigir o e-mail no cadastro — não promete reenvio.
+  // - Falha de CONFIGURAÇÃO (chave de API ausente/errada, credencial inválida):
+  //   liberar pra tentar de novo não resolve sozinho — é preciso corrigir a
+  //   variável de ambiente. Se repetir na mesma janela de 24h, o aviso escala
+  //   em vez de continuar dizendo "corrigido" (14/07/2026, a pedido do
+  //   Vinicius, depois de um caso real de BREVO_API_KEY ausente).
   // - Falha transiente (erro de rede, timeout): deleta e desbloqueia reenvio
   //   natural pelo processar-emails.
   const FALHA_PERMANENTE = ['hardbounce', 'hard_bounce', 'blocked', 'invalidemail', 'invalid']
+  const FALHA_CONFIGURACAO = ['não configurado', 'nao configurado', 'api_key', 'apikey', 'unauthorized', '401']
   const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000)
   const vinteQuatroHorasAtras = new Date(agora.getTime() - 24 * 60 * 60 * 1000)
   const comErro = await prisma.emailLog.findMany({
@@ -111,13 +145,25 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
   })
   for (const log of comErro) {
     const motivo = log.motivoFalha ?? ''
-    const ehPermanente = FALHA_PERMANENTE.some(kw => motivo.toLowerCase().includes(kw))
+    const motivoNormalizado = motivo.toLowerCase()
+    const ehPermanente = FALHA_PERMANENTE.some(kw => motivoNormalizado.includes(kw))
+    const ehConfiguracao = FALHA_CONFIGURACAO.some(kw => motivoNormalizado.includes(kw))
     const razaoTexto = motivo ? ` (motivo: ${motivo})` : ''
 
     if (ehPermanente) {
       achados.push(`E-mail pro cliente ${log.destinatario} foi rejeitado permanentemente pelo servidor de destino${razaoTexto}. O endereço pode estar errado — verifique no cadastro do cliente.`)
       await prisma.emailLog.delete({ where: { id: log.id } })
       correcoes.push(`Descartei o registro de falha de ${log.destinatario}. Endereços com rejeição permanente não são reenviados automaticamente — corrija o cadastro do cliente.`)
+    } else if (ehConfiguracao) {
+      const vezes = await contarFalhaConfiguracaoRecente(log.tipo)
+      await prisma.emailLog.delete({ where: { id: log.id } })
+      if (vezes >= 2) {
+        achados.push(`🚨 Isso já é a ${vezes}ª vez nas últimas 24h que um e-mail falha por CONFIGURAÇÃO do servidor${razaoTexto} — não é passageiro, precisa checar as variáveis de ambiente (ex.: chave de API) direto no Railway.`)
+        correcoes.push(`Liberei o e-mail de ${log.destinatario} pra tentar de novo, mas isso sozinho NÃO resolve — se voltar a falhar, é preciso ajustar a configuração manualmente.`)
+      } else {
+        achados.push(`Um e-mail falhou com sinal de problema de CONFIGURAÇÃO no servidor${razaoTexto} — pode não ser passageiro.`)
+        correcoes.push(`Liberei o e-mail de ${log.destinatario} pra tentar de novo. Se falhar de novo pelo mesmo motivo nas próximas 24h, vou avisar que não é passageiro.`)
+      }
     } else {
       achados.push(`Um e-mail automático não foi entregue pro cliente ${log.destinatario}${razaoTexto}.`)
       await prisma.emailLog.delete({ where: { id: log.id } })

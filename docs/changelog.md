@@ -5,6 +5,22 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026 (11)
+
+### fix: robô de auditoria não distinguia falha de configuração de falha passageira
+
+**Origem:** Vinicius recebeu o alerta "E-mail não entregue (BREVO_API_KEY não configurado)... Corrigido: liberei pra tentar de novo". Confirmei que era real: `BREVO_API_KEY` não existe nas variáveis do Vercel — mas o site de verdade (`www.vazcertflow.com.br`) roda no Railway, que **tem** a chave configurada, e o e-mail em questão foi enviado com sucesso na tentativa seguinte (confirmado direto no banco). Vinicius pediu pra resolver isso "de uma vez por todas".
+
+**Causa raiz do problema de fundo (não do e-mail em si, mas do alerta):** `src/lib/robo/verificacao-leve.ts` tratava qualquer falha não-permanente (bounce/endereço inválido) como "passageira" — apagava o registro e dizia "Corrigido: liberei pra tentar de novo", mesmo quando o motivo era claramente falta de configuração (chave de API ausente). Liberar pra tentar de novo não conserta configuração; se a causa real persistisse, o robô ficaria alertando "corrigido" a cada 20 min pra sempre, sem nunca sinalizar que precisa de ação manual.
+
+- **`src/lib/robo/verificacao-leve.ts`** — nova categoria "falha de configuração", detectada por palavras-chave no motivo (`não configurado`, `api_key`, `unauthorized`, `401`). Nova função `contarFalhaConfiguracaoRecente` registra, por tipo de e-mail, quantas vezes essa falha se repetiu numa janela de 24h (usando a tabela `Configuracao`, mesmo padrão do heartbeat). Na 1ª ocorrência, avisa que "pode não ser passageiro"; da 2ª em diante na mesma janela, o alerta escala para "🚨 não é passageiro, precisa checar as variáveis de ambiente" — não usa mais a palavra "corrigido" de forma enganosa.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Testei a classificação de motivos reais (incluindo o texto exato do erro do Vinicius) — separou corretamente configuração de permanente de passageiro.
+
+**Não alterado:** a chave em si (já estava certa no Railway); nenhuma variável de ambiente foi tocada nesta mudança — é só o robô ficando mais honesto sobre o que ele realmente resolveu.
+
+---
+
 ## 14/07/2026 (10)
 
 ### fix: WhatsApp de certificado emitido não deve renomear contato no Digisac + saudar pelo responsável
