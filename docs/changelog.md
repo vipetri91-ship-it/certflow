@@ -5,6 +5,25 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026 (8)
+
+### fix(Área Safeweb — autorizado explicitamente): etiqueta "Verificação Reprovada" errada na tela Eventos Safeweb
+
+**Origem:** Vinicius reportou que o protocolo 1011040303 (Walter Maioli) aparecia com a etiqueta laranja "Verificação Reprovada" na tela `/eventos-safeweb`, mesmo já emitido e aprovado pela Safeweb.
+
+**Causa raiz (confirmada no payload real do webhook, não suposta):** a Safeweb enviou `acao: "Aprovado"` junto com `motivoRecusa: "Conferência iniciada"` — ou seja, a Safeweb reaproveita o campo `motivoRecusa` pra mandar uma observação de andamento às vezes, não só recusa de verdade. A função `badgeEvento` em `src/app/(dashboard)/eventos-safeweb/client.tsx` decidia "Reprovada" só verificando se `motivoRecusa` tinha algum texto, sem olhar o campo `acao` (que é o sinal confiável).
+
+**Autorização:** Regra 11 da governança (área Safeweb) — autorização explícita do Vinicius nesta conversa, após eu explicar causa raiz, arquivo afetado e comportamento esperado antes de mexer.
+
+- **`src/app/(dashboard)/eventos-safeweb/client.tsx`** — `badgeEvento` passa a receber e priorizar o campo `acao`: só marca "Reprovada" se `acao` contiver "reprovad"/"recusad"/"negad". Quando `acao` não vem no payload (eventos antigos/outros tipos), mantém o comportamento anterior (motivoRecusa ou statusDepois nulo) como veio antes — não há regressão pra esse caso.
+- Não alterado: `src/app/api/safeweb/webhook/route.ts` (processamento/gravação do evento), lógica de protocolo, emissão ou qualquer campo `safewebProtocolo`/`numeroCompra`/`safewebStatus` — mudança é 100% de exibição (rótulo/cor na tela), não mexe em como o pedido é processado.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Script reproduzindo a função exata com 5 cenários (o caso real do Walter Maioli, uma reprovação genuína de Verificação, uma de Confirmação de Cadastro, e 2 casos sem `acao` no payload pra confirmar que o comportamento antigo continua igual) — todos corretos.
+
+**Rollback:** reverter o commit restaura a checagem antiga (só `motivoRecusa`/`statusDepois`) — sem impacto em dados, é lógica de exibição pura.
+
+---
+
 ## 14/07/2026 (7)
 
 ### fix(crítico): auditoria completa de todo caminho que toca Contas a Pagar

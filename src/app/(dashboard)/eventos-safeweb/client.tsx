@@ -39,14 +39,23 @@ function normalizar(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
-function badgeEvento(evento: string, statusDepois: string | null, motivoRecusa: string | null) {
+function badgeEvento(evento: string, acao: string | null, statusDepois: string | null, motivoRecusa: string | null) {
   const ev = normalizar(evento)
   if (ev.includes('emissao'))
     return { label: 'Emissão', cor: 'bg-green-100 text-green-700 border-green-200', icone: CheckCircle2 }
   if (ev.includes('cancelamento') || ev.includes('revogacao'))
     return { label: 'Cancelamento', cor: 'bg-red-100 text-red-700 border-red-200', icone: XCircle }
   if (ev.includes('verificacao') || ev.includes('confirmacao')) {
-    if (motivoRecusa || statusDepois === null)
+    // O campo "acao" que a própria Safeweb manda (Aprovado/Reprovado) é o sinal
+    // confiável. "motivoRecusa" só entra como pista quando a Safeweb não manda
+    // "acao" — confirmado em 14/07/2026 (protocolo 1011040303) que a Safeweb às
+    // vezes usa motivoRecusa pra observação de andamento (ex.: "Conferência
+    // iniciada") mesmo em evento aprovado, o que fazia a etiqueta errar.
+    const acaoNorm = acao ? normalizar(acao) : null
+    const reprovado = acaoNorm
+      ? acaoNorm.includes('reprovad') || acaoNorm.includes('recusad') || acaoNorm.includes('negad')
+      : !!motivoRecusa || statusDepois === null
+    if (reprovado)
       return { label: 'Verificação Reprovada', cor: 'bg-orange-100 text-orange-700 border-orange-200', icone: AlertCircle }
     return { label: 'Verificação', cor: 'bg-blue-100 text-blue-700 border-blue-200', icone: CheckCircle2 }
   }
@@ -54,7 +63,7 @@ function badgeEvento(evento: string, statusDepois: string | null, motivoRecusa: 
 }
 
 function ModalDetalhe({ evento, onFechar }: { evento: Evento; onFechar: () => void }) {
-  const badge = badgeEvento(evento.evento, evento.statusDepois, evento.motivoRecusa)
+  const badge = badgeEvento(evento.evento, evento.acao, evento.statusDepois, evento.motivoRecusa)
   const Icone = badge.icone
 
   // Fecha com ESC
@@ -239,7 +248,7 @@ export function EventosSafewebClient({ eventos }: { eventos: Evento[] }) {
           ) : (
             <div className="divide-y divide-gray-50">
               {filtrados.map(e => {
-                const badge = badgeEvento(e.evento, e.statusDepois, e.motivoRecusa)
+                const badge = badgeEvento(e.evento, e.acao, e.statusDepois, e.motivoRecusa)
                 const Icone = badge.icone
                 return (
                   <button
