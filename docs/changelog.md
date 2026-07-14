@@ -5,6 +5,23 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026 (10)
+
+### fix: WhatsApp de certificado emitido não deve renomear contato no Digisac + saudar pelo responsável
+
+**Origem:** Vinicius notou que, ao clicar "Notificar via WhatsApp" no popup de certificado emitido, o nome do contato no Digisac era sobrescrito com a razão social da empresa (ex.: contato "João" virava "ABC"). Pediu pra parar de alterar o nome no Digisac e pra saudação usar o nome do responsável pela empresa, não a razão social.
+
+- **`src/lib/digisac.ts`** — `buscarOuCriarContato` não envia mais `name` ao criar contato no Digisac. O código só cria (POST) quando a busca por telefone não acha o contato — mas se o Digisac tratar esse POST como upsert por número (o que explicaria o relato do Vinicius: contato existente sendo renomeado), o nome era sobrescrito mesmo em contato já existente. Removido de vez — o CertFlow não define/altera mais nome de contato no Digisac, em nenhum fluxo de WhatsApp (vencimento, nutrição, aniversário, reativação, NPS, confirmação de emissão), já que todos usam essa mesma função.
+- **`src/app/api/pedidos/[id]/notificar/route.ts`** — saudação do WhatsApp de "Certificado Emitido" agora usa `cliente.responsavel` (nome da pessoa) quando existir, com fallback pro nome cadastrado. O corpo da mensagem continua citando a empresa pelo nome ("O certificado digital de **ABC** foi emitido...") — só a saudação muda ("Olá, Edson!" em vez de "Olá, ABC!").
+
+**Encontrado mas não alterado (mesmo padrão, Regra 4):** o e-mail de confirmação de emissão, no mesmo arquivo, tem a mesma saudação pela razão social em vez do responsável. Não mudei porque o pedido foi especificamente sobre o WhatsApp — avisar se quiser o mesmo ajuste no e-mail.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros.
+
+**Risco:** Baixo-médio — `buscarOuCriarContato` é usada por todos os robôs de WhatsApp já em produção; a mudança é subtrativa (para de mandar um campo), não deveria quebrar envio de mensagem, só para de nomear contato novo automaticamente (o que é a intenção pedida).
+
+---
+
 ## 14/07/2026 (9)
 
 ### fix(UX): nome do cliente cortado sem tooltip em Contas a Receber e Controle de Vencimentos

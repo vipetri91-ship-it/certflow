@@ -46,8 +46,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ erro: 'Número de WhatsApp não cadastrado' }, { status: 400 })
     }
 
+    // Pra PJ, cliente.nome é a razão social da empresa — quem recebe a
+    // mensagem é o responsável (pessoa física), então a saudação usa
+    // cliente.responsavel quando existir (a pedido do Vinicius, 14/07/2026).
     const nomeDestinatario = destinatario === 'cliente'
-      ? pedido.cliente.nome
+      ? (pedido.cliente.responsavel || pedido.cliente.nome)
       : (pedido.parceiro?.razaoSocial || pedido.parceiro?.nome || 'Parceiro')
 
     const primeiroNome = nomeDestinatario.split(' ')[0]

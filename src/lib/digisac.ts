@@ -20,7 +20,7 @@ async function digisacRequest(path: string, options: { method?: string; body?: o
 }
 
 // Busca contato pelo número de telefone com verificação exata
-async function buscarOuCriarContato(numero: string, nomeCliente?: string): Promise<string | null> {
+async function buscarOuCriarContato(numero: string): Promise<string | null> {
   const serviceId = process.env.DIGISAC_CHANNEL_ID
 
   // Formata o número (apenas dígitos, com DDI 55)
@@ -43,14 +43,14 @@ async function buscarOuCriarContato(numero: string, nomeCliente?: string): Promi
     }
   }
 
-  // 2. Cria contato apenas se não encontrou correspondência exata
+  // 2. Cria contato apenas se não encontrou correspondência exata — sem
+  // enviar "name" (a pedido do Vinicius, 14/07/2026): o nome do cliente no
+  // CertFlow (ex.: razão social da empresa) não deve sobrescrever/definir o
+  // nome do contato no Digisac. Quem nomeia o contato lá é o próprio Digisac
+  // ou a equipe, manualmente.
   const criacao = await digisacRequest('/contacts', {
     method: 'POST',
-    body: {
-      number: numeroLimpo,
-      serviceId,
-      name: nomeCliente ?? 'Cliente',   // usa o nome real do cliente
-    },
+    body: { number: numeroLimpo, serviceId },
   })
 
   if (criacao.ok) {
@@ -63,6 +63,9 @@ async function buscarOuCriarContato(numero: string, nomeCliente?: string): Promi
 export async function enviarWhatsApp(params: {
   telefone: string
   mensagem: string
+  // Mantido por compatibilidade com quem já chama passando esse campo, mas
+  // não é mais usado — não nomeamos/renomeamos contato no Digisac (ver
+  // buscarOuCriarContato).
   nomeCliente?: string
 }): Promise<{ ok: boolean; erro?: string }> {
   const url = process.env.DIGISAC_URL
@@ -75,7 +78,7 @@ export async function enviarWhatsApp(params: {
 
   try {
     // Passo 1: busca ou cria o contato
-    const contactId = await buscarOuCriarContato(params.telefone, params.nomeCliente)
+    const contactId = await buscarOuCriarContato(params.telefone)
 
     if (!contactId) {
       return { ok: false, erro: 'Não foi possível encontrar ou criar o contato no Digisac' }
