@@ -5,6 +5,50 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026 (3)
+
+### feat: setor Auditor + expansão do AGR Digital (aniversário, lembrete, reativação, NPS)
+
+**Origem:** Vinicius pediu pra formalizar "setores" pros robôs — o Auditor (verificação/auditoria) ganha relatório semanal próprio, e o AGR Digital ganha mais pontos de contato automático com o cliente. Não incluído: item "WhatsApp quando pedido trava" (GERADO vs VERIFICADO tem implicações diferentes — combinado deixar pra depois).
+
+- **`src/lib/relatorios/auditor.ts`** + **`src/app/api/jobs/relatorio-semanal-auditor/route.ts`** (novos) — relatório semanal (segunda 8h15 BRT) usando a tabela `auditoria_robo` já existente: execuções, achados, correções automáticas, pendências aguardando decisão.
+- **`src/app/api/jobs/aniversario-clientes/route.ts`** (novo) — mesmo padrão do `aniversario-parceiros`, mas pra clientes (PJ usa o nome do responsável, já que `dataNascimento` nesse caso é dele). Dedup via `HistoricoContato`, sem precisar de coluna nova no banco.
+- **`src/app/api/jobs/lembrete-agendamento/route.ts`** (novo) — lê o Google Calendar (mesma conta OAuth já usada na tela Agenda, mas em rota própria sem sessão, pra rodar como robô) e avisa por WhatsApp quem tem atendimento marcado pro dia seguinte. Vínculo com o Pedido via "Pedido: `<numero>`" que já é gravado na descrição do evento (nenhuma mudança na criação de venda).
+- **`src/app/api/jobs/reativacao-clientes/route.ts`** (novo) — certificados vencidos há mais de 60 dias, nunca renovados (`certificadoAnteriorId` de nenhum outro certificado aponta pra ele), recebem 1 WhatsApp de reativação (mensagem não promete desconto específico — isso é decisão comercial, não travei um valor).
+- **`src/app/api/jobs/pesquisa-nps/route.ts`** (novo, envio) + **`src/app/api/digisac/webhook/route.ts`** (captura) — 5 dias após emissão, WhatsApp pedindo nota 0-10. Resposta é capturada no webhook do Digisac de forma restrita: só reage se for um número isolado E existir uma pesquisa pendente pra aquele telefone nos últimos 10 dias — todo o resto do comportamento do webhook (ignorar mensagem de cliente) continua igual.
+- **`src/lib/relatorios/agr-digital.ts`** — relatório semanal do AGR Digital agora também soma aniversários, lembretes, reativação e NPS (enviados/respondidos/nota média).
+- **`src/app/api/telegram/webhook/route.ts`** — nova ferramenta `relatorio_setor_auditor` (consulta sob demanda); prompt atualizado explicando os 2 setores.
+- **`scripts/cron-worker.js`**, **`src/lib/robo/verificacao-leve.ts`** — agendamento e monitoramento (catch-up automático) dos 5 novos jobs.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Rodei os 5 jobs novos de verdade contra produção — todos retornaram `ok:true`. `relatorio-semanal-auditor` mandou relatório real no Telegram (504 verificações leves e 7 auditorias profundas na semana, 79 achados, 36 ainda aguardando decisão sua — vale dar uma olhada). Os outros 4 rodaram sem erro e sem enviar nada hoje (confirmado por consulta prévia direta no banco: 0 clientes fazem aniversário hoje, 0 certificados cruzam o limiar de 60 dias hoje, 0 emissões de exatos 5 dias atrás) — comportamento esperado, não bug.
+
+**Risco:** Médio — 4 destes robôs mandam mensagem direto pro CLIENTE (aniversário, lembrete, reativação, NPS), sem intervenção humana. Dedup via HistoricoContato evita duplicidade; nenhum manda mais de uma vez pro mesmo certificado/ano. Nenhuma alteração em fluxo de venda, emissão ou Safeweb.
+
+---
+
+## 14/07/2026 (2)
+
+### feat: "Secretária" — briefing diário e relatório semanal do setor AGR Digital (Fase 1)
+
+**Origem:** Vinicius pediu um jeito de saber, sem precisar caçar, que os robôs de e-mail/WhatsApp de vencimento e pós-venda estão realmente funcionando — e um "robô Secretária" que fale com ele diariamente em linguagem simples, além de relatórios semanais do que ele chamou de setor "AGR Digital" (e-mail + WhatsApp).
+
+**Descoberta importante (Regra 1 — verificar antes de criar):** já existia em produção um bot Telegram (`src/app/api/telegram/webhook/route.ts`) com IA (Claude) e ferramentas de consulta — é reativo (só responde quando perguntado). Fase 1 aproveitou essa base em vez de criar do zero.
+
+- **`src/lib/relatorios/agr-digital.ts`** (novo) — consulta e formata o relatório do setor AGR Digital: e-mails/WhatsApp automáticos enviados (vencimento + nutrição) e renovações fechadas que vieram de cliente que recebeu alerta (via `certificadoAnteriorId` cruzado com `EmailLog`/`HistoricoContato` do certificado anterior).
+- **`src/app/api/jobs/secretaria-diaria/route.ts`** (novo) — robô diário, 18h05 BRT, manda briefing em linguagem natural no Telegram (pedidos do dia, receita, vencimentos próximos, pedidos travados). Consultas próprias, não reaproveita `relatorio-diario` (e-mail) de propósito, para não mexer num job já em produção (Regra 2).
+- **`src/app/api/jobs/relatorio-semanal-agr-digital/route.ts`** (novo) — robô semanal, segunda 8h BRT, cobre a semana anterior completa (seg-dom).
+- **`src/app/api/telegram/webhook/route.ts`** — bot rebatizado como "Secretária" no system prompt; nova ferramenta `relatorio_setor_agr_digital` para consulta sob demanda ("como está o AGR Digital essa semana").
+- **`src/lib/robo/verificacao-leve.ts`** — os 2 novos jobs entraram no monitoramento do robô de auditoria (`JOBS_MONITORADOS`), com catch-up automático e alerta se atrasarem — é assim que ele vai *saber* que está sendo feito, mesmo sem checar manualmente.
+- **`scripts/cron-worker.js`** — agendamento dos 2 novos jobs.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Rodei os dois jobs de verdade contra o banco de produção (servidor local com `.env.railway`) — ambos retornaram `ok:true` e enviaram mensagem real no Telegram do Vinicius, confirmando o fluxo ponta a ponta.
+
+**Fase 2 (não incluída):** Secretária ainda não dispara ações (ex.: "manda o WhatsApp de vencimento pro cliente X agora") — só consulta. Fica pra depois, com trava de segurança.
+
+**Risco:** Médio-baixo — cria 2 endpoints novos e adiciona 1 ferramenta ao bot Telegram existente; não altera nenhum job já em produção (processar-emails, processar-whatsapp, relatorio-diario ficam intocados).
+
+---
+
 ## 14/07/2026
 
 ### fix: falso "CNPJ não encontrado" quando o provedor externo está indisponível

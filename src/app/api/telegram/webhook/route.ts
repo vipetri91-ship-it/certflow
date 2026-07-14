@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import { buscarRelatorioAgrDigital, formatarRelatorioAgrDigital } from '@/lib/relatorios/agr-digital'
+import { buscarRelatorioAuditor, formatarRelatorioAuditor } from '@/lib/relatorios/auditor'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
@@ -83,6 +85,20 @@ const TOOLS: Anthropic.Messages.Tool[] = [
       titulo:     { type: 'string', description: 'Trecho do título da pendência a atualizar' },
       novoStatus: { type: 'string', enum: ['PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO'] },
     }, required: ['titulo', 'novoStatus'] },
+  },
+  {
+    name: 'relatorio_setor_agr_digital',
+    description: 'Relatório do setor AGR Digital — os robôs que disparam e-mail e WhatsApp automáticos de controle de vencimento, nutrição pós-venda, aniversário, lembrete de agendamento, reativação e pesquisa NPS. Use quando o Vinicius perguntar "como está o AGR Digital", "quantos e-mails/WhatsApp foram enviados", "quantas renovações vieram do controle de vencimento".',
+    input_schema: { type: 'object' as const, properties: {
+      dias: { type: 'number', description: 'Quantos dias pra trás considerar (padrão 7)' },
+    }},
+  },
+  {
+    name: 'relatorio_setor_auditor',
+    description: 'Relatório do setor Auditor — o robô que verifica se os outros robôs rodaram, corrige problemas sozinho e avisa quando não consegue. Use quando o Vinicius perguntar "como está o Auditor", "quantos problemas o robô achou", "o que o robô corrigiu sozinho".',
+    input_schema: { type: 'object' as const, properties: {
+      dias: { type: 'number', description: 'Quantos dias pra trás considerar (padrão 7)' },
+    }},
   },
 ]
 
@@ -307,6 +323,22 @@ async function executarFerramenta(nome: string, input: Record<string, unknown>):
     return `Atualizado: "${item.titulo}" → ${novoStatus}`
   }
 
+  if (nome === 'relatorio_setor_agr_digital') {
+    const dias = Number(input.dias ?? 7)
+    const fim = new Date()
+    const inicio = new Date(fim.getTime() - dias * 86_400_000)
+    const relatorio = await buscarRelatorioAgrDigital(inicio, fim)
+    return formatarRelatorioAgrDigital(relatorio)
+  }
+
+  if (nome === 'relatorio_setor_auditor') {
+    const dias = Number(input.dias ?? 7)
+    const fim = new Date()
+    const inicio = new Date(fim.getTime() - dias * 86_400_000)
+    const relatorio = await buscarRelatorioAuditor(inicio, fim)
+    return formatarRelatorioAuditor(relatorio)
+  }
+
   return 'Ferramenta não reconhecida.'
 }
 
@@ -321,11 +353,22 @@ async function gerarResposta(pergunta: string): Promise<string> {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     tools: TOOLS,
-    system: `Você é o assistente de gestão da V&G Certificação Digital, respondendo via Telegram para o proprietário Vinicius.
+    system: `Você é a Secretária da V&G Certificação Digital, respondendo via Telegram para o proprietário Vinicius.
 Hoje é ${hoje}.
-Seja direto, conciso e use emojis com moderação. Use *negrito* para destacar números e informações importantes.
+Seja direta, conciso e use emojis com moderação. Use *negrito* para destacar números e informações importantes.
 Você tem acesso ao sistema completo via ferramentas — use-as sempre que precisar buscar informações.
 Quando não souber algo, use a ferramenta adequada ao invés de dizer que não tem acesso.
+
+O sistema é organizado em "setores" de robôs automáticos:
+- AGR Digital: e-mail + WhatsApp automáticos (vencimento, nutrição pós-venda,
+  aniversário, lembrete de agendamento, reativação, pesquisa NPS) — use
+  relatorio_setor_agr_digital.
+- Auditor: verifica se os outros robôs rodaram, corrige o que dá sozinho e
+  avisa quando não consegue — use relatorio_setor_auditor.
+Toda segunda de manhã cada setor manda seu relatório semanal sozinho no
+Telegram (jobs separados). Todo dia às 18h você também manda um briefing
+proativo sozinha (job separado, secretaria-diaria) — isso aqui é o modo
+"ele te perguntou algo".
 
 Além dos dados de clientes/financeiro/pedidos, você também ajuda Vinicius a
 acompanhar o DESENVOLVIMENTO do próprio CertFlow: quando ele mandar uma
@@ -336,7 +379,9 @@ atualizar_status_pendencia. Isso é só desenvolvimento de software (backlog
 de programação) — agenda/compromissos é fora do seu escopo, oriente a usar
 o Google Agenda.
 
-Limitações reais: não consegue gerar PDFs nem abrir o navegador. Para isso, oriente acessar https://certflow-nine.vercel.app`,
+Limitações reais: não consegue gerar PDFs nem abrir o navegador, e ainda
+não executa ações (disparar um WhatsApp específico, por exemplo) — só
+consulta informações. Para ações, oriente acessar https://certflow-nine.vercel.app`,
     messages,
   })
 
@@ -358,7 +403,7 @@ Limitações reais: não consegue gerar PDFs nem abrir o navegador. Para isso, o
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       tools: TOOLS,
-      system: `Você é o assistente de gestão da V&G Certificação Digital via Telegram para o proprietário Vinicius. Hoje é ${hoje}. Seja direto e use *negrito* para destacar dados importantes.`,
+      system: `Você é a Secretária da V&G Certificação Digital via Telegram para o proprietário Vinicius. Hoje é ${hoje}. Seja direta e use *negrito* para destacar dados importantes.`,
       messages,
     })
   }

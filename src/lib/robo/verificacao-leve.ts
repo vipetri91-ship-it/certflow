@@ -13,6 +13,13 @@ const NOME_AMIGAVEL: Record<string, string> = {
   'relatorio-diario': 'relatório diário',
   'processar-emails': 'envio de e-mails de vencimento',
   'processar-whatsapp': 'envio de WhatsApp de vencimento',
+  'secretaria-diaria': 'briefing diário da Secretária',
+  'relatorio-semanal-agr-digital': 'relatório semanal do setor AGR Digital',
+  'relatorio-semanal-auditor': 'relatório semanal do setor Auditor',
+  'lembrete-agendamento': 'lembrete de agendamento',
+  'aniversario-clientes': 'aniversário de clientes',
+  'reativacao-clientes': 'campanha de reativação de clientes',
+  'pesquisa-nps': 'pesquisa de satisfação (NPS)',
 }
 
 const NOME_STATUS_PEDIDO: Record<string, string> = {
@@ -26,6 +33,13 @@ const JOBS_MONITORADOS: { job: string; intervaloMin: number; toleranciaMin: numb
   { job: 'relatorio-diario', intervaloMin: 24 * 60, toleranciaMin: 30 },
   { job: 'processar-emails', intervaloMin: 24 * 60, toleranciaMin: 30 },
   { job: 'processar-whatsapp', intervaloMin: 24 * 60, toleranciaMin: 30 },
+  { job: 'secretaria-diaria', intervaloMin: 24 * 60, toleranciaMin: 30 },
+  { job: 'relatorio-semanal-agr-digital', intervaloMin: 7 * 24 * 60, toleranciaMin: 60 },
+  { job: 'relatorio-semanal-auditor', intervaloMin: 7 * 24 * 60, toleranciaMin: 60 },
+  { job: 'lembrete-agendamento', intervaloMin: 24 * 60, toleranciaMin: 30 },
+  { job: 'aniversario-clientes', intervaloMin: 24 * 60, toleranciaMin: 30 },
+  { job: 'reativacao-clientes', intervaloMin: 24 * 60, toleranciaMin: 30 },
+  { job: 'pesquisa-nps', intervaloMin: 24 * 60, toleranciaMin: 30 },
 ]
 
 async function dispararCatchUp(job: string): Promise<{ ok: boolean; erro?: string }> {

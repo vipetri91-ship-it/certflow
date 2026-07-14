@@ -41,6 +41,17 @@ const jobs = [
   { nome: 'robo-verificacao-leve', cronExpr: '*/20 * * * *', metodo: 'POST' },
   { nome: 'robo-auditoria-profunda', cronExpr: '0 8 * * *', metodo: 'POST' }, // 5h BRT diário
   { nome: 'aniversario-parceiros', cronExpr: '0 12 * * *', metodo: 'POST' }, // 9h BRT diário
+  // "Secretária" (a pedido do Vinicius, 14/07/2026) — Fase 1: briefing diário
+  // proativo no Telegram + relatório semanal do setor AGR Digital (e-mail/WhatsApp).
+  { nome: 'secretaria-diaria', cronExpr: '5 21 * * *', metodo: 'POST' }, // 18h05 BRT diário
+  { nome: 'relatorio-semanal-agr-digital', cronExpr: '0 11 * * 1', metodo: 'POST' }, // 8h BRT segunda-feira
+  // "Setores" (14/07/2026) — Auditor com relatório próprio + expansão do AGR
+  // Digital com mais pontos de contato automático com o cliente.
+  { nome: 'relatorio-semanal-auditor', cronExpr: '15 11 * * 1', metodo: 'POST' }, // 8h15 BRT segunda-feira
+  { nome: 'lembrete-agendamento', cronExpr: '30 11 * * *', metodo: 'POST' }, // 8h30 BRT diário
+  { nome: 'aniversario-clientes', cronExpr: '10 12 * * *', metodo: 'POST' }, // 9h10 BRT diário
+  { nome: 'reativacao-clientes', cronExpr: '0 13 * * *', metodo: 'POST' }, // 10h BRT diário
+  { nome: 'pesquisa-nps', cronExpr: '15 13 * * *', metodo: 'POST' }, // 10h15 BRT diário
 ]
 
 for (const job of jobs) {

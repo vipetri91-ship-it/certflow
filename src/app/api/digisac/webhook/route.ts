@@ -2,7 +2,53 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
 import { enviarWhatsApp } from '@/lib/digisac'
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
+import { MARCA_NPS_ENVIADA } from '@/lib/robo/nps'
+
+const NPS_MARCA_RESPONDIDA = (nota: number) => `Pesquisa NPS respondida — nota ${nota}`
+
+// Só trata como resposta de NPS se: (a) o cliente mandou só um número de 0 a
+// 10, e (b) existe uma pesquisa enviada pra esse cliente nos últimos 10 dias
+// sem resposta ainda. Qualquer outra mensagem de cliente continua sendo
+// ignorada — este webhook não virou um atendente automático, escopo
+// deliberadamente restrito a essa única captura.
+async function tentarCapturarRespostaNps(numeroLimpo: string, texto: string): Promise<boolean> {
+  const match = texto.match(/^\s*(10|[0-9])\s*$/)
+  if (!match) return false
+  const nota = Number(match[1])
+
+  const ultimosDigitos = numeroLimpo.slice(-9)
+  const cliente = await prisma.cliente.findFirst({
+    where: { OR: [{ celular: { endsWith: ultimosDigitos } }, { telefone: { endsWith: ultimosDigitos } }] },
+    select: { id: true, nome: true },
+  })
+  if (!cliente) return false
+
+  const pendente = await prisma.historicoContato.findFirst({
+    where: { clienteId: cliente.id, observacao: MARCA_NPS_ENVIADA, createdAt: { gte: subDays(new Date(), 10) } },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, certificadoId: true },
+  })
+  if (!pendente) return false
+
+  const jaRespondeu = await prisma.historicoContato.findFirst({
+    where: { clienteId: cliente.id, certificadoId: pendente.certificadoId, observacao: { startsWith: 'Pesquisa NPS respondida' } },
+    select: { id: true },
+  })
+  if (jaRespondeu) return false
+
+  await prisma.historicoContato.create({
+    data: { clienteId: cliente.id, certificadoId: pendente.certificadoId, observacao: NPS_MARCA_RESPONDIDA(nota) },
+  })
+
+  const telefone = '55' + numeroLimpo
+  const agradecimento = nota >= 9
+    ? `Muito obrigado pela nota, ${cliente.nome.split(' ')[0]}! Ficamos muito felizes 🙏😊`
+    : `Muito obrigado pelo feedback, ${cliente.nome.split(' ')[0]}! Vamos usar isso pra melhorar. 🙏`
+  await enviarWhatsApp({ telefone, mensagem: agradecimento, nomeCliente: cliente.nome })
+
+  return true
+}
 
 // Número do dono — único que ativa o bot
 const NUMERO_ADMIN = (process.env.BOT_ADMIN_NUMERO ?? '11943156015').replace(/\D/g, '')
@@ -114,7 +160,11 @@ export async function POST(req: NextRequest) {
     const numeroLimpo = numero.replace(/^0+/, '')
     const adminLimpo  = NUMERO_ADMIN.replace(/^0+/, '')
     if (!numeroLimpo.endsWith(adminLimpo.slice(-9))) {
-      return NextResponse.json({ ok: true }) // ignora silenciosamente
+      // Não é o admin — a única coisa que este webhook trata vindo de
+      // cliente é uma resposta de pesquisa NPS pendente (ver função acima).
+      // Qualquer outra mensagem é ignorada silenciosamente, como já era.
+      await tentarCapturarRespostaNps(numeroLimpo, texto)
+      return NextResponse.json({ ok: true })
     }
 
     // Gera resposta com IA
