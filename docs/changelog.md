@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026 (9)
+
+### fix(UX): nome do cliente cortado sem tooltip em Contas a Receber e Controle de Vencimentos
+
+**Origem:** Vinicius notou que nomes longos de cliente aparecem cortados ("JOAO VICTOR BITTENC...") sem jeito de ver o nome completo.
+
+- **`src/app/(dashboard)/financeiro/contas-a-receber/page.tsx`** — `title` adicionado no nome do cliente, responsável e certificado (passar o mouse mostra o texto completo).
+- **`src/app/(dashboard)/renovacoes/lista.tsx`** — mesmo tratamento nas duas tabelas (a vencer e histórico): nome do cliente, parceiro e e-mail.
+- **`src/app/(dashboard)/renovacoes/detalhe.tsx`** — nome do cliente no cabeçalho do modal e no componente `Campo` genérico (usado por vários campos do modal, todos ganham tooltip).
+
+Optei por manter o corte visual (truncate) e só adicionar o tooltip nativo do navegador — trocar pra "nome inteiro sempre visível" quebraria o alinhamento das colunas em nomes muito longos.
+
+**Testado:** `tsc --noEmit` sem erros; `eslint` sem erros novos nos 3 arquivos (achados pré-existentes não relacionados, longe das linhas alteradas).
+
+**Risco:** Muito baixo — só atributo `title` (tooltip HTML nativo), sem lógica nova.
+
+---
+
 ## 14/07/2026 (8)
 
 ### fix(Área Safeweb — autorizado explicitamente): etiqueta "Verificação Reprovada" errada na tela Eventos Safeweb

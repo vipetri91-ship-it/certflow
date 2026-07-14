@@ -233,11 +233,11 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                     <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition">
                       {/* Cliente */}
                       <td className="px-3 py-3">
-                        <p className="font-medium text-gray-900 dark:text-white text-sm leading-tight truncate max-w-[180px]">
+                        <p title={nomeCliente(c)} className="font-medium text-gray-900 dark:text-white text-sm leading-tight truncate max-w-[180px]">
                           {nomeCliente(c)}
                         </p>
                         {responsavelCliente(c) && (
-                          <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[180px]">
+                          <p title={responsavelCliente(c) ?? undefined} className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[180px]">
                             {responsavelCliente(c)}
                           </p>
                         )}
@@ -245,7 +245,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
 
                       {/* Certificado */}
                       <td className="px-3 py-3 text-xs text-gray-600 dark:text-slate-300 max-w-[140px]">
-                        <span className="truncate block">{nomeCertificado(c)}</span>
+                        <span title={nomeCertificado(c)} className="truncate block">{nomeCertificado(c)}</span>
                       </td>
 
                       {/* Forma de pagamento */}

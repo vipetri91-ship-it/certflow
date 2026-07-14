@@ -75,10 +75,10 @@ function LinhaVencer({ cert, onAbrirDetalhe }: { cert: Cert; onAbrirDetalhe: () 
         </span>
       </td>
       <td className="px-3 py-3 max-w-[200px]">
-        <p className="text-sm font-semibold text-gray-900 truncate">{cert.cliente.nome}</p>
+        <p title={cert.cliente.nome} className="text-sm font-semibold text-gray-900 truncate">{cert.cliente.nome}</p>
         <p className="text-xs font-mono text-gray-400">{fmtDoc(cert.cliente)}</p>
         {cert.cliente.parceiro && (
-          <p className="text-xs text-blue-600 truncate">{cert.cliente.parceiro.razaoSocial ?? cert.cliente.parceiro.nome}</p>
+          <p title={cert.cliente.parceiro.razaoSocial ?? cert.cliente.parceiro.nome} className="text-xs text-blue-600 truncate">{cert.cliente.parceiro.razaoSocial ?? cert.cliente.parceiro.nome}</p>
         )}
       </td>
       <td className="px-3 py-3 hidden md:table-cell">
@@ -90,7 +90,7 @@ function LinhaVencer({ cert, onAbrirDetalhe }: { cert: Cert; onAbrirDetalhe: () 
             </a>
           )}
           {cert.cliente.email && (
-            <a href={`mailto:${cert.cliente.email}`} className="flex items-center gap-1 text-xs text-blue-500 hover:underline truncate max-w-[160px]">
+            <a href={`mailto:${cert.cliente.email}`} title={cert.cliente.email} className="flex items-center gap-1 text-xs text-blue-500 hover:underline truncate max-w-[160px]">
               <Mail className="w-3 h-3 shrink-0" /> {cert.cliente.email}
             </a>
           )}
@@ -136,7 +136,7 @@ function LinhaHistorico({ cert, tipo, onAbrirDetalhe }: { cert: Cert; tipo: 'ren
         <span className="text-xs text-gray-400">vencimento original</span>
       </td>
       <td className="px-3 py-3 max-w-[200px]">
-        <p className="text-sm font-semibold text-gray-900 truncate">{cert.cliente.nome}</p>
+        <p title={cert.cliente.nome} className="text-sm font-semibold text-gray-900 truncate">{cert.cliente.nome}</p>
         <p className="text-xs font-mono text-gray-400">{fmtDoc(cert.cliente)}</p>
         {tipo === 'nao' && cert.motivoNaoRenovacao && (
           <p className="text-xs text-red-500 truncate mt-0.5" title={cert.motivoNaoRenovacao}>
@@ -147,7 +147,7 @@ function LinhaHistorico({ cert, tipo, onAbrirDetalhe }: { cert: Cert; tipo: 'ren
       <td className="px-3 py-3 hidden md:table-cell">
         <div className="space-y-0.5">
           {cert.cliente.celular && <p className="text-xs text-gray-500">{fmtTel(cert.cliente.celular)}</p>}
-          {cert.cliente.email   && <p className="text-xs text-gray-400 truncate max-w-[160px]">{cert.cliente.email}</p>}
+          {cert.cliente.email   && <p title={cert.cliente.email} className="text-xs text-gray-400 truncate max-w-[160px]">{cert.cliente.email}</p>}
         </div>
       </td>
       <td className="px-3 py-3 hidden lg:table-cell">

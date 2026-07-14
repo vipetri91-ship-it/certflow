@@ -61,7 +61,7 @@ function Campo({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-      <p className="text-sm text-gray-800 font-medium truncate">{value || '—'}</p>
+      <p title={value || undefined} className="text-sm text-gray-800 font-medium truncate">{value || '—'}</p>
     </div>
   )
 }
@@ -201,7 +201,7 @@ export function DetalheRenovacao({ cert, onFechar }: Props) {
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-white/70 text-xs font-medium">Vencimento: {fmtData(cert.dataVencimento)}</p>
-              <h2 className="font-bold text-lg truncate">{cert.cliente.nome}</h2>
+              <h2 title={cert.cliente.nome} className="font-bold text-lg truncate">{cert.cliente.nome}</h2>
               <p className="text-white/80 text-sm">{cert.modelo.nome} · {vencido ? `${Math.abs(cert.diasRestantes)}d vencido` : `${cert.diasRestantes}d restantes`}</p>
             </div>
             <button onClick={onFechar} className="p-1.5 rounded-full hover:bg-white/20 transition shrink-0">
