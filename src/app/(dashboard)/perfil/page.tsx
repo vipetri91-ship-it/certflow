@@ -12,6 +12,7 @@ const ROLE_LABELS: Record<string, string> = {
   OPERADOR: 'Operador',
   FINANCEIRO: 'Financeiro',
   VISUALIZADOR: 'Visualizador',
+  OPERADOR_FINANCEIRO: 'Operador Financeiro',
 }
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {

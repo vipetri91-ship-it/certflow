@@ -11,7 +11,7 @@ const schemaUpdate = z.object({
   username: z.string().min(3).regex(/^[a-z0-9._-]+$/).optional(),
   email:    z.string().email().optional().nullable(),
   senha:    z.string().min(8).optional(),
-  role:     z.enum(['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR']).optional(),
+  role:     z.enum(['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR', 'OPERADOR_FINANCEIRO']).optional(),
   ativo:    z.boolean().optional(),
   whatsapp: z.string().optional(),
   nomeAgrDs: z.string().optional(),

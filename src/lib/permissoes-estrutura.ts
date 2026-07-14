@@ -261,6 +261,21 @@ export const PERMISSOES_PADRAO: Record<string, Record<string, boolean>> = {
     'fin.listar': true, 'relat.listar': true,
     'dash.producao': true,
   },
+  // Mesmo perfil do OPERADOR + Contas a Receber (ver + dar baixa). Sem
+  // fin.criar/fin.deletar/fin.pagar — não cria lançamento, não mexe em
+  // Contas a Pagar.
+  OPERADOR_FINANCEIRO: {
+    'clientes.criar_pf': true, 'clientes.criar_pj': true, 'clientes.editar': true,
+    'parceiros.listar': true, 'parceiros.criar': true,
+    'vendas.criar': true, 'vendas.alterar_valor': true,
+    'monitor.listar': true, 'monitor.protocolo': true, 'monitor.verificar': true, 'monitor.emitir': true,
+    'renov.listar': true, 'renov.whatsapp': true, 'renov.email': true, 'renov.historico': true, 'renov.gerar': true,
+    // fin.comprovante fica de fora de propósito: essa ação só existe em
+    // lançamentos de Contas a Pagar (ver comprovante/route.ts), e ela não
+    // deve interagir com Contas a Pagar de forma alguma.
+    'fin.listar': true, 'fin.receber': true,
+    'dash.agenda': true, 'dash.vencimentos': true,
+  },
 }
 
 // Gera todas as permissões do ADMIN como true

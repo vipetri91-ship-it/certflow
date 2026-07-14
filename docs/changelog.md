@@ -5,6 +5,80 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 14/07/2026 (7)
+
+### fix(crítico): auditoria completa de todo caminho que toca Contas a Pagar
+
+**Origem:** Vinicius pediu garantia absoluta — "nem na dashboard, nem pedindo pra Zoe, nem relatórios... NADA" — e depois pediu auditoria do sistema inteiro. Mapeei todo arquivo que consulta `Lancamento` (24 arquivos) e testei cada um.
+
+**Mais 2 caminhos abertos encontrados** (mesmo padrão dos 4 anteriores — tela protegida, API por trás não):
+- **`comissoes/route.ts` (GET)** — sem checagem de perfil; comissão é dinheiro que a V&G deve ao parceiro, mesma natureza de Contas a Pagar. Corrigido: exige ADMIN/GERENTE, igual à tela.
+- **`comissoes/[parceiroId]/pagar/route.ts` (POST)** — cria um `Lancamento` tipo PAGAR ao marcar comissão como paga, sem checar perfil algum. Corrigido: exige ADMIN/GERENTE.
+
+**Removido:** `dashboard/financeiro-tab.tsx` — componente órfão (nenhum lugar do sistema o importava, confirmado por busca), mas que exibia o total de Contas a Pagar sem nenhuma checagem de perfil. Não representava risco hoje por estar morto, mas deixava uma armadilha pronta pra caso alguém o reativasse no futuro sem notar. Removido por segurança.
+
+**Confirmado seguro, sem alteração necessária** (verificado, não só assumido):
+- Conciliações (`/financeiro/conciliacoes`) — não toca a tabela `Lancamento`, é comparação de planilhas de vendas.
+- Zoe (assistente do dashboard `/api/assistente/chat`) e Zoe do portal de parceiros (`/api/portal/zoe`) — nenhuma das duas tem ferramenta que consulte `Lancamento`; perguntar sobre Contas a Pagar não retorna dado nenhum, só "não sei".
+- Bot "Secretária" no Telegram e bot do Digisac — têm ferramentas que leem Contas a Pagar, mas os dois só respondem ao número/chat pessoal do Vinicius (checagem por ID, não por perfil) — Laryssa não tem esse acesso.
+- `dashboard-v2/page.tsx` — só consulta `tipo: 'RECEBER'`.
+- Rotas de pedidos (`/api/pedidos/[id]`, `.../cancelar`) — nunca criam lançamento tipo PAGAR, só RECEBER.
+- Integração Banco Inter (cobrança) — opera sobre lançamentos vinculados a pedido/cliente (perfil de Contas a Receber); tecnicamente aceita qualquer `lancamentoId`, mas um lançamento PAGAR não tem cliente vinculado, então o fluxo não expõe dado útil de Contas a Pagar mesmo se chamado incorretamente. Não é um vazamento de dados, é uma rota que faria uma ação sem efeito.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Script de verificação mecânica cobrindo os 18 caminhos conhecidos que tocam Contas a Pagar — todos bloqueados pra `OPERADOR_FINANCEIRO`. Removido depois de rodar (não faz parte do código de produção).
+
+**Escopo desta garantia:** cobre todo caminho de acesso a **dados de Contas a Pagar** (a preocupação específica do Vinicius) — não é uma auditoria de segurança geral do sistema inteiro (isso é um projeto à parte, bem maior).
+
+---
+
+## 14/07/2026 (6)
+
+### fix(crítico): 4 caminhos de API que deixariam qualquer perfil financeiro tocar em Contas a Pagar
+
+**Origem:** Ao revisar a mudança anterior (perfil Operador Financeiro), Vinicius pediu garantia absoluta de que Laryssa jamais acessaria Contas a Pagar. Investigando as rotas de API (não só as telas) por trás do módulo financeiro, achei 4 problemas — 1 causado pela mudança anterior, 3 pré-existentes (afetavam também o perfil FINANCEIRO, hoje sem nenhum usuário real, então nunca haviam sido notados na prática):
+
+1. **`lancamentos/[id]/baixa/route.ts`** — a rota de "dar baixa" nunca checava se o lançamento era RECEBER ou PAGAR, só o perfil de quem pedia. Ao liberar essa rota pro Operador Financeiro, ela conseguiria marcar uma conta a pagar como paga. **Corrigido:** bloqueia baixa em lançamento tipo PAGAR pra quem não é ADMIN/GERENTE.
+2. **`lancamentos/[id]/comprovante/route.ts`** — essa rota só existe pra Contas a Pagar (anexar comprovante de pagamento). Eu tinha liberado ela pro Operador Financeiro por engano na mudança anterior — **revertido**, ela não entra mais na lista de perfis permitidos.
+3. **`lancamentos/route.ts` (GET, listagem)** — não checava perfil nenhum, só se estava logado. Qualquer usuário autenticado podia pedir `?tipo=PAGAR` direto pela API e ver a lista de contas a pagar, sem passar pela tela. **Corrigido:** exige ADMIN/GERENTE pra ver PAGAR (ou quando nenhum tipo é informado, já que aí viria tudo misturado).
+4. **Mesma rota, os totais somados** — mesmo numa consulta filtrada por `tipo=RECEBER`, a soma de totais (`totais`) ignorava esse filtro e sempre incluía o valor de Contas a Pagar junto. **Corrigido:** a soma agora respeita o mesmo filtro da consulta.
+5. **`lancamentos/route.ts` (POST, criar lançamento)** — não checava perfil, então qualquer usuário logado podia criar uma conta a pagar direto pela API. **Corrigido:** criar tipo PAGAR agora exige ADMIN/GERENTE.
+
+**Por que isso não apareceu antes:** as telas (`/financeiro/contas-a-pagar` e `/financeiro/contas-a-receber`) sempre filtraram corretamente por tipo e checaram permissão — o problema estava nas rotas de API por trás delas, que algumas telas nem usam (fazem a consulta direto no banco) mas que continuam acessíveis por quem souber a URL.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Escrevi um script que reproduz a lógica exata de cada rota (perfil × tipo de conta, todas as combinações: GET, POST, baixa, comprovante) e confirmei mecanicamente que nenhuma combinação envolvendo `OPERADOR_FINANCEIRO` retorna acesso a `PAGAR` — 26 cenários testados, 0 falhas. Não foi possível testar com login real da Laryssa (ela ainda não tinha o perfil atribuído no momento do teste).
+
+**Risco:** as correções 3, 4 e 5 também protegem o perfil FINANCEIRO (hoje sem usuários) contra os mesmos problemas — é uma correção de segurança geral do módulo financeiro, não só do caso da Laryssa.
+
+---
+
+## 14/07/2026 (5)
+
+### feat: novo perfil "Operador Financeiro" — Laryssa com acesso a Contas a Receber
+
+**Origem:** Vinicius pediu acesso "personalizado" pra Laryssa (hoje Agente de Registro/OPERADOR): manter tudo que ela já tem + Contas a Receber (ela ajuda nas cobranças). Contas a Pagar deve continuar exclusivo dele.
+
+**Investigação antes de mexer (Regra 1/3):** o CertFlow não tem permissão por usuário, só por perfil — e Ana Karolina e Arlen Junior também são OPERADOR, então mexer no perfil OPERADOR direto vazaria acesso financeiro pra eles também. Também achei **3 sistemas de permissão paralelos e não sincronizados** no código (`permissoes-estrutura.ts` granular por banco, `permissions.ts` fixo por role, e arrays `ROLES_PERMITIDOS` hardcoded dentro de rotas individuais) — a tela de Contas a Receber usa o segundo, a de baixa/comprovante usa o terceiro; o primeiro não é lido por nenhum dos dois. Registrado aqui como achado de auditoria (Regra 9), não corrigido agora — risco de tocar em autenticação de produção sem necessidade.
+
+**Decisão confirmada com o Vinicius:** perfil novo "Operador Financeiro" = tudo do OPERADOR + Contas a Receber (ver e dar baixa, sem criar nem excluir lançamento). Contas a Pagar já era travada só pra ADMIN/GERENTE no código — nada a mudar lá.
+
+- **`prisma/schema.prisma`** — novo valor `OPERADOR_FINANCEIRO` no enum `Role`.
+- **`scripts/migrate.js`** — `ALTER TYPE "Role" ADD VALUE IF NOT EXISTS` (padrão de migração deste projeto, sem histórico formal do Prisma Migrate).
+- **`src/lib/permissions.ts`** — novo perfil = permissões do OPERADOR + `financeiro:read`.
+- **`src/lib/permissoes-estrutura.ts`** — `PERMISSOES_PADRAO.OPERADOR_FINANCEIRO` (mesmo padrão granular do OPERADOR + `fin.listar`/`fin.receber`/`fin.comprovante`), pra manter os 2 sistemas de permissão pelo menos consistentes entre si daqui pra frente.
+- **`src/app/api/financeiro/lancamentos/[id]/baixa/route.ts`** e **`.../comprovante/route.ts`** — `OPERADOR_FINANCEIRO` adicionado a `ROLES_PERMITIDOS`.
+- **`src/app/(dashboard)/financeiro/contas-a-receber/page.tsx`** — botão "Nova Conta" escondido também pro novo perfil (mesmo tratamento já dado ao FINANCEIRO).
+- **`src/components/sidebar.tsx`** — sem este ajuste, o menu dela mostraria "Contas a Pagar" (redirecionada ao clicar) porque o filtro de menu checava só `role === 'OPERADOR'` exato. Agora Operador Financeiro vê o menu completo de AGR + só "Contas a Receber" dentro de Financeiro.
+- **`src/app/api/usuarios/route.ts`** e **`.../[id]/route.ts`** — validação `zod` do campo `role` estava travada nos 5 perfis antigos; sem esse ajuste, salvar o novo perfil pela tela de usuários daria erro 422.
+- Labels/cores/ícones do novo perfil adicionados em `usuarios/page.tsx`, `usuarios/novo`, `usuarios/[id]/editar`, `configuracoes/perfis/page.tsx`, `configuracoes/perfis/[role]/editor.tsx`, `perfil/page.tsx`, `api/configuracoes/permissoes/route.ts` — sem isso apareceria texto cru ("OPERADOR_FINANCEIRO") ou erro ao tentar configurar permissões granulares desse perfil.
+
+**Diferença cosmética conhecida, não corrigida:** o dashboard inicial (`dashboard/page.tsx`) também checa `role === 'OPERADOR'` em 3 lugares pra decidir a ordem de alguns widgets. Pra Operador Financeiro isso só troca a ordem de 2 widgets (Pedidos em Aberto/Financeiro trocam de posição) e troca 1 widget de meta de vendas por um carrossel — nada quebra, nada indevido aparece, mas o layout fica levemente diferente do de Ana/Arlen. Não mexi para não ampliar o escopo da mudança.
+
+**Testado:** `prisma generate`, `tsc --noEmit` e `eslint` sem erros novos (achados pré-existentes não relacionados). Migração idempotente, mesmo padrão das ~80 anteriores no arquivo. Não foi possível testar login real como Laryssa antes do deploy.
+
+**Risco:** Médio — mexe em autenticação/autorização de um sistema em produção com dados financeiros reais. Mitigado por: escopo mínimo (só leitura + baixa, sem criar/excluir), Contas a Pagar intocada, e validação cruzada em 3 camadas (rota, sidebar, página).
+
+---
+
 ## 14/07/2026 (4)
 
 ### fix(agenda): título do evento mostra cliente + contabilidade, não mais o produto

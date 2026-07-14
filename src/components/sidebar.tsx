@@ -111,13 +111,21 @@ export function Sidebar({ aberta = true, onFechar }: SidebarProps) {
 
   const semSST = (menu: typeof MENU_PADRAO) => menu.filter(e => !(e.tipo === 'item' && e.label === 'SST'))
 
+  // Operador Financeiro: menu completo de Agente de Registro (igual ao
+  // OPERADOR) + Contas a Receber, sem Contas a Pagar/Comissões/Conciliações.
   const MENU = role === 'FINANCEIRO'
     ? MENU_FINANCEIRO
-    : semFinanceiro.includes(role ?? '')
-      ? semSST(MENU_PADRAO).filter(e => !(e.tipo === 'grupo' && e.label === 'Financeiro'))
-      : role === 'ADMIN'
-        ? MENU_PADRAO
-        : semSST(MENU_PADRAO)
+    : role === 'OPERADOR_FINANCEIRO'
+      ? semSST(MENU_PADRAO).map(e =>
+          e.tipo === 'grupo' && e.label === 'Financeiro'
+            ? { ...e, itens: e.itens.filter(i => i.label === 'Contas a Receber') }
+            : e
+        )
+      : semFinanceiro.includes(role ?? '')
+        ? semSST(MENU_PADRAO).filter(e => !(e.tipo === 'grupo' && e.label === 'Financeiro'))
+        : role === 'ADMIN'
+          ? MENU_PADRAO
+          : semSST(MENU_PADRAO)
 
   const gruposAbertosInicial = MENU.reduce<Record<string, boolean>>((acc, entry) => {
     if (entry.tipo === 'grupo') {

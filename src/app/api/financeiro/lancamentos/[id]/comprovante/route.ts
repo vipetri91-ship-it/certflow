@@ -8,6 +8,9 @@ const schema = z.object({
   comprovante: z.string().url('URL inválida'),
 })
 
+// Comprovante só existe em lançamentos tipo PAGAR (ver checagem abaixo) — por
+// isso OPERADOR_FINANCEIRO NÃO entra aqui: ela não deve interagir com Contas
+// a Pagar de forma alguma, nem para anexar comprovante.
 const ROLES_PERMITIDOS = ['ADMIN', 'GERENTE', 'FINANCEIRO']
 
 export async function PATCH(

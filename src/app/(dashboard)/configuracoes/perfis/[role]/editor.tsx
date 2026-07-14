@@ -20,10 +20,11 @@ const COR_ROLE: Record<string, string> = {
   OPERADOR:     'from-green-600 to-green-700',
   FINANCEIRO:   'from-yellow-500 to-yellow-600',
   VISUALIZADOR: 'from-gray-500 to-gray-600',
+  OPERADOR_FINANCEIRO: 'from-teal-600 to-teal-700',
 }
 
 const EMOJI_ROLE: Record<string, string> = {
-  ADMIN: '👑', GERENTE: '🎯', OPERADOR: '🏆', FINANCEIRO: '💰', VISUALIZADOR: '👁️',
+  ADMIN: '👑', GERENTE: '🎯', OPERADOR: '🏆', FINANCEIRO: '💰', VISUALIZADOR: '👁️', OPERADOR_FINANCEIRO: '🏆',
 }
 
 export function PermissoesEditor({ role, roleLabel, permissoesIniciais, estrutura, isAdmin }: Props) {

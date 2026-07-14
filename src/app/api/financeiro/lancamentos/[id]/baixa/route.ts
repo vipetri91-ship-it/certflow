@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { registrarAuditoria } from '@/lib/audit'
 
-const ROLES_PERMITIDOS = ['ADMIN', 'GERENTE', 'FINANCEIRO']
+const ROLES_PERMITIDOS = ['ADMIN', 'GERENTE', 'FINANCEIRO', 'OPERADOR_FINANCEIRO']
 
 export async function PATCH(
   req: NextRequest,
@@ -21,6 +21,14 @@ export async function PATCH(
   const lancamento = await prisma.lancamento.findUnique({ where: { id } })
   if (!lancamento) {
     return NextResponse.json({ erro: 'Lançamento não encontrado' }, { status: 404 })
+  }
+
+  // Contas a Pagar só pode ser baixada por ADMIN/GERENTE — sem isso, FINANCEIRO
+  // e OPERADOR_FINANCEIRO (que só deveriam mexer em Contas a Receber)
+  // conseguiriam marcar uma conta a pagar como paga por esta rota, mesmo sem
+  // acesso à tela de Contas a Pagar.
+  if (lancamento.tipo === 'PAGAR' && !['ADMIN', 'GERENTE'].includes(session.user.role)) {
+    return NextResponse.json({ erro: 'Sem permissão para dar baixa em Contas a Pagar' }, { status: 403 })
   }
 
   if (lancamento.status === 'PAGO') {

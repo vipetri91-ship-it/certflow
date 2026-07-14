@@ -30,7 +30,9 @@ export default async function ContasReceberPage({ searchParams }: Props) {
   if (!session) redirect('/login')
   if (!hasPermission(session.user.role, 'financeiro:read')) redirect('/dashboard')
 
-  const isFinanceiro = session.user.role === 'FINANCEIRO'
+  // FINANCEIRO e OPERADOR_FINANCEIRO só visualizam e dão baixa — não criam
+  // lançamento novo (isso fica com ADMIN/GERENTE/OPERADOR).
+  const isFinanceiro = ['FINANCEIRO', 'OPERADOR_FINANCEIRO'].includes(session.user.role)
   const params = await searchParams
   const hoje   = new Date()
   const mes    = Number(params.mes ?? hoje.getMonth() + 1)

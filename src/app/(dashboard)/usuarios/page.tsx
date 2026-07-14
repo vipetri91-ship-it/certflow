@@ -12,6 +12,7 @@ const ROLE_LABELS: Record<string, string> = {
   OPERADOR:     'Agente de Registro',
   FINANCEIRO:   'Aux Financeiro',
   VISUALIZADOR: 'Visualizador',
+  OPERADOR_FINANCEIRO: 'Operador Financeiro',
 }
 
 const ROLE_COR: Record<string, string> = {
@@ -20,6 +21,7 @@ const ROLE_COR: Record<string, string> = {
   OPERADOR:     'bg-green-100 text-green-700',
   FINANCEIRO:   'bg-yellow-100 text-yellow-700',
   VISUALIZADOR: 'bg-gray-100 text-gray-600',
+  OPERADOR_FINANCEIRO: 'bg-teal-100 text-teal-700',
 }
 
 function Iniciais({ nome }: { nome: string }) {

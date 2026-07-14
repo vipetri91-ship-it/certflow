@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { PERMISSOES_PADRAO } from '@/lib/permissoes-estrutura'
 
-const ROLES_VALIDOS = ['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR']
+const ROLES_VALIDOS = ['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR', 'OPERADOR_FINANCEIRO']
 
 export async function GET(req: NextRequest) {
   const session = await auth()

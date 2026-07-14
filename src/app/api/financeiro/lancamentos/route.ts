@@ -25,6 +25,9 @@ const schemaLancamento = z.object({
   banco: z.string().optional(),
 })
 
+const ROLES_CONTAS_PAGAR = ['ADMIN', 'GERENTE']
+const ROLES_CONTAS_RECEBER = ['ADMIN', 'GERENTE', 'FINANCEIRO', 'VISUALIZADOR', 'OPERADOR_FINANCEIRO']
+
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
@@ -36,6 +39,16 @@ export async function GET(req: NextRequest) {
   const ano     = searchParams.get('ano')
   const page    = Number(searchParams.get('page')  ?? 1)
   const limit   = Number(searchParams.get('limit') ?? 50)
+
+  // Sem tipo definido, a consulta abaixo retornaria RECEBER e PAGAR
+  // misturados — por isso é tratado como "pode conter Contas a Pagar" e
+  // exige o mesmo nível de acesso que tipo=PAGAR.
+  const podeVer = tipo === 'RECEBER'
+    ? ROLES_CONTAS_RECEBER.includes(session.user.role)
+    : ROLES_CONTAS_PAGAR.includes(session.user.role)
+  if (!podeVer) {
+    return NextResponse.json({ erro: 'Sem permissão' }, { status: 403 })
+  }
 
   let dataFiltro = {}
   if (mes && ano) {
@@ -63,7 +76,11 @@ export async function GET(req: NextRequest) {
       take:  limit,
     }),
     prisma.lancamento.count({ where }),
-    prisma.lancamento.groupBy({ by: ['tipo', 'status'], _sum: { valor: true } }),
+    // Antes ignorava "where" e sempre somava RECEBER + PAGAR juntos — mesmo
+    // numa consulta filtrada por tipo=RECEBER, os totais vazavam valores de
+    // Contas a Pagar pra quem não deveria ver. Agora respeita o mesmo filtro
+    // da consulta principal.
+    prisma.lancamento.groupBy({ by: ['tipo', 'status'], where, _sum: { valor: true } }),
   ])
 
   return NextResponse.json({ lancamentos, total, totais, page })
@@ -77,6 +94,13 @@ export async function POST(req: NextRequest) {
   const parsed = schemaLancamento.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ erro: 'Dados inválidos', detalhes: parsed.error.flatten() }, { status: 422 })
+  }
+
+  // Criar Contas a Pagar é exclusivo de ADMIN/GERENTE — sem isso, qualquer
+  // usuário autenticado (inclusive OPERADOR_FINANCEIRO) poderia lançar uma
+  // conta a pagar direto por aqui, mesmo sem acesso à tela.
+  if (parsed.data.tipo === 'PAGAR' && !ROLES_CONTAS_PAGAR.includes(session.user.role)) {
+    return NextResponse.json({ erro: 'Sem permissão para lançar Contas a Pagar' }, { status: 403 })
   }
 
   const lancamento = await prisma.lancamento.create({

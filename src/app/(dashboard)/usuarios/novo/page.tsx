@@ -12,6 +12,7 @@ const PERFIS = [
   { value: 'OPERADOR',     label: 'Agente de Registro', desc: 'Emite certificados e gerencia clientes' },
   { value: 'FINANCEIRO',   label: 'Aux Financeiro',     desc: 'Acesso ao módulo financeiro' },
   { value: 'VISUALIZADOR', label: 'Visualizador',       desc: 'Somente leitura, sem edição' },
+  { value: 'OPERADOR_FINANCEIRO', label: 'Operador Financeiro', desc: 'Agente de Registro + Contas a Receber (ver e dar baixa)' },
 ]
 
 const UNIDADES = ['Piracaia', 'Bragança Paulista', 'Joanópolis', 'Outra']

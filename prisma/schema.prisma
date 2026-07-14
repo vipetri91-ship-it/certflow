@@ -78,6 +78,10 @@ enum Role {
   OPERADOR
   FINANCEIRO
   VISUALIZADOR
+  // Agente de Registro (mesmo acesso do OPERADOR) + leitura/baixa de Contas a
+  // Receber — criado 14/07/2026 a pedido do Vinicius pra Laryssa, que ajuda
+  // nas cobranças. Contas a Pagar continua exclusivo de ADMIN/GERENTE.
+  OPERADOR_FINANCEIRO
 }
 
 enum StatusEmail {

@@ -315,6 +315,9 @@ async function migrate() {
       CONSTRAINT "comissoes_fechamento_parceiroId_fkey" FOREIGN KEY ("parceiroId") REFERENCES "parceiros"("id"),
       CONSTRAINT "comissoes_fechamento_lancamentoId_fkey" FOREIGN KEY ("lancamentoId") REFERENCES "lancamentos"("id")
     )`,
+    // Perfil "Operador Financeiro" (14/07/2026) — Agente de Registro com acesso
+    // extra a Contas a Receber (ver README no schema.prisma, enum Role).
+    `ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'OPERADOR_FINANCEIRO'`,
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "ignorarReconciliacaoFinanceira" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "ignorarMetricasVendas" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TYPE "TipoEmailAutomatico" ADD VALUE IF NOT EXISTS 'VENCIDO_1'`,

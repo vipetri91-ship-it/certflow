@@ -7,6 +7,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ parceiroId
   const session = await auth()
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
+  // Esta rota cria um Lancamento tipo PAGAR (ver src/lib/comissoes.ts) —
+  // mesma regra da tela /financeiro/comissoes (ADMIN/GERENTE).
+  if (!['ADMIN', 'GERENTE'].includes(session.user.role)) {
+    return NextResponse.json({ erro: 'Sem permissão' }, { status: 403 })
+  }
+
   const { parceiroId } = await ctx.params
   const { comissaoPedidoIds, dataPagamento } = await req.json()
 

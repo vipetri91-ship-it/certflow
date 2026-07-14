@@ -65,6 +65,17 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'financeiro:read',
     'relatorios:read',
   ],
+  // Mesmo acesso do OPERADOR + leitura de Contas a Receber (não inclui
+  // 'financeiro:write' — sem criar/editar lançamento; dar baixa é liberado
+  // à parte, por role, direto nas rotas de baixa/comprovante).
+  OPERADOR_FINANCEIRO: [
+    'clientes:read', 'clientes:write',
+    'certificados:read', 'certificados:write',
+    'parceiros:read',
+    'pedidos:read', 'pedidos:write',
+    'relatorios:read',
+    'financeiro:read',
+  ],
 }
 
 export function hasPermission(role: Role, permission: Permission): boolean {

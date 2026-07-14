@@ -11,7 +11,7 @@ const schemaUsuario = z.object({
   username: z.string().min(3).regex(/^[a-z0-9._-]+$/, 'Somente letras minúsculas, números, ponto, traço ou underscore'),
   email:    z.string().email().optional(),
   senha:    z.string().min(8),
-  role:     z.enum(['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR']),
+  role:     z.enum(['ADMIN', 'GERENTE', 'OPERADOR', 'FINANCEIRO', 'VISUALIZADOR', 'OPERADOR_FINANCEIRO']),
 })
 
 export async function GET(req: NextRequest) {

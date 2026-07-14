@@ -40,6 +40,13 @@ const PERFIS = [
     cor: 'bg-gray-100 text-gray-600 border-gray-200',
     icon: '👁️',
   },
+  {
+    role: 'OPERADOR_FINANCEIRO',
+    label: 'Operador Financeiro',
+    desc: 'Agente de Registro com acesso a Contas a Receber (ver e dar baixa).',
+    cor: 'bg-teal-100 text-teal-700 border-teal-200',
+    icon: '🏆',
+  },
 ]
 
 export default async function PerfisPage() {
