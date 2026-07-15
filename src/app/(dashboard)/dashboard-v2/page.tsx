@@ -5,9 +5,8 @@ import { addDays, startOfMonth, endOfMonth } from 'date-fns'
 import { Header } from '@/components/header'
 import { StatusOperacional, type IndicadorStatus, type StatusNivel } from './status-operacional'
 import { CertflowAI, type Insight } from './certflow-ai'
+import { buscarMetaVigente } from '@/lib/performance/metas'
 import './dashboard-v2.css'
-
-const META_MENSAL = 300
 
 async function getStatusData() {
   const hoje = new Date()
@@ -16,6 +15,7 @@ async function getStatusData() {
   const inicioMes = startOfMonth(hoje)
   const fimMes    = endOfMonth(hoje)
   const diasDecorridos = Math.max(1, hoje.getDate())
+  const metaVigente = await buscarMetaVigente(hoje.getMonth() + 1, hoje.getFullYear())
 
   const [vendasHoje, vendasMes, vencendo7, aReceberVencidosAgg, aReceberVencidosQtd] = await Promise.all([
     prisma.pedido.count({ where: { createdAt: { gte: inicioDia, lte: fimDia }, status: { not: 'CANCELADO' } } }),
@@ -32,7 +32,7 @@ async function getStatusData() {
     vencendo7,
     aReceberVencidos: Number(aReceberVencidosAgg._sum.valor ?? 0),
     aReceberVencidosQtd,
-    meta: META_MENSAL,
+    meta: metaVigente,
   }
 }
 

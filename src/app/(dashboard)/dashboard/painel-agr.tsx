@@ -28,6 +28,7 @@ interface Props {
   userName: string
   userAgr: string | null
   compact?: boolean
+  metaDiaria: number
 }
 
 function fmt(v: number) {
@@ -80,10 +81,8 @@ function CardAGR({ agr, onClose }: { agr: AGRPerf; onClose: () => void }) {
   )
 }
 
-const META_DIARIA = 10 // meta individual por dia
-
-function getEmoji(vendasHoje: number): { emoji: string; label: string; pct: number } {
-  const pct = Math.round((vendasHoje / META_DIARIA) * 100)
+function getEmoji(vendasHoje: number, metaDiaria: number): { emoji: string; label: string; pct: number } {
+  const pct = Math.round((vendasHoje / metaDiaria) * 100)
   if (pct === 0)   return { emoji: '😭', label: 'Sem vendas ainda', pct }
   if (pct <= 20)   return { emoji: '😢', label: 'Muito abaixo da meta', pct }
   if (pct <= 40)   return { emoji: '😔', label: 'Abaixo da meta', pct }
@@ -95,7 +94,7 @@ function getEmoji(vendasHoje: number): { emoji: string; label: string; pct: numb
   return               { emoji: '🚀', label: 'Mandando muito!', pct }
 }
 
-export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact }: Props) {
+export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact, metaDiaria }: Props) {
   const [idx, setIdx] = useState(0)
   const [modal, setModal] = useState(false)
 
@@ -112,7 +111,7 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact 
 
   const cor = AGR_COLORS[agrAtual.agr] ?? AGR_COLORS.vinicius
   const maxVendas = Math.max(...performanceAgr.map(a => a.vendas), 1)
-  const humor = getEmoji(agrAtual.vendasHoje)
+  const humor = getEmoji(agrAtual.vendasHoje, metaDiaria)
 
   function prev() { setIdx(i => (i - 1 + agrs.length) % agrs.length) }
   function next() { setIdx(i => (i + 1) % agrs.length) }
@@ -186,7 +185,7 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact 
                     style={{ width: `${Math.min(humor.pct, 100)}%` }}
                   />
                 </div>
-                <p className="text-white/50 text-xs mt-1">Meta: {META_DIARIA} vendas/dia</p>
+                <p className="text-white/50 text-xs mt-1">Meta: {metaDiaria.toFixed(1)} vendas/dia</p>
               </div>
             </div>
 

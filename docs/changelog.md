@@ -5,6 +5,26 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (9)
+
+### feat: módulo de Performance (ICF) — Fase 8, migração final dos 4 widgets antigos de meta
+
+**Origem:** última fase do módulo "Gestão de Performance da Equipe" (ver entradas anteriores). Resolve de vez a inconsistência encontrada no início do projeto: 4 metas hardcoded e diferentes entre si (300, 300, 350 e 10/dia), sem fonte única.
+
+- **`src/app/(dashboard)/dashboard/widget-meta-vendas.tsx`** — `META = 300` removido, agora recebe `meta` via prop.
+- **`src/app/(dashboard)/dashboard-v2/page.tsx`** — `META_MENSAL = 300` removido, `getStatusData()` agora chama `buscarMetaVigente(mes, ano)`.
+- **`src/components/meta-celebracao.tsx`** — `META = 350` removido, agora recebe `meta` via prop (afeta tanto o texto de parabéns quanto o gatilho do confete/popup).
+- **`src/app/(dashboard)/dashboard/page.tsx`** — busca a meta vigente uma vez (`buscarMetaVigente`) e repassa como prop pros 3 componentes acima.
+- **`src/app/(dashboard)/dashboard/painel-agr.tsx`** — caso à parte: a meta aqui é *individual, por dia* (10/dia por AGR, não dividida pelo número de pessoas), diferente da meta mensal da empresa dos outros 3 widgets. Decisão tomada com o Vinicius: a meta diária por AGR agora é derivada da meta mensal única (`meta ÷ dias do mês`), mantendo o mesmo comportamento de antes (valor absoluto aplicado a cada AGR, sem dividir por pessoa) — só troca a fonte do número.
+
+**Testado contra produção, de verdade:** confirmado nos dois dashboards que `meta:350` (o novo padrão, já que nenhuma meta customizada foi cadastrada ainda para este mês) chega corretamente aos componentes, substituindo os valores antigos hardcoded (300/300/350). Texto "Faltam 327 vendas para bater a meta do mês (23/350)" confirma a mudança de 300→350 no dashboard-v2.
+
+**Módulo "Gestão de Performance da Equipe" (ICF) — COMPLETO.** As 9 fases do plano aprovado (schema/permissões, serviços de cálculo, dashboard, administração, robô diário, simulador, Modo Daily/TV, histórico/PDF e esta migração final) estão implementadas, testadas contra produção e em produção.
+
+**Risco:** Baixo — troca de fonte de dado, mesmo comportamento visual/funcional de antes (só o número muda de 300/350 fixo pra 350 vindo do banco, editável na Administração).
+
+---
+
 ## 15/07/2026 (8)
 
 ### feat: módulo de Performance (ICF) — Fase 7, Histórico e exportar PDF

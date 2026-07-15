@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
+import { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, getDaysInMonth } from 'date-fns'
 import { PainelAGR } from './painel-agr'
 import { VencimentosWidget } from './vencimentos-widget'
 import { WidgetAgendaPessoal } from './widget-agenda-pessoal'
@@ -16,6 +16,7 @@ import { WidgetMetaVendas } from './widget-meta-vendas'
 import { WidgetEmail } from './widget-email'
 import { Header } from '@/components/header'
 import { MetaCelebracao } from '@/components/meta-celebracao'
+import { buscarMetaVigente } from '@/lib/performance/metas'
 
 const AGR_KEYS = ['ana.karolina', 'arlen', 'vinicius', 'laryssa']
 
@@ -29,6 +30,12 @@ async function getDashboardData() {
   const fimMes      = endOfMonth(hoje)
   const inicioAno   = startOfYear(hoje)
   const fimAno      = endOfYear(hoje)
+  const metaVigente = await buscarMetaVigente(hoje.getMonth() + 1, hoje.getFullYear())
+  // Meta diária por AGR, derivada da meta mensal única — cada AGR é
+  // cobrado pelo mesmo valor absoluto (não dividido pelo nº de AGRs),
+  // mantendo o comportamento que já existia (decisão do Vinicius, Fase 8
+  // do módulo de Performance).
+  const metaDiariaAgr = metaVigente / getDaysInMonth(hoje)
 
   // Helper para buscar pedidos detalhados de um período
   async function buscarPedidos(gte: Date, lte: Date, limite = 500) {
@@ -129,6 +136,8 @@ async function getDashboardData() {
     projecaoMensal: (pedidosMes / diasDecorridos) * 30,
     vendasHoje:     pedidosDia,
     vendasMes:      pedidosMes,
+    meta:           metaVigente,
+    metaDiariaAgr,
     faturamentoMes: Number(fatMes._sum.valorFinal ?? 0),
     emissoesMes,
     aReceber:            Number(aReceberAgg._sum.valor          ?? 0),
@@ -207,7 +216,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   return (
     <div className="flex flex-col h-full bg-[#EEF2FF] dark:bg-slate-900">
 
-      <MetaCelebracao vendasMes={dados.vendasMes} />
+      <MetaCelebracao vendasMes={dados.vendasMes} meta={dados.meta} />
       <Header titulo="Dashboard" />
 
 
@@ -226,6 +235,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                 userName={session.user.name ?? ''}
                 userAgr={null}
                 compact
+                metaDiaria={dados.metaDiariaAgr}
               />
             </div>
 
@@ -246,7 +256,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               {session.user.role === 'VISUALIZADOR' ? (
                 <WidgetEmail />
               ) : session.user.role === 'OPERADOR' ? (
-                <WidgetMetaVendas vendasMes={dados.vendasMes} mesNome={mesNome} />
+                <WidgetMetaVendas vendasMes={dados.vendasMes} mesNome={mesNome} meta={dados.meta} />
               ) : (
                 <KpiCarousel
                   slides={dados.slides}
@@ -295,7 +305,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
               {/* 5 — Meta de Vendas (admin/gerente) ou RFB (outros) */}
               {isAdmin
-                ? <WidgetMetaVendas vendasMes={dados.vendasMes} mesNome={mesNome} />
+                ? <WidgetMetaVendas vendasMes={dados.vendasMes} mesNome={mesNome} meta={dados.meta} />
                 : <WidgetRFB />}
               {/* 6 — Monitoramento de notificações (admin) ou Calculadora de deslocamento (outros) */}
               {session.user.role === 'ADMIN'
@@ -311,6 +321,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               isAdmin={isAdmin}
               userName={session.user.name ?? ''}
               userAgr={null}
+              metaDiaria={dados.metaDiariaAgr}
             />
           </div>
 

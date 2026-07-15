@@ -4,19 +4,18 @@ import { useEffect, useState } from 'react'
 import confetti from 'canvas-confetti'
 import { X, Trophy } from 'lucide-react'
 
-const META = 350
-
 interface Props {
   vendasMes: number
+  meta: number
 }
 
-export function MetaCelebracao({ vendasMes }: Props) {
+export function MetaCelebracao({ vendasMes, meta }: Props) {
   const [visivel, setVisivel] = useState(false)
 
   const chave = `certflow_meta_celebracao_${new Date().getFullYear()}_${new Date().getMonth() + 1}`
 
   useEffect(() => {
-    if (vendasMes < META) return
+    if (vendasMes < meta) return
     const jaComemorou = localStorage.getItem(chave)
     if (jaComemorou) return
 
@@ -27,7 +26,7 @@ export function MetaCelebracao({ vendasMes }: Props) {
     }, 1500)
 
     return () => clearTimeout(t)
-  }, [vendasMes, chave])
+  }, [vendasMes, meta, chave])
 
   function dispararConfete() {
     const duracao = 6000
@@ -104,7 +103,7 @@ export function MetaCelebracao({ vendasMes }: Props) {
           </div>
 
           <p className="text-gray-700 font-semibold text-base">
-            Vocês superaram a meta de <strong className="text-blue-700">{META} certificados</strong>!
+            Vocês superaram a meta de <strong className="text-blue-700">{meta} certificados</strong>!
           </p>
 
           <p className="text-gray-500 text-sm leading-relaxed">

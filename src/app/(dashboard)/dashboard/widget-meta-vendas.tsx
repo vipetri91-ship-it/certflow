@@ -2,19 +2,19 @@
 
 import { Target } from 'lucide-react'
 
-const META = 300
 const ARC_LENGTH = Math.PI * 90 // semicircle r=90 ≈ 282.74
 
 interface Props {
   vendasMes: number
   mesNome: string
+  meta: number
 }
 
-export function WidgetMetaVendas({ vendasMes, mesNome }: Props) {
-  const progresso  = Math.min(vendasMes / META, 1)
+export function WidgetMetaVendas({ vendasMes, mesNome, meta }: Props) {
+  const progresso  = Math.min(vendasMes / meta, 1)
   const pct        = Math.round(progresso * 100)
-  const faltam     = Math.max(META - vendasMes, 0)
-  const atingida   = vendasMes >= META
+  const faltam     = Math.max(meta - vendasMes, 0)
+  const atingida   = vendasMes >= meta
   const offset     = ARC_LENGTH * (1 - progresso)
 
   const cor = atingida
@@ -71,7 +71,7 @@ export function WidgetMetaVendas({ vendasMes, mesNome }: Props) {
         <div className="text-center -mt-2">
           <p className="text-gray-900 dark:text-white text-2xl font-bold leading-tight">
             {vendasMes}
-            <span className="text-gray-400 dark:text-slate-400 text-base font-normal"> / {META}</span>
+            <span className="text-gray-400 dark:text-slate-400 text-base font-normal"> / {meta}</span>
           </p>
           <p className="text-gray-400 dark:text-slate-400 text-xs mt-0.5">vendas no mês</p>
         </div>
