@@ -4,8 +4,11 @@ import { hasPermission } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { AlertOctagon, Target, Lightbulb, Gauge, ArrowRight } from 'lucide-react'
+import { AlertOctagon, Target, Lightbulb, Gauge, ArrowRight, Tv } from 'lucide-react'
 import { buscarMetaVigente } from '@/lib/performance/metas'
+import { gerarTokenPublico } from '@/lib/token-publico'
+import { RECURSO_TV } from '@/lib/performance/tv'
+import { LinkTvCopiavel } from './link-tv'
 
 export default async function PerformanceAdminPage() {
   const session = await auth()
@@ -56,10 +59,23 @@ export default async function PerformanceAdminPage() {
     },
   ]
 
+  const tokenTv = gerarTokenPublico(RECURSO_TV)
+  const linkTv = `${process.env.NEXTAUTH_URL}/tv/performance/${tokenTv}`
+
   return (
     <div>
       <Header titulo="Administração — Performance" />
       <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-3">
+        <div className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-indigo-500 bg-indigo-50 dark:bg-opacity-10 shrink-0">
+            <Tv className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-800 dark:text-white">Modo TV — link público pra TV do escritório</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Sem login. Atualiza sozinho a cada 1 minuto. Nunca mostra nomes.</p>
+          </div>
+          <LinkTvCopiavel link={linkTv} />
+        </div>
         {cards.map(c => (
           <Link
             key={c.href}

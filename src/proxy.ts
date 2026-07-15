@@ -10,6 +10,12 @@ export function proxy(req: NextRequest) {
     return NextResponse.next({ request: { headers: reqHeaders } })
   }
 
+  // Modo TV do painel de Performance — acesso público por token na própria
+  // URL (sem login), validado dentro da página. Mesma ideia do /portal acima.
+  if (pathname.startsWith('/tv/')) {
+    return NextResponse.next()
+  }
+
   // Arquivos estáticos e APIs — sem verificação de auth
   if (
     pathname.startsWith('/api/') ||
