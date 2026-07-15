@@ -5,6 +5,25 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (6)
+
+### feat: módulo de Performance (ICF) — Fase 5, Simulador de Meta
+
+**Origem:** continuação do módulo "Gestão de Performance da Equipe" (ver entradas anteriores). Fase 5 do plano aprovado: ferramenta pra simular cenários hipotéticos de ICF sem gravar nada no banco.
+
+- **`src/app/api/performance/simular/route.ts`** (novo) — recebe números hipotéticos (produção, ocorrências de qualidade por tipo, taxa de contato de renovação) e reaproveita exatamente as mesmas funções puras de cálculo da Fase 1 (`calcularPontuacaoProducao`, `calcularPontuacaoQualidade`, `calcularPercentualRenovacao`, `calcularICF`) — sem duplicar nenhuma regra de negócio. Só leitura, nada é salvo. Limites de segurança nos números de entrada (máx. 500 ocorrências por tipo, 10.000 certificados) pra evitar abuso.
+- **`src/app/(dashboard)/performance/simulador/page.tsx`** — tela com sliders/campos pros números hipotéticos, 3 cenários prontos (meta batida, produção estável, mês difícil) e o velocímetro do ICF atualizando em tempo real conforme o usuário ajusta os valores.
+
+**Bug evitado por design:** os campos de Produção/Qualidade/Renovação (`producao.ts`, `qualidade.ts` original, `renovacao.ts`, `icf.ts`) misturam funções puras com funções que tocam Prisma no mesmo arquivo — o mesmo problema já corrigido na Fase 3 pra Qualidade. Como o Simulador só roda no servidor (via API route, nunca importado direto por um Client Component), esse problema não se repete aqui.
+
+**Testado contra produção, de verdade (só leitura):** simulação com Produção=300/Qualidade 1 erro pequeno/Renovação 85% retornou ICF=91 ("Operação Muito Boa") — confere com a fórmula (90×0,4 + 95×0,4 + 85×0,2 = 91).
+
+**Ainda faltam:** Fase 6 (Modo Daily/TV), Fase 7 (Histórico + PDF), Fase 8 (migrar os 4 widgets antigos).
+
+**Risco:** Baixo — rota nova, só leitura, não altera nada existente.
+
+---
+
 ## 15/07/2026 (5)
 
 ### feat: módulo de Performance (ICF) — Fase 4, robô diário
