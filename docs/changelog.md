@@ -5,6 +5,29 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026
+
+### fix(Área Safeweb — autorizado explicitamente): validação do responsável PJ passa a consultar a Safeweb (PSBio) antes do QSA
+
+**Origem:** Caso real — Arlen tentou atender Yacht Club São Francisco, CPF do Giuseppe Orto (atual presidente) rejeitado com "Código: 27 - CPF do responsável não corresponde ao responsável na RFB", mesmo ele sendo o responsável correto e tendo biometria cadastrada na Safeweb (confirmado pela tela "Controller"). Vinicius pediu correção "de acordo com a documentação da Safeweb", com a Safeweb (PSBio) consultada **antes de qualquer outra fonte**, no momento da venda.
+
+**Causa raiz:** a validação em `wizard.tsx` só checava o QSA (quadro de sócios) devolvido pelo BrasilAPI/cnpj.ws — provedores terceiros da Receita Federal que podem estar desatualizados. Nesse caso, o cnpj.ws ainda mostrava o presidente anterior (dado de 13/06/2026), 9 dias desatualizado em relação à troca de presidência (22/06/2026). A Safeweb já existe no CertFlow uma consulta oficial de biometria (`/api/biometria`, endpoints documentados em `docs/INTEGRACOES.md`: `ValidateBiometry`, PSBio Local, PSBio Global) — só não era usada no fluxo de venda.
+
+- **`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`** — nova função `verificarBiometriaSafeweb()`, chamada **sempre**, antes de qualquer outra verificação, ao validar CPF do responsável PJ. Só cai para o reforço do QSA (comportamento antigo) se a Safeweb não confirmar. Erro de comunicação com a Safeweb não bloqueia sozinho — cai pro QSA, mesma postura já usada em `consultarPrevia`.
+- **`src/app/api/biometria/route.ts`** — bug real encontrado e corrigido: as chamadas PSBio Local e PSBio Global mandavam `Authorization: bearer {token}` (com prefixo "bearer"), mas a Safeweb espera o token puro, sem prefixo — igual o `ValidateBiometry` já fazia certo. O prefixo errado causava erro 500 "Invalid JSON primitive" **sempre**, disfarçado de erro de formatação do corpo da requisição (não era). Testei sistematicamente 15+ variações (headers, formato de campo, JSON duplo, GET vs POST, etc.) até isolar a causa real: bastou remover o prefixo "bearer " pras 3 consultas (ValidateBiometry, Local, Global) responderem 200 corretamente.
+
+**Testado contra a Safeweb de produção, de verdade (não simulado), pro CPF real do Giuseppe Orto (responsável do caso reportado):**
+```
+ValidateBiometry → true
+PSBio Local      → { encontrado: false }
+PSBio Global     → { encontrado: true }   ← bate exatamente com o "Controller"
+```
+Com isso, tanto a tela `/biometria` quanto a nova validação da Nova Venda passam a funcionar com os 3 indicadores certos, igual funciona na Safeweb. `tsc --noEmit` e `eslint` sem erros novos.
+
+**Risco:** Médio — muda uma trava de validação do fluxo de venda real e corrige uma integração usada por outra tela (Regra 11, autorização explícita do Vinicius nesta conversa). Mitigado por: a correção da `Authorization` é estritamente aditiva (só remove um prefixo que sempre causava erro — não havia caso em que "bearer X" funcionasse e "X" não); no fluxo de venda, só afeta o caminho "QSA não bateu" (não muda nada pra quem já passava), e falha de comunicação com a Safeweb cai pro comportamento antigo em vez de travar a venda.
+
+---
+
 ## 14/07/2026 (11)
 
 ### fix: robô de auditoria não distinguia falha de configuração de falha passageira

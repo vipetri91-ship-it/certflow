@@ -45,16 +45,19 @@ export async function POST(req: NextRequest) {
         method: 'GET',
         headers: { 'Authorization': token, 'Content-Type': 'application/json' },
       }),
-      // POST PSBio Local — docs mostram "Cpf" (maiúsculo) na tabela de atributos
+      // POST PSBio Local — token SEM prefixo "bearer" (mesmo padrão do
+      // ValidateBiometry). O prefixo "bearer " estava causando 500 "Invalid
+      // JSON primitive" na Safeweb — confirmado em teste real 15/07/2026:
+      // com "bearer " sempre falha, sem prefixo sempre funciona (200).
       safeFetch(`${base}/Shared/Partner/api/psbio/consulta/biometria/local`, {
         method: 'POST',
-        headers: { 'Authorization': `bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ Cpf: cpfLimpo }),
       }),
       // POST PSBio Global
       safeFetch(`${base}/Shared/Partner/api/psbio/consulta/biometria/global`, {
         method: 'POST',
-        headers: { 'Authorization': `bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ Cpf: cpfLimpo }),
       }),
     ])

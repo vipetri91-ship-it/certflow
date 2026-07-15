@@ -260,6 +260,30 @@ export function NovaVendaWizard({
     }
   }
 
+  // Consulta oficial da Safeweb (ValidateBiometry + PSBio Local + PSBio
+  // Global) — mesma fonte usada em /biometria, mesmos endpoints documentados
+  // em docs/INTEGRACOES.md. É a fonte de verdade pra saber se esse CPF está
+  // autorizado a assinar pela empresa: prioridade sobre o QSA da Receita
+  // Federal (BrasilAPI/cnpj.ws), que pode estar desatualizado quando a
+  // empresa troca de responsável recentemente (confirmado 15/07/2026, caso
+  // Yacht Club São Francisco / Giuseppe Orto).
+  // Erro de comunicação retorna false (não bloqueia sozinho) — cai pro
+  // reforço do QSA, igual já acontecia antes desta mudança.
+  async function verificarBiometriaSafeweb(cpf: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/biometria', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf }),
+      })
+      if (!res.ok) return false
+      const data = await res.json()
+      return data.validacao === true || data.local === true || data.global === true
+    } catch {
+      return false
+    }
+  }
+
   async function validarCNPJ() {
     const cnpj = dados.cnpj.replace(/\D/g,'')
     if (cnpj.length !== 14) { setErroValidacao('CNPJ deve ter 14 dígitos'); return }
@@ -276,17 +300,33 @@ export function NovaVendaWizard({
 
       const cpfNums = dados.cpfResponsavel.replace(/\D/g,'')
       let nomeRfb: string | undefined
-      if (cpfNums.length === 11 && data.qsa?.length > 0) {
-        const cpfUltimos = cpfNums.slice(-8, -2)
-        const socios = data.qsa as { nome: string; cpfMascarado: string }[]
-        const match = socios.find(s => s.cpfMascarado?.includes(cpfUltimos))
-        if (!match) {
-          setErroValidacao('Código: 27 - O CPF do responsável não corresponde ao responsável na RFB.')
-          setDados(d => ({ ...d, ...limparDadosValidacaoPJ() }))
-          setHistorico([])
-          return
+      if (cpfNums.length === 11) {
+        // 1º: Safeweb (PSBio/biometria) — sempre consultada primeiro, antes
+        // de qualquer outra fonte.
+        const biometriaConfirmada = await verificarBiometriaSafeweb(cpfNums)
+
+        if (!biometriaConfirmada) {
+          // 2º: reforço via QSA da Receita Federal — só entra em jogo se a
+          // Safeweb não confirmou o CPF.
+          if (data.qsa?.length > 0) {
+            const cpfUltimos = cpfNums.slice(-8, -2)
+            const socios = data.qsa as { nome: string; cpfMascarado: string }[]
+            const match = socios.find(s => s.cpfMascarado?.includes(cpfUltimos))
+            if (match) {
+              nomeRfb = match.nome
+            } else {
+              setErroValidacao('Código: 27 - O CPF do responsável não corresponde ao responsável na RFB.')
+              setDados(d => ({ ...d, ...limparDadosValidacaoPJ() }))
+              setHistorico([])
+              return
+            }
+          } else {
+            setErroValidacao('Código: 27 - O CPF do responsável não corresponde ao responsável na RFB.')
+            setDados(d => ({ ...d, ...limparDadosValidacaoPJ() }))
+            setHistorico([])
+            return
+          }
         }
-        nomeRfb = match.nome
       }
 
       // Checagem oficial da Safeweb: bloqueia se o CNPJ/responsável não estiver liberado para emissão
