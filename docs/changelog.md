@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (2)
+
+### feat: forma de pagamento editável em Contas a Receber
+
+**Origem:** Vinicius pediu — clientes combinam Pix mas depois pedem boleto; a equipe precisa poder trocar a forma de pagamento no lançamento pra gerar o boleto corretamente.
+
+- **`src/components/editar-forma-pagamento.tsx`** (novo) — mesmo padrão do `EditarValorLancamento` já existente (clique pra abrir um `<select>`, salva via PATCH). Opções vêm de `FORMAS_PAGAMENTO` (`src/lib/financeiro-config.ts`), já usado em outras telas do financeiro — não inventei uma lista nova.
+- **`src/app/(dashboard)/financeiro/contas-a-receber/page.tsx`** — coluna "Forma Pgto" agora é editável para lançamentos Pendente/Vencido (mesma regra do campo Valor); Pago/Cancelado/Bonificado continuam só leitura.
+- **`src/app/api/financeiro/lancamentos/[id]/route.ts`** — adicionado `OPERADOR_FINANCEIRO` à rota de edição, com a mesma restrição já aplicada ao FINANCEIRO: só lançamentos tipo RECEBER, só campos seguros (`valor`, `formaPagamento`, `dataPagamento`, `status`, `comprovante`) — sem isso, a Laryssa (que ajuda nas cobranças) não conseguiria usar o novo campo.
+
+**Nota:** conferi o botão "Gerar Cobrança" (Inter) — ele já gera boleto + Pix juntos independente do valor salvo em `formaPagamento`; esse campo não bloqueia tecnicamente a geração, é o registro/rótulo que precisava poder ser corrigido.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros.
+
+**Risco:** Baixo — reaproveita padrão e permissões já existentes; a extensão de permissão pro Operador Financeiro segue exatamente a mesma restrição (nunca RECEBER→PAGAR) já auditada nesta conversa.
+
+---
+
 ## 15/07/2026
 
 ### fix(Área Safeweb — autorizado explicitamente): validação do responsável PJ passa a consultar a Safeweb (PSBio) antes do QSA

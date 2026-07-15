@@ -13,6 +13,7 @@ import { FiltroBusca } from '@/components/filtro-busca'
 import { BaixaButton, CancelarButton } from '@/components/financeiro-baixa-button'
 import { InterCobrancaButton } from '@/components/inter-cobranca-button'
 import { EditarValorLancamento } from '@/components/editar-valor-lancamento'
+import { EditarFormaPagamento } from '@/components/editar-forma-pagamento'
 
 interface Props {
   searchParams: Promise<{ mes?: string; ano?: string; status?: string; agr?: string; busca?: string }>
@@ -250,10 +251,13 @@ export default async function ContasReceberPage({ searchParams }: Props) {
 
                       {/* Forma de pagamento */}
                       <td className="px-3 py-3 text-xs text-gray-600 dark:text-slate-300">
-                        {c.bonificado
-                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium"><Gift className="w-3 h-3" />Bonificado</span>
-                          : formaPgto(c)
-                        }
+                        {c.bonificado ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium"><Gift className="w-3 h-3" />Bonificado</span>
+                        ) : (c.status === 'PENDENTE' || c.status === 'VENCIDO') ? (
+                          <EditarFormaPagamento id={c.id} forma={formaPgto(c)} />
+                        ) : (
+                          formaPgto(c)
+                        )}
                       </td>
 
                       {/* AGR */}

@@ -23,8 +23,10 @@ const schemaEdicao = z.object({
   banco:         z.string().optional().nullable(),
 })
 
-// FINANCEIRO só pode editar campos relacionados ao recebimento
+// FINANCEIRO e OPERADOR_FINANCEIRO só podem editar campos relacionados ao
+// recebimento (mesmo motivo de nunca chegarem perto de Contas a Pagar).
 const CAMPOS_FINANCEIRO = new Set(['valor', 'formaPagamento', 'dataPagamento', 'status', 'comprovante'])
+const ROLES_RESTRITOS_A_RECEBER = ['FINANCEIRO', 'OPERADOR_FINANCEIRO']
 
 export async function PATCH(
   req: NextRequest,
@@ -34,7 +36,7 @@ export async function PATCH(
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
 
   const role = session.user.role
-  const rolesPermitidos = ['ADMIN', 'GERENTE', 'FINANCEIRO']
+  const rolesPermitidos = ['ADMIN', 'GERENTE', 'FINANCEIRO', 'OPERADOR_FINANCEIRO']
   if (!rolesPermitidos.includes(role)) {
     return NextResponse.json({ erro: 'Sem permissão' }, { status: 403 })
   }
@@ -43,11 +45,11 @@ export async function PATCH(
   const lancamento = await prisma.lancamento.findUnique({ where: { id } })
   if (!lancamento) return NextResponse.json({ erro: 'Lançamento não encontrado' }, { status: 404 })
 
-  // FINANCEIRO: só pode editar campos de recebimento em lançamentos RECEBER
-  if (role === 'FINANCEIRO') {
-    if (lancamento.tipo !== 'RECEBER') {
-      return NextResponse.json({ erro: 'Sem permissão para editar este lançamento' }, { status: 403 })
-    }
+  // FINANCEIRO/OPERADOR_FINANCEIRO: só podem editar campos de recebimento em
+  // lançamentos RECEBER — nunca em Contas a Pagar.
+  const restrito = ROLES_RESTRITOS_A_RECEBER.includes(role)
+  if (restrito && lancamento.tipo !== 'RECEBER') {
+    return NextResponse.json({ erro: 'Sem permissão para editar este lançamento' }, { status: 403 })
   }
 
   const body   = await req.json()
@@ -56,9 +58,9 @@ export async function PATCH(
     return NextResponse.json({ erro: 'Dados inválidos', detalhes: parsed.error.flatten() }, { status: 422 })
   }
 
-  // Filtrar campos permitidos para FINANCEIRO
+  // Filtrar campos permitidos para perfis restritos
   let dados: Record<string, unknown> = { ...parsed.data }
-  if (role === 'FINANCEIRO') {
+  if (restrito) {
     dados = Object.fromEntries(
       Object.entries(dados).filter(([k]) => CAMPOS_FINANCEIRO.has(k))
     )
