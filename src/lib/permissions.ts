@@ -23,6 +23,9 @@ type Permission =
   | 'configuracoes:read'
   | 'configuracoes:write'
   | 'auditoria:read'
+  | 'performance:read'   // ver o dashboard de Performance/ICF
+  | 'performance:write'  // área administrativa: ocorrências, metas, foco do dia
+  | 'melhorias:write'    // registrar ideia no quadro de Melhoria Contínua — todo colaborador
 
 const PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [
@@ -35,6 +38,7 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'usuarios:read', 'usuarios:write', 'usuarios:delete',
     'configuracoes:read', 'configuracoes:write',
     'auditoria:read',
+    'performance:read', 'performance:write', 'melhorias:write',
   ],
   GERENTE: [
     'clientes:read', 'clientes:write', 'clientes:delete',
@@ -46,6 +50,7 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'usuarios:read',
     'configuracoes:read',
     'auditoria:read',
+    'performance:read', 'performance:write', 'melhorias:write',
   ],
   OPERADOR: [
     'clientes:read', 'clientes:write',
@@ -53,9 +58,11 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'parceiros:read',
     'pedidos:read', 'pedidos:write',
     'relatorios:read',
+    'performance:read', 'melhorias:write',
   ],
   FINANCEIRO: [
     'financeiro:read',
+    'performance:read', 'melhorias:write',
   ],
   VISUALIZADOR: [
     'clientes:read',
@@ -64,6 +71,7 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'pedidos:read',
     'financeiro:read',
     'relatorios:read',
+    'performance:read',
   ],
   // Mesmo acesso do OPERADOR + leitura de Contas a Receber (não inclui
   // 'financeiro:write' — sem criar/editar lançamento; dar baixa é liberado
@@ -75,6 +83,7 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'pedidos:read', 'pedidos:write',
     'relatorios:read',
     'financeiro:read',
+    'performance:read', 'melhorias:write',
   ],
 }
 

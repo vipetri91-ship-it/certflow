@@ -136,6 +136,11 @@ model Usuario {
   renovacoesManuaisCriadas    RenovacaoManual[] @relation("RenovacaoManualCriadoPor")
   renovacoesManuaisResponsavel RenovacaoManual[] @relation("RenovacaoManualResponsavel")
 
+  ocorrenciasResponsavel  OcorrenciaQualidade[] @relation("OcorrenciaResponsavel")
+  ocorrenciasRegistradas  OcorrenciaQualidade[] @relation("OcorrenciaRegistradoPor")
+  focosDoDia              FocoDoDia[]
+  melhoriasContinuas      MelhoriaContinua[]
+
   @@map("usuarios")
 }
 
@@ -441,6 +446,8 @@ model Certificado {
 
   renovacaoManual RenovacaoManual?
 
+  ocorrenciasQualidade OcorrenciaQualidade[]
+
   @@index([clienteId, modeloId, status])
   @@map("certificados")
 }
@@ -532,6 +539,7 @@ model Pedido {
   lancamentos    Lancamento[]
   comissaoPedido ComissaoPedido?
   eventosWebhook EventoWebhook[]
+  ocorrenciasQualidade OcorrenciaQualidade[]
 
   @@map("pedidos")
 }
@@ -833,4 +841,144 @@ model AuditoriaRobo {
   createdAt DateTime            @default(now())
 
   @@map("auditoria_robo")
+}
+
+// ─── GESTÃO DE PERFORMANCE DA EQUIPE (ICF) ────────────────────────────────────
+// Módulo criado 15/07/2026 a pedido do Vinicius: dashboard "vivo" estilo TV de
+// escritório, índice composto ICF = Produção 40% + Qualidade 40% + Renovação
+// 20%. Toda regra de cálculo fica em src/lib/performance/*.ts — este schema só
+// guarda os fatos brutos (metas, ocorrências, foco do dia, melhorias) e o
+// resultado mensal já calculado (cache/histórico).
+
+enum TipoOcorrenciaQualidade {
+  ERRO_PEQUENO // -5 pontos
+  RETRABALHO   // -10 pontos
+  ERRO_GRAVE   // -30 pontos
+  REVOGACAO    // zera a pontuação de qualidade do mês inteiro
+}
+
+enum StatusFoco {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDO
+}
+
+enum CategoriaMelhoria {
+  ECONOMIA
+  AUTOMACAO
+  PROCESSO
+  ATENDIMENTO
+  MARKETING
+}
+
+enum StatusMelhoria {
+  NOVA
+  EM_ANALISE
+  IMPLEMENTADA
+}
+
+// Meta mensal de produção — fonte única (substitui os valores hardcoded
+// espalhados em widget-meta-vendas.tsx, dashboard-v2, meta-celebracao.tsx e
+// painel-agr.tsx, que estavam desalinhados entre si: 300 vs 350).
+model MetaPerformance {
+  id           String   @id @default(cuid())
+  mes          Int
+  ano          Int
+  metaProducao Int      @default(350)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([mes, ano])
+  @@map("metas_performance")
+}
+
+// Evento imutável (mesmo padrão de AuditoriaRobo — só createdAt, sem
+// updatedAt). Nomes/responsáveis só aparecem na tela administrativa; o
+// dashboard e o Modo TV mostram só a pontuação agregada.
+model OcorrenciaQualidade {
+  id              String                  @id @default(cuid())
+  data            DateTime                @default(now())
+  tipo            TipoOcorrenciaQualidade
+  descricao       String                  @db.Text
+  observacao      String?                 @db.Text
+  usuarioId       String?
+  registradoPorId String?
+  pedidoId        String?
+  certificadoId   String?
+  createdAt       DateTime                @default(now())
+
+  usuario       Usuario?     @relation("OcorrenciaResponsavel", fields: [usuarioId], references: [id])
+  registradoPor Usuario?     @relation("OcorrenciaRegistradoPor", fields: [registradoPorId], references: [id])
+  pedido        Pedido?      @relation(fields: [pedidoId], references: [id])
+  certificado   Certificado? @relation(fields: [certificadoId], references: [id])
+
+  @@index([data])
+  @@map("ocorrencias_qualidade")
+}
+
+// Um por dia — atualizado rapidamente durante a reunião diária de 10 minutos.
+model FocoDoDia {
+  id            String     @id @default(cuid())
+  data          DateTime   @default(now()) @db.Date
+  objetivo      String     @db.Text
+  responsavelId String?
+  prazo         DateTime?
+  status        StatusFoco @default(PENDENTE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  responsavel Usuario? @relation(fields: [responsavelId], references: [id])
+
+  @@map("foco_do_dia")
+}
+
+// Quadro de melhoria contínua — qualquer colaborador pode registrar uma ideia.
+model MelhoriaContinua {
+  id        String            @id @default(cuid())
+  titulo    String
+  descricao String            @db.Text
+  categoria CategoriaMelhoria
+  status    StatusMelhoria    @default(NOVA)
+  autorId   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  autor Usuario? @relation(fields: [autorId], references: [id])
+
+  @@map("melhorias_continuas")
+}
+
+// Foto mensal já calculada — evita recalcular agregações pesadas a cada
+// carregamento do dashboard/TV, e serve como histórico permanente pra
+// comparação entre meses (o mês corrente é sobrescrito diariamente pelo robô
+// até fechar; meses passados ficam congelados).
+model IndicadorMensal {
+  id                     String   @id @default(cuid())
+  mes                    Int
+  ano                    Int
+  producaoResultado      Int
+  producaoMeta           Int
+  producaoPercentual     Float
+  qualidadePontuacao     Float
+  qualidadeOcorrencias   Int
+  renovacaoTaxaContato   Float
+  renovacaoTaxaConversao Float
+  renovacaoPercentual    Float
+  icf                    Float
+  calculadoEm            DateTime @default(now())
+
+  @@unique([mes, ano])
+  @@map("indicadores_mensais")
+}
+
+// Insights gerados diariamente pela IA a partir dos números já calculados
+// (não é um chat — uma frase curta por vez, ver src/lib/performance/sugestoes-ia.ts).
+model SugestaoIA {
+  id        String   @id @default(cuid())
+  data      DateTime @default(now()) @db.Date
+  texto     String   @db.Text
+  contexto  Json?
+  createdAt DateTime @default(now())
+
+  @@map("sugestoes_ia_performance")
 }

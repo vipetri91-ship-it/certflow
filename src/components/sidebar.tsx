@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Handshake,
   DollarSign, BarChart3, Settings, LogOut,
   Bell, UserCog, ClipboardList, Monitor, ShoppingBag,
-  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt, BellRing, CalendarDays, Newspaper, ShieldCheck, Search, Scale, Car, Tags, Megaphone,
+  ChevronDown, Plus, User, RefreshCw, Menu, Sparkles, Award, Building2, Receipt, BellRing, CalendarDays, Newspaper, ShieldCheck, Search, Scale, Car, Tags, Megaphone, Gauge, Target, Lightbulb, History,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -21,6 +21,18 @@ type MenuEntry  = MenuGroup | MenuSingle
 const MENU_PADRAO: MenuEntry[] = [
   { tipo: 'item', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { tipo: 'item', label: 'Agenda',    href: '/agenda',    icon: CalendarDays },
+
+  {
+    tipo: 'grupo', label: 'Performance', icon: Gauge,
+    itens: [
+      { label: 'Painel (ICF)',       href: '/performance',            icon: Gauge },
+      { label: 'Modo Daily',         href: '/performance/daily',      icon: Target },
+      { label: 'Simulador de Meta',  href: '/performance/simulador',  icon: Sparkles },
+      { label: 'Melhoria Contínua',  href: '/performance/melhorias',  icon: Lightbulb },
+      { label: 'Histórico',          href: '/performance/admin/historico', icon: History },
+      { label: 'Administração',      href: '/performance/admin',      icon: Settings },
+    ],
+  },
 
   {
     tipo: 'grupo', label: 'Cadastros', icon: Users,
@@ -80,6 +92,7 @@ const MENU_PADRAO: MenuEntry[] = [
 
 const MENU_FINANCEIRO: MenuEntry[] = [
   { tipo: 'item', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { tipo: 'item', label: 'Performance', href: '/performance', icon: Gauge },
   {
     tipo: 'grupo', label: 'Financeiro', icon: DollarSign,
     itens: [

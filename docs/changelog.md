@@ -5,6 +5,31 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (3)
+
+### feat: novo módulo "Gestão de Performance da Equipe" (Índice CertFlow / ICF) — Fases 0, 1 e 2
+
+**Origem:** Vinicius pediu, como arquiteto de software, um dashboard "vivo" de performance da equipe (uso em TV de escritório), centrado num índice único (ICF = Produção 40% + Qualidade 40% + Renovação 20%), substituindo as 4 metas hardcoded e inconsistentes que existiam hoje (`widget-meta-vendas.tsx`: 300, `dashboard-v2/page.tsx`: 300, `meta-celebracao.tsx`: 350, `painel-agr.tsx`: 10/dia). Regras explícitas do Vinicius: nunca linguagem de culpa, sempre indicadores da equipe (nunca ranking individual), nomes só aparecem na tela de administração — nunca na TV/dashboard público. Plano completo aprovado em modo de planejamento antes da implementação (`mossy-tinkering-goose`).
+
+**Fase 0 — Fundação:**
+- **`prisma/schema.prisma`** — 4 enums novos (`TipoOcorrenciaQualidade`, `StatusFoco`, `CategoriaMelhoria`, `StatusMelhoria`) e 6 modelos novos (`MetaPerformance`, `OcorrenciaQualidade`, `FocoDoDia`, `MelhoriaContinua`, `IndicadorMensal`, `SugestaoIA`). Migração idempotente em `scripts/migrate.js` (mesmo padrão do resto do projeto — sem `prisma migrate`), rodada e confirmada contra a produção (Railway/Neon).
+- **`src/lib/permissions.ts`** — 3 permissões novas (`performance:read`, `performance:write`, `melhorias:write`); ADMIN/GERENTE têm tudo, OPERADOR/FINANCEIRO/OPERADOR_FINANCEIRO só leitura + registrar ideia de melhoria, VISUALIZADOR só leitura.
+- **`src/components/sidebar.tsx`** — novo grupo "Performance" no menu (Painel, Modo Daily, Simulador de Meta, Melhoria Contínua, Histórico, Administração).
+
+**Fase 1 — Serviços de cálculo puros (`src/lib/performance/*.ts`):** toda regra de cálculo centralizada aqui, nunca na interface (exigência explícita do Vinicius) — `producao.ts`, `qualidade.ts`, `renovacao.ts`, `icf.ts`, `metas.ts`, `sugestoes-ia.ts` (IA via Claude Haiku, mesmo padrão de `social/gerar`, nunca menciona nomes). Testado isoladamente contra dados reais de produção (script descartável, removido após validar): Produção 17/350, Qualidade 100pts, Renovação 0 vencendo, ICF=60 ("Estado de Alerta") — número plausível pro dia 15 do mês.
+
+**Fase 2 — Dashboard principal `/performance`:**
+- **`src/components/performance/gauge-icf.tsx`** — velocímetro SVG reaproveitando o padrão de `widget-meta-vendas.tsx`, generalizado pra cor dinâmica.
+- **`src/app/(dashboard)/performance/page.tsx`** — ICF em destaque (velocímetro, classificação, tendência vs. mês anterior, médias 3/6 meses, melhor/pior histórico), cards de Produção/Qualidade/Renovação (sem nomes), Foco do Dia, Sugestões da IA (lê `SugestaoIA` — populado só a partir da Fase 4), card fixo "Compromisso da V&G" (linguagem sempre positiva, nunca de culpa) e atalhos pro Simulador, Histórico e Administração.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros; página renderizada de ponta a ponta contra o banco de produção (sessão de admin de teste gerada localmente, sem alterar nenhum dado — só leitura), confirmando ICF/Produção/Qualidade/Renovação renderizando corretamente e nenhum nome exposto fora da lógica administrativa.
+
+**Ainda faltam:** Fase 3 (administração/CRUD), Fase 4 (robô diário + alerta Telegram), Fase 5 (Simulador de Meta), Fase 6 (Modo Daily/TV), Fase 7 (Histórico + PDF), Fase 8 (migrar os 4 widgets antigos). Enquanto essas fases não sobem, os links "Simulador de Meta", "Histórico" e "Administração" no dashboard levam a rotas que ainda não existem — funcionalidade incompleta por natureza, não é bug.
+
+**Risco:** Baixo para o restante do sistema — módulo inteiramente novo, isolado (`/performance/*`), não altera nenhuma tela/rota existente nesta etapa.
+
+---
+
 ## 15/07/2026 (2)
 
 ### feat: forma de pagamento editável em Contas a Receber

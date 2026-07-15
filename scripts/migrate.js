@@ -388,6 +388,97 @@ async function migrate() {
       CONSTRAINT "comissoes_pedido_parceiroId_fkey" FOREIGN KEY ("parceiroId") REFERENCES "parceiros"("id"),
       CONSTRAINT "comissoes_pedido_lancamentoId_fkey" FOREIGN KEY ("lancamentoId") REFERENCES "lancamentos"("id")
     )`,
+
+    // ─── Gestão de Performance da Equipe (ICF) — 15/07/2026 ────────────────────
+    `DO $$ BEGIN
+      CREATE TYPE "TipoOcorrenciaQualidade" AS ENUM ('ERRO_PEQUENO', 'RETRABALHO', 'ERRO_GRAVE', 'REVOGACAO');
+     EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `DO $$ BEGIN
+      CREATE TYPE "StatusFoco" AS ENUM ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDO');
+     EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `DO $$ BEGIN
+      CREATE TYPE "CategoriaMelhoria" AS ENUM ('ECONOMIA', 'AUTOMACAO', 'PROCESSO', 'ATENDIMENTO', 'MARKETING');
+     EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `DO $$ BEGIN
+      CREATE TYPE "StatusMelhoria" AS ENUM ('NOVA', 'EM_ANALISE', 'IMPLEMENTADA');
+     EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `CREATE TABLE IF NOT EXISTS "metas_performance" (
+      "id" TEXT NOT NULL,
+      "mes" INTEGER NOT NULL,
+      "ano" INTEGER NOT NULL,
+      "metaProducao" INTEGER NOT NULL DEFAULT 350,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "metas_performance_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "metas_performance_mes_ano_key" UNIQUE ("mes", "ano")
+    )`,
+    `CREATE TABLE IF NOT EXISTS "ocorrencias_qualidade" (
+      "id" TEXT NOT NULL,
+      "data" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "tipo" "TipoOcorrenciaQualidade" NOT NULL,
+      "descricao" TEXT NOT NULL,
+      "observacao" TEXT,
+      "usuarioId" TEXT,
+      "registradoPorId" TEXT,
+      "pedidoId" TEXT,
+      "certificadoId" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "ocorrencias_qualidade_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "ocorrencias_qualidade_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "usuarios"("id"),
+      CONSTRAINT "ocorrencias_qualidade_registradoPorId_fkey" FOREIGN KEY ("registradoPorId") REFERENCES "usuarios"("id"),
+      CONSTRAINT "ocorrencias_qualidade_pedidoId_fkey" FOREIGN KEY ("pedidoId") REFERENCES "pedidos"("id"),
+      CONSTRAINT "ocorrencias_qualidade_certificadoId_fkey" FOREIGN KEY ("certificadoId") REFERENCES "certificados"("id")
+    )`,
+    `CREATE INDEX IF NOT EXISTS "ocorrencias_qualidade_data_idx" ON "ocorrencias_qualidade" ("data")`,
+    `CREATE TABLE IF NOT EXISTS "foco_do_dia" (
+      "id" TEXT NOT NULL,
+      "data" DATE NOT NULL DEFAULT CURRENT_DATE,
+      "objetivo" TEXT NOT NULL,
+      "responsavelId" TEXT,
+      "prazo" TIMESTAMP(3),
+      "status" "StatusFoco" NOT NULL DEFAULT 'PENDENTE',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "foco_do_dia_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "foco_do_dia_responsavelId_fkey" FOREIGN KEY ("responsavelId") REFERENCES "usuarios"("id")
+    )`,
+    `CREATE TABLE IF NOT EXISTS "melhorias_continuas" (
+      "id" TEXT NOT NULL,
+      "titulo" TEXT NOT NULL,
+      "descricao" TEXT NOT NULL,
+      "categoria" "CategoriaMelhoria" NOT NULL,
+      "status" "StatusMelhoria" NOT NULL DEFAULT 'NOVA',
+      "autorId" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "melhorias_continuas_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "melhorias_continuas_autorId_fkey" FOREIGN KEY ("autorId") REFERENCES "usuarios"("id")
+    )`,
+    `CREATE TABLE IF NOT EXISTS "indicadores_mensais" (
+      "id" TEXT NOT NULL,
+      "mes" INTEGER NOT NULL,
+      "ano" INTEGER NOT NULL,
+      "producaoResultado" INTEGER NOT NULL,
+      "producaoMeta" INTEGER NOT NULL,
+      "producaoPercentual" DOUBLE PRECISION NOT NULL,
+      "qualidadePontuacao" DOUBLE PRECISION NOT NULL,
+      "qualidadeOcorrencias" INTEGER NOT NULL,
+      "renovacaoTaxaContato" DOUBLE PRECISION NOT NULL,
+      "renovacaoTaxaConversao" DOUBLE PRECISION NOT NULL,
+      "renovacaoPercentual" DOUBLE PRECISION NOT NULL,
+      "icf" DOUBLE PRECISION NOT NULL,
+      "calculadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "indicadores_mensais_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "indicadores_mensais_mes_ano_key" UNIQUE ("mes", "ano")
+    )`,
+    `CREATE TABLE IF NOT EXISTS "sugestoes_ia_performance" (
+      "id" TEXT NOT NULL,
+      "data" DATE NOT NULL DEFAULT CURRENT_DATE,
+      "texto" TEXT NOT NULL,
+      "contexto" JSONB,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "sugestoes_ia_performance_pkey" PRIMARY KEY ("id")
+    )`,
   ]
 
   for (const q of queries) {
