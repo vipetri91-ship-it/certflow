@@ -5,6 +5,29 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (4)
+
+### feat: módulo de Performance (ICF) — Fase 3, área de Administração
+
+**Origem:** continuação do módulo "Gestão de Performance da Equipe" (ver entrada anterior). Fase 3 do plano aprovado: CRUD administrativo pra alimentar os dados que o dashboard do ICF consome (ocorrências de qualidade, foco do dia, metas e melhoria contínua).
+
+- **`src/app/api/performance/ocorrencias/route.ts` (+ `[id]/route.ts`)** — cadastrar/listar/excluir ocorrências de qualidade. Só `performance:write` (ADMIN/GERENTE). Auditoria via `registrarAuditoria`.
+- **`src/app/api/performance/foco-do-dia/route.ts` (+ `[id]/route.ts`)** — cadastrar foco do dia e mudar status (Pendente/Em andamento/Concluído).
+- **`src/app/api/performance/metas/route.ts`** — cadastrar/listar metas mensais de produção (reaproveita `buscarMetaVigente`/`definirMeta`/`listarMetas` de `src/lib/performance/metas.ts` — nenhuma lógica nova, só a API em cima do serviço já existente da Fase 1).
+- **`src/app/api/performance/melhorias/route.ts` (+ `[id]/route.ts`)** — quadro de Melhoria Contínua: registrar ideia (`melhorias:write`, liberado pra todo colaborador) e mudar status (`performance:write`, só ADMIN/GERENTE).
+- **`src/app/(dashboard)/performance/admin/`** — hub administrativo + telas de Ocorrências, Foco do Dia e Metas (só `performance:write`).
+- **`src/app/(dashboard)/performance/melhorias/`** — quadro de Melhoria Contínua, visível a todo mundo com `performance:read`; botão de mudar status só aparece pra quem tem `performance:write`.
+
+**Bug real encontrado e corrigido durante o teste desta fase:** o formulário de ocorrências (`ocorrencias/form.tsx`, Client Component) importava `LABEL_TIPO_OCORRENCIA` direto de `src/lib/performance/qualidade.ts` — mas esse arquivo também importa o Prisma (usado pelas funções `buscarOcorrenciasMes`/`buscarUltimaOcorrenciaDetalhada`). Como é um único módulo, importar qualquer coisa dele no navegador tentava empacotar o driver Postgres (`pg`) pro client-side, o que quebrava a tela com erro 500 — e, por efeito cascata do Turbopack, derrubava as outras 3 telas novas também. Corrigido extraindo as constantes/funções puras (sem Prisma) pra `src/lib/performance/qualidade-shared.ts`, seguro pra importar tanto no servidor quanto no navegador; `qualidade.ts` agora só reexporta essas constantes e mantém as funções que tocam banco.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros; todas as 6 telas do módulo (`/performance`, `/performance/admin`, `/performance/admin/ocorrencias`, `/performance/admin/foco-do-dia`, `/performance/admin/metas`, `/performance/melhorias`) carregadas de ponta a ponta contra o banco de produção com uma sessão de admin de teste — confirmado HTTP 200 e sem erro de runtime em todas (só leitura, nenhum formulário foi submetido pra não gravar dado de teste em produção).
+
+**Ainda faltam:** Fase 4 (robô diário), Fase 5 (Simulador de Meta), Fase 6 (Modo Daily/TV), Fase 7 (Histórico + PDF), Fase 8 (migrar os 4 widgets antigos).
+
+**Risco:** Baixo — módulo isolado, sem alterar nenhuma rota/tela pré-existente.
+
+---
+
 ## 15/07/2026 (3)
 
 ### feat: novo módulo "Gestão de Performance da Equipe" (Índice CertFlow / ICF) — Fases 0, 1 e 2
