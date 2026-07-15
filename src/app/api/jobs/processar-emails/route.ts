@@ -152,10 +152,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 3. E-mail pós-emissão (certificados emitidos hoje) ────────────────────
+  // ── 3. E-mail pós-emissão (certificados emitidos nos últimos 7 dias) ──────
+  // Antes olhava só "emitido hoje" — mas o disparo de verdade é imediato, no
+  // webhook da Safeweb (ver comentário lá). Se aquele envio falhar (ex.:
+  // falha passageira de rede/config) DEPOIS do horário em que este job já
+  // rodou hoje, o certificado saía da janela "hoje" pra sempre e o e-mail
+  // nunca mais era reenviado — mesmo o robô de verificação leve dizendo que
+  // ia "tentar de novo". Janela de 7 dias garante que esse job pega no dia
+  // seguinte (e nos seguintes) qualquer envio que tenha escapado do webhook
+  // (14/07-15/07/2026, caso real: 3 clientes ficaram sem o e-mail).
   const novos = await prisma.certificado.findMany({
     where: {
-      dataEmissao: { gte: inicioHoje, lt: addDays(inicioHoje, 1) },
+      dataEmissao: { gte: addDays(inicioHoje, -7), lt: addDays(inicioHoje, 1) },
       cliente: { email: { not: null } },
       emailsEnviados: { none: { tipo: 'POS_EMISSAO' } },
     },

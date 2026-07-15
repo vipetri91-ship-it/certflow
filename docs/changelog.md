@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (10)
+
+### fix: e-mail de "certificado emitido" (POS_EMISSAO) se perdendo de vez quando o envio imediato falhava
+
+**Origem:** Vinicius reportou que "o problema dos e-mails do Brevo continua acontecendo" — o alerta `BREVO_API_KEY não configurado` seguia aparecendo no robô de verificação, mesmo com a chave corretamente configurada no Railway (confirmei consultando a API da Brevo direto, chave válida e ativa). Investigação de causa raiz (Regra 4 da Governança) achou um bug real, mais grave do que o alerta em si.
+
+**Causa raiz:** o e-mail de "certificado emitido" é disparado na hora, pelo webhook da Safeweb (`src/app/api/safeweb/webhook/route.ts`), sem esperar nenhum job. Quando esse envio imediato falhava (falha passageira, não a chave em si — confirmado que a chave funciona), o robô de verificação leve (`verificacao-leve.ts`) apagava o registro de erro dizendo "liberei pra tentar de novo" — só que **nada realmente reenviava**: o único processo que reenvia esse tipo de e-mail é o job diário `processar-emails` (roda 1x às 8h), e a consulta dele só olhava certificados emitidos **"hoje"**. Como a emissão quase sempre acontece depois das 8h, na próxima vez que o job rodasse o certificado já não era mais "de hoje" — saía da consulta pra sempre. **Confirmado com dados reais**: os 3 clientes do alerta de hoje (Miraplast, Ezequiel, Goyosbata) não tinham nenhum registro de e-mail no sistema, nem sucesso nem erro — o e-mail se perdeu de vez, sem ninguém saber.
+
+- **`src/lib/email/enviar.ts`** — `enviarEmail()` agora tenta reenviar sozinha até 3 vezes (com pequeno intervalo) antes de desistir, num único registro de `EmailLog` (evita duplicar linha de erro por tentativa, o que geraria alertas repetidos no Telegram).
+- **`src/app/api/jobs/processar-emails/route.ts`** — a consulta de "pós-emissão" agora olha os últimos **7 dias**, não só "hoje". Isso fecha o buraco: mesmo se o envio imediato do webhook falhar (mesmo depois de 3 tentativas), o job diário pega no dia seguinte — e nos seguintes, até dar certo — em vez do certificado sair da consulta pra sempre depois de 1 dia.
+- **`src/app/api/safeweb/webhook/route.ts`** — só o comentário atualizado explicando a rede de segurança (webhook tenta na hora com retry embutido; se falhar, o job diário garante). Nenhuma mudança na lógica de emissão/protocolo Safeweb em si — só a chamada de e-mail.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Depois do deploy, vou disparar `processar-emails` manualmente pra reenviar já hoje pros 3 clientes que ficaram sem o e-mail.
+
+**Risco:** Baixo — mudança aditiva (mais tentativas, janela maior de busca), não altera nenhuma regra de negócio da Safeweb.
+
+---
+
 ## 15/07/2026 (9)
 
 ### feat: módulo de Performance (ICF) — Fase 8, migração final dos 4 widgets antigos de meta

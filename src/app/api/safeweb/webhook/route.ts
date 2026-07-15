@@ -248,7 +248,11 @@ export async function POST(req: NextRequest) {
 
         console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → EMITIDO (${evento})`)
 
-        // E-mail automático pós-emissão — disparo imediato, sem aguardar o job diário
+        // E-mail automático pós-emissão — disparo imediato, sem aguardar o job diário.
+        // enviarEmail() já tenta de novo sozinha antes de desistir (ver
+        // src/lib/email/enviar.ts). Se mesmo assim falhar, o job diário
+        // processar-emails pega no dia seguinte (janela de 7 dias — ver
+        // comentário lá, caso real de 14-15/07/2026).
         if (pedido.cliente?.email) {
           const modeloNome = pedido.itens[0] ? (pedido.itens[0] as any).modelo?.nome ?? 'Certificado Digital' : 'Certificado Digital'
           const { assunto, html } = templatePosEmissao({
