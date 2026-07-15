@@ -2,10 +2,11 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { prisma } from '../prisma'
 import { buscarUltimaExecucao, estaAtrasado } from './heartbeat'
+import { achado, type AchadoRobo } from './tipos'
 
 export interface ResultadoVerificacaoLeve {
-  achados: string[]         // urgentes — falha técnica, dispara Telegram
-  achadosInformativos: string[] // pedidos parados — só log no banco, vai para o e-mail diário
+  achados: AchadoRobo[]         // urgentes — falha técnica, dispara Telegram
+  achadosInformativos: AchadoRobo[] // pedidos parados — só log no banco, vai para o e-mail diário
   correcoes: string[]
 }
 
@@ -88,8 +89,8 @@ async function dispararCatchUp(job: string): Promise<{ ok: boolean; erro?: strin
 }
 
 export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLeve> {
-  const achados: string[] = []
-  const achadosInformativos: string[] = []
+  const achados: AchadoRobo[] = []
+  const achadosInformativos: AchadoRobo[] = []
   const correcoes: string[] = []
   const agora = new Date()
 
@@ -100,12 +101,12 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     if (estaAtrasado(ultima, agora, intervaloMin, toleranciaMin)) {
       const nome = NOME_AMIGAVEL[job] ?? job
       const quando = ultima ? format(ultima, "dd/MM 'às' HH:mm", { locale: ptBR }) : 'nunca'
-      achados.push(`O ${nome} ainda não tinha rodado hoje (última vez: ${quando}).`)
+      achados.push(achado(`O ${nome} ainda não tinha rodado hoje (última vez: ${quando}).`, 'JOB_ATRASADO', `job-atrasado:${job}`))
       const resultado = await dispararCatchUp(job)
       if (resultado.ok) {
         correcoes.push(`Mandei rodar o ${nome} de novo agora, como reforço.`)
       } else {
-        achados.push(`Tentei reforçar o ${nome}, mas não consegui (${resultado.erro}).`)
+        achados.push(achado(`Tentei reforçar o ${nome}, mas não consegui (${resultado.erro}).`, 'JOB_ATRASADO', `job-atrasado:${job}`))
       }
     }
   }
@@ -122,7 +123,11 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
   })
   for (const p of travados) {
     const quando = format(p.createdAt, "dd/MM 'às' HH:mm", { locale: ptBR })
-    achadosInformativos.push(`O pedido ${p.numero} está parado (${NOME_STATUS_PEDIDO[p.status] ?? p.status}) desde ${quando} — já passou de 2 dias sem avançar.`)
+    achadosInformativos.push(achado(
+      `O pedido ${p.numero} está parado (${NOME_STATUS_PEDIDO[p.status] ?? p.status}) desde ${quando} — já passou de 2 dias sem avançar.`,
+      'PEDIDO_TRAVADO',
+      `pedido-travado:${p.numero}`
+    ))
   }
 
   // 3. E-mails com erro recente.
@@ -153,21 +158,35 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     const razaoTexto = motivo ? ` (motivo: ${motivo})` : ''
 
     if (ehPermanente) {
-      achados.push(`E-mail pro cliente ${log.destinatario} foi rejeitado permanentemente pelo servidor de destino${razaoTexto}. O endereço pode estar errado — verifique no cadastro do cliente.`)
+      // Causa já é 100% conhecida pela própria regra determinística — investigar
+      // com IA aqui não agrega nada, só gastaria tokens à toa.
+      achados.push(achado(
+        `E-mail pro cliente ${log.destinatario} foi rejeitado permanentemente pelo servidor de destino${razaoTexto}. O endereço pode estar errado — verifique no cadastro do cliente.`,
+        'EMAIL_ERRO_PERMANENTE', `email-permanente:${log.destinatario}`, { investigavel: false }
+      ))
       await prisma.emailLog.delete({ where: { id: log.id } })
       correcoes.push(`Descartei o registro de falha de ${log.destinatario}. Endereços com rejeição permanente não são reenviados automaticamente — corrija o cadastro do cliente.`)
     } else if (ehConfiguracao) {
       const vezes = await contarFalhaConfiguracaoRecente(log.tipo)
       await prisma.emailLog.delete({ where: { id: log.id } })
       if (vezes >= 2) {
-        achados.push(`🚨 Isso já é a ${vezes}ª vez nas últimas 24h que um e-mail falha por CONFIGURAÇÃO do servidor${razaoTexto} — não é passageiro, precisa checar as variáveis de ambiente (ex.: chave de API) direto no Railway.`)
+        achados.push(achado(
+          `🚨 Isso já é a ${vezes}ª vez nas últimas 24h que um e-mail falha por CONFIGURAÇÃO do servidor${razaoTexto} — não é passageiro, precisa checar as variáveis de ambiente (ex.: chave de API) direto no Railway.`,
+          'EMAIL_ERRO_CONFIGURACAO', `email-config:${log.tipo}`
+        ))
         correcoes.push(`Liberei o e-mail de ${log.destinatario} pra tentar de novo, mas isso sozinho NÃO resolve — se voltar a falhar, é preciso ajustar a configuração manualmente.`)
       } else {
-        achados.push(`Um e-mail falhou com sinal de problema de CONFIGURAÇÃO no servidor${razaoTexto} — pode não ser passageiro.`)
+        achados.push(achado(
+          `Um e-mail falhou com sinal de problema de CONFIGURAÇÃO no servidor${razaoTexto} — pode não ser passageiro.`,
+          'EMAIL_ERRO_CONFIGURACAO', `email-config:${log.tipo}`
+        ))
         correcoes.push(`Liberei o e-mail de ${log.destinatario} pra tentar de novo. Se falhar de novo pelo mesmo motivo nas próximas 24h, vou avisar que não é passageiro.`)
       }
     } else {
-      achados.push(`Um e-mail automático não foi entregue pro cliente ${log.destinatario}${razaoTexto}.`)
+      achados.push(achado(
+        `Um e-mail automático não foi entregue pro cliente ${log.destinatario}${razaoTexto}.`,
+        'EMAIL_ERRO_TRANSIENTE', `email-transiente:${log.tipo}`
+      ))
       await prisma.emailLog.delete({ where: { id: log.id } })
       correcoes.push(`Liberei o e-mail de ${log.destinatario} pra ser enviado de novo automaticamente na próxima rodada.`)
     }

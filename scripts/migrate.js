@@ -479,6 +479,12 @@ async function migrate() {
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "sugestoes_ia_performance_pkey" PRIMARY KEY ("id")
     )`,
+
+    // Robô Diagnosticador de IA — 15/07/2026, a pedido do Vinicius: quando o
+    // robô de auditoria encontra um problema, agora também investiga a causa
+    // raiz (banco + código-fonte, somente leitura) antes de avisar. Ver
+    // src/lib/robo/diagnostico/.
+    `ALTER TABLE "auditoria_robo" ADD COLUMN IF NOT EXISTS "diagnosticos" JSONB`,
   ]
 
   for (const q of queries) {

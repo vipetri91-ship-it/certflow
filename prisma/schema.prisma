@@ -832,13 +832,16 @@ enum StatusAuditoriaRobo {
 }
 
 model AuditoriaRobo {
-  id        String              @id @default(cuid())
-  tipo      TipoAuditoriaRobo
-  status    StatusAuditoriaRobo
-  achados   Json?
-  correcoes Json?
-  duracaoMs Int?
-  createdAt DateTime            @default(now())
+  id           String              @id @default(cuid())
+  tipo         TipoAuditoriaRobo
+  status       StatusAuditoriaRobo
+  achados      Json?
+  correcoes    Json?
+  // Diagnóstico de IA por achado investigado — [{ chaveDedup, categoria, texto, deCache }].
+  // Adicionado 15/07/2026 (Robô Diagnosticador), ver src/lib/robo/diagnostico/.
+  diagnosticos Json?
+  duracaoMs    Int?
+  createdAt    DateTime            @default(now())
 
   @@map("auditoria_robo")
 }

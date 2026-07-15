@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { enviarTelegram } from '@/lib/telegram'
 import { executarAuditoriaProfunda } from '@/lib/robo/auditoria-profunda'
 import { registrarHeartbeat } from '@/lib/robo/heartbeat'
+import { diagnosticarAchados } from '@/lib/robo/diagnostico'
 
 function verificarToken(req: NextRequest): boolean {
   const token = req.headers.get('x-job-token')
@@ -21,8 +22,24 @@ export async function POST(req: NextRequest) {
   const status =
     achados.length === 0 ? 'OK' : correcoes.length > 0 ? 'CORRIGIDO_AUTOMATICAMENTE' : 'BLOQUEADO_AGUARDANDO_APROVACAO'
 
+  const diagnosticos = achados.length > 0 ? await diagnosticarAchados(achados) : new Map()
+
   await prisma.auditoriaRobo.create({
-    data: { tipo: 'PROFUNDA', status, achados, correcoes, duracaoMs },
+    data: {
+      tipo: 'PROFUNDA',
+      status,
+      achados: achados.map(a => a.texto),
+      correcoes,
+      diagnosticos: achados
+        .filter(a => diagnosticos.get(a.chaveDedup)?.texto)
+        .map(a => ({
+          chaveDedup: a.chaveDedup,
+          categoria: a.categoria,
+          texto: diagnosticos.get(a.chaveDedup)!.texto,
+          deCache: diagnosticos.get(a.chaveDedup)!.deCache,
+        })),
+      duracaoMs,
+    },
   })
   await registrarHeartbeat('robo-auditoria-profunda')
 
@@ -39,7 +56,10 @@ export async function POST(req: NextRequest) {
     }
     if (achados.length) {
       linhas.push('Encontrado (aguardando você decidir):')
-      linhas.push(...achados.map((a) => `⚠️ ${a}`))
+      linhas.push(...achados.map((a) => {
+        const diag = diagnosticos.get(a.chaveDedup)?.texto
+        return diag ? `⚠️ ${a.texto}\n   🔎 ${diag}` : `⚠️ ${a.texto}`
+      }))
     }
   }
 

@@ -1,8 +1,9 @@
 import { reconciliarEmitidos } from '../reconciliar-emitidos'
 import { auditarProdutosSafeweb } from './auditoria-produtos'
+import { achado, type AchadoRobo } from './tipos'
 
 export interface ResultadoAuditoriaProfunda {
-  achados: string[]
+  achados: AchadoRobo[]
   correcoes: string[]
 }
 
@@ -18,8 +19,8 @@ const ROTAS_PROTEGIDAS: { rota: string; nome: string }[] = [
 // decisão explícita do Vinicius) — só é mencionado, nunca "corrigido" aqui.
 const PENDENCIAS_SEGURANCA_CONHECIDAS = ['o relatório de atividade mensal ainda pode ser acionado por qualquer um, sem senha']
 
-async function verificarSenhasDosJobs(): Promise<string[]> {
-  const achados: string[] = []
+async function verificarSenhasDosJobs(): Promise<AchadoRobo[]> {
+  const achados: AchadoRobo[] = []
   const baseUrl = process.env.JOB_BASE_URL || 'https://www.vazcertflow.com.br'
 
   for (const { rota, nome } of ROTAS_PROTEGIDAS) {
@@ -29,22 +30,29 @@ async function verificarSenhasDosJobs(): Promise<string[]> {
         headers: { 'x-job-token': 'senha-errada-de-teste-do-robo' },
       })
       if (res.status !== 401) {
-        achados.push(`ATENÇÃO, SEGURANÇA: o ${nome} aceitou uma senha errada — deveria ter recusado. Precisa verificar com urgência.`)
+        achados.push(achado(
+          `ATENÇÃO, SEGURANÇA: o ${nome} aceitou uma senha errada — deveria ter recusado. Precisa verificar com urgência.`,
+          'SEGURANCA_TOKEN', `seguranca:${rota}`
+        ))
       }
     } catch (e) {
-      achados.push(`Não consegui verificar a senha do ${nome}: ${String(e)}`)
+      achados.push(achado(`Não consegui verificar a senha do ${nome}: ${String(e)}`, 'SEGURANCA_TOKEN', `seguranca:${rota}`))
     }
   }
 
   for (const pendencia of PENDENCIAS_SEGURANCA_CONHECIDAS) {
-    achados.push(`Lembrete (já sabido, ainda não resolvido): ${pendencia} — esperando você decidir o que fazer.`)
+    // Pendência já aceita e documentada — não é uma incógnita a investigar.
+    achados.push(achado(
+      `Lembrete (já sabido, ainda não resolvido): ${pendencia} — esperando você decidir o que fazer.`,
+      'SEGURANCA_TOKEN', 'seguranca:pendencia-conhecida', { investigavel: false }
+    ))
   }
 
   return achados
 }
 
 export async function executarAuditoriaProfunda(): Promise<ResultadoAuditoriaProfunda> {
-  const achados: string[] = []
+  const achados: AchadoRobo[] = []
   const correcoes: string[] = []
 
   // 1. Reconciliação financeira (certificado/lançamento faltando) — já é uma
@@ -53,9 +61,12 @@ export async function executarAuditoriaProfunda(): Promise<ResultadoAuditoriaPro
     const r = await reconciliarEmitidos()
     for (const numero of r.certificadosCriados) correcoes.push(`O pedido ${numero} tinha sido emitido mas o certificado não foi registrado — já corrigi.`)
     for (const numero of r.lancamentosCriados) correcoes.push(`O pedido ${numero} tinha sido emitido mas faltava a cobrança no financeiro — já criei.`)
-    for (const erro of r.erros) achados.push(`Não consegui corrigir um problema financeiro: ${erro}`)
+    for (const erro of r.erros) {
+      const numero = erro.split(':')[0]?.trim() || 'excecao'
+      achados.push(achado(`Não consegui corrigir um problema financeiro: ${erro}`, 'FINANCEIRO_RECONCILIACAO', `financeiro:${numero}`))
+    }
   } catch (e) {
-    achados.push(`Não consegui checar se as cobranças e certificados estão todos certos: ${String(e)}`)
+    achados.push(achado(`Não consegui checar se as cobranças e certificados estão todos certos: ${String(e)}`, 'FINANCEIRO_RECONCILIACAO', 'financeiro:excecao'))
   }
 
   // 2. Produtos Safeweb — todos os modelos ativos, todos os tipos de
@@ -81,17 +92,20 @@ export async function executarAuditoriaProfunda(): Promise<ResultadoAuditoriaPro
       const todosTipos = ['presencial', 'videoconferência', 'online']
       const todosAusentes = todosTipos.every(t => g.tipos.includes(t))
       const atendimentos = todosAusentes ? 'todos os tipos de atendimento' : g.tipos.join(', ')
-      achados.push(`Certificado "${g.modelo}" (${g.situacao}, ${atendimentos}): ${g.detalhe}`)
+      achados.push(achado(
+        `Certificado "${g.modelo}" (${g.situacao}, ${atendimentos}): ${g.detalhe}`,
+        'SAFEWEB_CATALOGO', `safeweb:${g.modelo}|${g.situacao}`
+      ))
     }
   } catch (e) {
-    achados.push(`Não consegui revisar os certificados contra o cadastro da Safeweb: ${String(e)}`)
+    achados.push(achado(`Não consegui revisar os certificados contra o cadastro da Safeweb: ${String(e)}`, 'SAFEWEB_CATALOGO', 'safeweb:excecao'))
   }
 
   // 3. Confirma que os jobs continuam exigindo a senha de robô.
   try {
     achados.push(...(await verificarSenhasDosJobs()))
   } catch (e) {
-    achados.push(`Não consegui verificar a segurança dos jobs automáticos: ${String(e)}`)
+    achados.push(achado(`Não consegui verificar a segurança dos jobs automáticos: ${String(e)}`, 'SEGURANCA_TOKEN', 'seguranca:excecao'))
   }
 
   return { achados, correcoes }

@@ -5,6 +5,26 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (11)
+
+### feat: Robô Diagnosticador de IA — o robô de auditoria agora investiga a causa raiz antes de avisar
+
+**Origem:** a pedido do Vinicius, depois do caso do e-mail do Brevo mais cedo hoje ("seria interessante o auditor já analisar onde está o erro e me avisar na mensagem"). Primeira vez que os robôs de auditoria (`robo-verificacao-leve`, a cada 20 min, e `robo-auditoria-profunda`, diário) usam IA — até então eram 100% regras determinísticas.
+
+- **`src/lib/robo/tipos.ts`** (novo) — achados passam a ser estruturados (`AchadoRobo`: texto, categoria, chave de agrupamento estável, se é investigável) em vez de string solta. `verificacao-leve.ts` e `auditoria-profunda.ts` ajustados pra emitir nesse formato — nenhuma mudança de comportamento nas checagens em si.
+- **`src/lib/robo/diagnostico/`** (novo módulo) — agente investigativo com ferramentas somente-leitura (mesmo padrão de tool-loop já usado pela ZOE): consulta o banco (allowlist de tabelas/campos, nunca SQL cru), lê código-fonte relevante (allowlist de diretórios, nunca `.env`/segredos), consulta o histórico de incidentes parecidos, e verifica **se** uma variável de ambiente existe (nunca o valor — vai pro Telegram). Modelo `claude-sonnet-5`. Autorizado explicitamente pelo Vinicius a ler (nunca alterar) `src/lib/safeweb.ts` quando precisar diagnosticar o catálogo Safeweb.
+- **Cache/orçamento** — mesmo padrão `Configuracao` já usado pro heartbeat dos jobs: cada tipo de problema só é investigado de novo depois de 6-24h (dependendo da categoria); repetições reaproveitam o diagnóstico já feito. Limite de **50 investigações novas por dia** (confirmado com o Vinicius) — se estourar, volta a mandar só o aviso puro pelo resto do dia. Flag de emergência (`Configuracao` `robo:diagnostico:ativo = false`) desliga tudo sem precisar de deploy.
+- **`prisma/schema.prisma` + `scripts/migrate.js`** — `AuditoriaRobo` ganhou o campo `diagnosticos Json?`, guardando o diagnóstico de cada achado investigado.
+- **Garantia central**: falha, timeout (45s) ou erro no diagnóstico NUNCA derruba o alerta original — achados/correções/status continuam sendo calculados e enviados exatamente como antes; o diagnóstico só aparece como uma sub-linha 🔎 extra quando dá certo.
+
+**Testado isoladamente contra produção, de verdade**, antes de integrar nas rotas: simulei um achado de e-mail com erro de configuração e um de job atrasado. Nos dois casos o agente investigou de verdade (consultou banco, checou variável de ambiente, olhou histórico) e voltou com diagnósticos coerentes e bem fundamentados — inclusive corrigindo a própria suposição inicial ao ver dados reais no banco. Achei e corrigi 2 problemas reais nesse teste: (1) a consulta genérica ao banco quebrava ao tentar ordenar por `createdAt` numa tabela que não tem esse campo; (2) o modelo às vezes deixava vazar um parágrafo de "raciocínio solto" antes da resposta final — ajustei o prompt pra ser rígido só com o formato final.
+
+**Ainda não testado**: o fluxo completo real (achado real disparando o Telegram com a sub-linha de diagnóstico) — isso só acontece na próxima vez que um dos robôs encontrar um problema de verdade em produção.
+
+**Risco:** Baixo — módulo aditivo, com múltiplas camadas de degradação graciosa; pior caso é o alerta ficar sem diagnóstico (comportamento de hoje).
+
+---
+
 ## 15/07/2026 (10)
 
 ### fix: e-mail de "certificado emitido" (POS_EMISSAO) se perdendo de vez quando o envio imediato falhava
