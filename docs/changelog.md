@@ -5,6 +5,22 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (8)
+
+### feat: módulo de Performance (ICF) — Fase 7, Histórico e exportar PDF
+
+**Origem:** continuação do módulo "Gestão de Performance da Equipe" (ver entradas anteriores). Fase 7 do plano aprovado: comparação mensal do ICF ao longo do tempo, com exportação em PDF.
+
+- **`src/app/(dashboard)/performance/admin/historico/`** (novo) — lista todos os registros de `IndicadorMensal` (gravados pelo robô da Fase 4), gráfico de linha (Recharts, já usado no dashboard financeiro — nenhuma dependência nova) com ICF e os 3 componentes ao longo dos meses, mais uma tabela detalhada. Botão "Exportar PDF" reaproveita o padrão `window.print()` + CSS de impressão já usado em Recibo/Orçamento (`id="historico-print"` visível, resto oculto) — sem biblioteca nova, como já tinha sido definido no plano.
+
+**Testado contra produção, de verdade:** confirmado que o único registro existente (julho/2026, gravado na Fase 4) aparece corretamente na tabela e alimenta o gráfico.
+
+**Ainda falta:** Fase 8 (migrar os 4 widgets antigos de meta hardcoded pra `MetaPerformance`) — última fase do módulo.
+
+**Risco:** Baixo — tela nova, só leitura.
+
+---
+
 ## 15/07/2026 (7)
 
 ### fix(segurança — autorizado explicitamente): `NEXTAUTH_SECRET` não existe em produção — quebrava o boleto do Inter e deixava o Portal do Parceiro com senha fixa exposta no código
