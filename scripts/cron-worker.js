@@ -52,6 +52,10 @@ const jobs = [
   { nome: 'aniversario-clientes', cronExpr: '10 12 * * *', metodo: 'POST' }, // 9h10 BRT diário
   { nome: 'reativacao-clientes', cronExpr: '0 13 * * *', metodo: 'POST' }, // 10h BRT diário
   { nome: 'pesquisa-nps', cronExpr: '15 13 * * *', metodo: 'POST' }, // 10h15 BRT diário
+  // Módulo de Performance/ICF (15/07/2026, a pedido do Vinicius) — roda no
+  // fim do dia, depois que a produção do dia já foi lançada, pra fotografar
+  // o indicador do mês e gerar as sugestões de IA que aparecem no dashboard.
+  { nome: 'calcular-indicador-diario', cronExpr: '50 2 * * *', metodo: 'POST' }, // 23h50 BRT diário
 ]
 
 for (const job of jobs) {

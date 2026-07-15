@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (5)
+
+### feat: módulo de Performance (ICF) — Fase 4, robô diário
+
+**Origem:** continuação do módulo "Gestão de Performance da Equipe" (ver entradas anteriores). Fase 4 do plano aprovado: robô que fotografa o ICF do mês todo dia, gera as sugestões de IA que o dashboard exibe e alerta no Telegram se o índice cair mais de 5 pontos entre uma execução e a próxima.
+
+- **`src/app/api/jobs/calcular-indicador-diario/route.ts`** (novo) — chama `calcularIndicadorCompleto()` (Fase 1), faz upsert em `IndicadorMensal` (mes/ano do momento), gera as sugestões do dia via `gerarSugestoesIA` (limpa as sugestões antigas do dia antes de gravar as novas, pra não acumular duplicata se o robô for re-executado no mesmo dia) e dispara `enviarTelegram` só se o ICF da execução anterior menos o atual for maior que 5 pontos.
+- **`scripts/cron-worker.js`** — novo agendamento `calcular-indicador-diario`, 23h50 BRT diário (depois que a produção do dia já foi lançada).
+- **`src/lib/robo/verificacao-leve.ts`** — job novo adicionado ao monitoramento de heartbeat (`JOBS_MONITORADOS`) e ao mapa de nomes amigáveis, mesmo padrão dos outros robôs — se ele parar de rodar silenciosamente, o robô de auditoria já avisa.
+
+**Testado contra produção, de verdade:** rodei o job manualmente (é exatamente o que ele faz sozinho hoje às 23h50) — resultado `{ icf: 60, alertaEnviado: false, sugestoesGeradas: 3 }`, consistente com o número já verificado na Fase 1. Conferi direto no banco que `IndicadorMensal` do mês, as 3 `SugestaoIA` e o heartbeat foram gravados corretamente, e que o dashboard `/performance` já mostra as sugestões geradas. Sem alerta (esperado — primeira execução do mês, sem "antes" pra comparar).
+
+**Ainda faltam:** Fase 5 (Simulador de Meta), Fase 6 (Modo Daily/TV), Fase 7 (Histórico + PDF), Fase 8 (migrar os 4 widgets antigos).
+
+**Risco:** Baixo — job novo e isolado, não altera nenhum robô existente.
+
+---
+
 ## 15/07/2026 (4)
 
 ### feat: módulo de Performance (ICF) — Fase 3, área de Administração
