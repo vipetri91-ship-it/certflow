@@ -5,6 +5,45 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 15/07/2026 (7)
+
+### fix(segurança — autorizado explicitamente): `NEXTAUTH_SECRET` não existe em produção — quebrava o boleto do Inter e deixava o Portal do Parceiro com senha fixa exposta no código
+
+**Origem:** durante a Fase 6 do módulo de Performance (Modo TV), a nova rota pública por token usa `src/lib/token-publico.ts`, que lê `process.env.NEXTAUTH_SECRET` — e essa variável **não existe** no Railway (produção real), só `AUTH_SECRET` existe. Investigando o impacto real (Regra 4 da Governança — nunca corrigir só o sintoma), achei dois problemas reais e pré-existentes, não relacionados ao módulo de Performance:
+
+1. **`src/app/api/inter/cobranca/enviar/route.ts`** chama `gerarTokenPublico()` (de `token-publico.ts`) **antes** do try/catch da rota — ou seja, todo clique em "enviar cobrança" por WhatsApp ou e-mail pro cliente estava retornando erro 500, sem enviar nada, porque a função sempre lançava `Error('NEXTAUTH_SECRET não configurado')`.
+2. **`src/lib/portal-session.ts`** (sessão do Portal do Parceiro) tinha um fallback silencioso: `process.env.NEXTAUTH_SECRET ?? 'certflow-portal-secret'`. Como a variável não existe em produção, toda sessão do portal estava sendo assinada com essa string fixa, visível no código-fonte — qualquer pessoa que conhecesse essa string conseguiria forjar uma sessão válida pra **qualquer parceiro** (só precisando do `parceiroId`) e ver dados bancários dele (banco, agência, conta, chave Pix). Falha de segurança real, não só um bug funcional.
+
+Reportado ao Vinicius antes de qualquer alteração; autorização explícita recebida pra corrigir os dois.
+
+- **`src/lib/token-publico.ts`** e **`src/lib/portal-session.ts`** — trocado `NEXTAUTH_SECRET` por `AUTH_SECRET` (que já existe em produção e é o padrão usado em todo o resto do projeto — `auth.ts`, `cron-worker.js`, jobs). Removido o fallback inseguro do portal; agora lança erro explícito se a variável não estiver configurada, igual o padrão do `token-publico.ts`.
+- **Efeito colateral esperado e positivo:** depois do deploy, sessões antigas do Portal do Parceiro (assinadas com a string fixa antiga) ficam inválidas — os parceiros logados precisam entrar de novo. Isso é o comportamento correto.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Reproduzi o erro original localmente (rodando contra produção) confirmando o crash, apliquei a correção e confirmei que as telas que dependem dessas funções passaram a funcionar.
+
+**Risco:** Médio-alto se não corrigido (falha de segurança ativa); a correção em si é baixo risco — só troca o nome da variável lida, mesma lógica.
+
+---
+
+## 15/07/2026 (6.1)
+
+### feat: módulo de Performance (ICF) — Fase 6, Modo Daily e Modo TV
+
+**Origem:** continuação do módulo "Gestão de Performance da Equipe" (ver entradas anteriores). Fase 6 do plano aprovado: telas de exibição especial — reunião diária em tela cheia (dentro da área logada) e painel público pra TV do escritório (sem login).
+
+- **`src/app/(dashboard)/performance/daily/`** (novo) — Modo Daily: mesma tela do dashboard principal, mas em tela cheia (`overlay.tsx` cobre a sidebar via `position: fixed`, evitando ter que criar uma árvore de rotas separada só pra isso), fontes maiores, foco em Produção/Qualidade/Renovação/Foco do Dia/Sugestões da IA. Continua exigindo login (`performance:read`) — é usado em reunião, projetado a partir de um notebook conectado na TV.
+- **`src/app/tv/performance/[token]/`** (novo) — Modo TV: rota pública fora do grupo `(dashboard)`, sem sidebar, sem exigir login. Acesso por token HMAC (`gerarTokenPublico`/`validarTokenPublico`, mesmo padrão já usado no boleto público do Inter). Atualiza sozinha a cada 1 minuto (`router.refresh()`, sem precisar de uma API separada). Nunca mostra nomes — só números agregados, igual ao dashboard principal.
+- **`src/proxy.ts`** — adicionada exceção pra `/tv/*` (mesmo padrão já existente pra `/portal/*`) — sem isso, o middleware global exigiria login em qualquer rota, inclusive a TV pública, o que anularia o propósito dela.
+- **`src/app/(dashboard)/performance/admin/page.tsx`** — novo bloco mostrando o link do Modo TV com botão de copiar (`link-tv.tsx`), só visível pra quem tem `performance:write`.
+
+**Testado contra produção, de verdade:** Modo Daily (200, com sessão), Modo TV com token válido (200, **sem nenhuma sessão/cookie** — confirmando que é realmente público) e com token inválido (404, sem vazar informação). Sem erro de runtime em nenhuma das telas.
+
+**Ainda faltam:** Fase 7 (Histórico + PDF), Fase 8 (migrar os 4 widgets antigos).
+
+**Risco:** Baixo pro módulo de Performance em si; a mudança em `proxy.ts` é aditiva (só abre uma exceção nova, não altera o comportamento de nenhuma rota existente).
+
+---
+
 ## 15/07/2026 (6)
 
 ### feat: módulo de Performance (ICF) — Fase 5, Simulador de Meta

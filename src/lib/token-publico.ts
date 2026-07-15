@@ -4,8 +4,8 @@ import crypto from 'node:crypto'
 // (ex: PDF de boleto) sem exigir login do cliente final, sem permitir
 // enumeração de IDs.
 function segredo() {
-  const s = process.env.NEXTAUTH_SECRET
-  if (!s) throw new Error('NEXTAUTH_SECRET não configurado')
+  const s = process.env.AUTH_SECRET
+  if (!s) throw new Error('AUTH_SECRET não configurado')
   return s
 }
 

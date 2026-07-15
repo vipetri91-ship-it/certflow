@@ -2,14 +2,18 @@ import { cookies } from 'next/headers'
 import crypto from 'crypto'
 import { prisma } from './prisma'
 
-const SECRET = process.env.NEXTAUTH_SECRET ?? 'certflow-portal-secret'
+function segredo(): string {
+  const s = process.env.AUTH_SECRET
+  if (!s) throw new Error('AUTH_SECRET não configurado')
+  return s
+}
 const COOKIE = 'portal_session'
 const EXPIRA_MS = 8 * 60 * 60 * 1000 // 8 horas
 
 export function criarToken(parceiroId: string): string {
   const payload = JSON.stringify({ parceiroId, exp: Date.now() + EXPIRA_MS })
   const b64 = Buffer.from(payload).toString('base64url')
-  const hmac = crypto.createHmac('sha256', SECRET).update(b64).digest('hex')
+  const hmac = crypto.createHmac('sha256', segredo()).update(b64).digest('hex')
   return `${b64}.${hmac}`
 }
 
@@ -17,7 +21,7 @@ export function verificarToken(token: string): { parceiroId: string } | null {
   try {
     const [b64, hmac] = token.split('.')
     if (!b64 || !hmac) return null
-    const esperado = crypto.createHmac('sha256', SECRET).update(b64).digest('hex')
+    const esperado = crypto.createHmac('sha256', segredo()).update(b64).digest('hex')
     if (!crypto.timingSafeEqual(Buffer.from(hmac, 'hex'), Buffer.from(esperado, 'hex'))) return null
     const data = JSON.parse(Buffer.from(b64, 'base64url').toString())
     if (data.exp < Date.now()) return null
