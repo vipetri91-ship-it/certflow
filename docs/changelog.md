@@ -5,6 +5,28 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 16/07/2026
+
+### fix: vendas do Arlen não estavam gerando agendamento na Google Agenda
+
+**Origem:** Vinicius reportou que o Arlen fez ~4 vendas em 15/07 e nenhuma criou compromisso na agenda. Investigação de causa raiz (Regra 4 da Governança).
+
+**O que foi descartado:** a integração com o Google Agenda (Apps Script) está funcionando — testei direto contra o script real, criando um evento de verdade na agenda "Arlen - Video" com sucesso (`{"ok":true,"eventoId":"9hko420777qkdtl9jkfv5hscec@google.com"}`). Também descartei problema de permissão/role e de mapeamento de AGR (o pedido do Arlen estava correto no banco, `agr: "arlen"`).
+
+**Causa raiz encontrada:** o wizard "Nova Venda" preenche a data/hora do agendamento com o horário do momento em que a tela é aberta (`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`, função `INITIAL`). Como o wizard tem vários passos (identificação, certificado, responsável, empresa, pagamento, agendamento), esse horário "envelhece" enquanto a pessoa preenche o resto — e ao finalizar, uma validação comparava contra a hora real e **bloqueava a venda** com o erro "O horário de agendamento já passou. Selecione um horário futuro." Isso levava a pessoa a simplesmente desligar o agendamento (campo "Agendar: Não") pra conseguir fechar a venda — sem perceber que estava abrindo mão do compromisso na agenda. Confirmado também: o sistema tinha **outra tela de criar pedido** ("Novo Pedido", dentro da listagem de `/pedidos`) com agendamento manual desligado por padrão — não foi a causa deste caso específico (Arlen confirmou ter usado o carrinho/"Nova Venda"), mas é uma inconsistência que ainda existe no sistema e o Vinicius decidirá o que fazer com ela depois.
+
+- **`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`** — em vez de travar a venda quando o horário ficou desatualizado, o sistema agora **ajusta sozinho pra 15 minutos a partir de agora** e segue com a venda normalmente.
+- **`src/app/api/pedidos/nova-venda/route.ts`** — a resposta da API agora inclui `agendaOk` (true/false/null), e isso é gravado também na auditoria (`AuditLog`) — antes, sucesso ou falha do agendamento só existia como `console.log`/`console.error`, que se perde nos logs voláteis do Railway.
+- **Tela de sucesso do wizard** — se o agendamento foi solicitado mas não deu certo (por qualquer motivo — Apps Script fora do ar, erro de rede, etc.), aparece um aviso amarelo claro: "O pedido foi criado, mas não consegui agendar na Google Agenda. Crie o compromisso manualmente." Antes, não havia absolutamente nenhum sinal disso na tela.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Testei isoladamente a lógica de correção de horário (matemática de data, sem tocar banco) com dois cenários (horário no passado e no futuro) — comportamento correto nos dois. Testei a integração com o Google Agenda direto contra o script real (sucesso, evento de teste criado em "Arlen - Video", pode ser apagado manualmente). **Não criei uma venda de teste completa contra produção** — o fluxo de `nova-venda` tem efeitos colaterais reais (cria cliente, pedido, pode chamar a Safeweb, gera lançamento financeiro), então não é seguro simular isso só para testar; a validação foi por revisão de código + testes isolados dos dois pontos que mudaram.
+
+**Ainda em aberto:** decidir o que fazer com a tela antiga "Novo Pedido" (`/pedidos/novo`), que também não tem o mesmo padrão de agendamento automático nem aviso de falha — Vinicius vai decidir depois se remove ou corrige separadamente.
+
+**Risco:** Baixo — mudança aditiva (mais um campo na resposta, uma correção automática que substitui um bloqueio por erro, um aviso novo na tela). Não altera a lógica de criação do pedido, cliente, financeiro ou Safeweb.
+
+---
+
 ## 15/07/2026 (11)
 
 ### feat: Robô Diagnosticador de IA — o robô de auditoria agora investiga a causa raiz antes de avisar

@@ -421,12 +421,18 @@ export async function POST(req: NextRequest) {
   // PATCH /api/pedidos/[id], docs/ESPECIFICACAO_LANCAMENTO_NA_EMISSAO.md)
 
   // 4. Agendar no Google Calendar se solicitado
+  // agendaOk fica null quando não foi solicitado agendamento — o front-end só
+  // mostra aviso de falha quando agendaSolicitado for true e isso for false
+  // (nunca quando o agendamento nem foi pedido).
+  let agendaOk: boolean | null = null
   if (!agendamento) {
     console.log('[Agenda] sem agendamento no pedido', pedido.numero, '— evento não criado')
   } else if (!pedidoDados.agr) {
     console.warn('[Agenda] agr ausente no pedido', pedido.numero, '— evento não criado')
+    agendaOk = false
   }
   if (agendamento && pedidoDados.agr) {
+    agendaOk = false
     try {
       const modelo = await prisma.modeloCertificado.findUnique({ where: { id: modeloId }, select: { nome: true } })
       const inicio = new Date(`${agendamento.data}T${agendamento.hora}:00-03:00`)
@@ -499,6 +505,7 @@ export async function POST(req: NextRequest) {
           const resumo = textoResposta.length > 200 ? textoResposta.slice(0, 200) + '…' : textoResposta
           console.error('[Agenda] falha ao criar evento para', pedido.numero, dadosAgenda.msg ?? resumo)
         } else {
+          agendaOk = true
           console.log('[Agenda] evento criado', pedido.numero, dadosAgenda.eventoId, 'em', dadosAgenda.calendario)
         }
       }
@@ -512,7 +519,7 @@ export async function POST(req: NextRequest) {
     acao: 'CREATE',
     entidade: 'Pedido',
     entidadeId: pedido.id,
-    dados: { numero: pedido.numero, valorFinal, cliente: cliente?.nome, agr: pedidoDados.agr },
+    dados: { numero: pedido.numero, valorFinal, cliente: cliente?.nome, agr: pedidoDados.agr, agendaSolicitado: Boolean(agendamento), agendaOk },
     ip: req.headers.get('x-forwarded-for') ?? undefined,
   })
 
@@ -521,5 +528,6 @@ export async function POST(req: NextRequest) {
     numero: pedido.numero,
     safewebProtocolo: safewebProtocolo ?? null,
     hopeUrlDocumentos: hopeUrlDocumentos ?? null,
+    agendaOk,
   }, { status: 201 })
 }

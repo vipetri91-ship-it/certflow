@@ -201,7 +201,10 @@ export function NovaVendaWizard({
   const [buscandoCep,     setBuscandoCep]     = useState(false)
   const [buscandoCepEmp,  setBuscandoCepEmp]  = useState(false)
   const [historico,       setHistorico]       = useState<CertHistorico[]>([])
-  const [pedidoCriado,    setPedidoCriado]    = useState<{ id: string; numero: string; safewebProtocolo?: string | null; hopeUrlDocumentos?: string | null } | null>(null)
+  const [pedidoCriado,    setPedidoCriado]    = useState<{
+    id: string; numero: string; safewebProtocolo?: string | null; hopeUrlDocumentos?: string | null
+    agendaSolicitado?: boolean; agendaOk?: boolean | null
+  } | null>(null)
   const [protocolo,       setProtocolo]       = useState('')
   const [salvandoProt,    setSalvandoProt]    = useState(false)
   const telefoneRef    = useRef<HTMLInputElement>(null)
@@ -540,14 +543,26 @@ export function NovaVendaWizard({
   async function finalizar() {
     setLoading(true); setErroValidacao('')
     try {
+      // A data/hora do agendamento é preenchida quando o wizard abre (INITIAL),
+      // mas o formulário tem vários passos — se a pessoa demorar pra preencher
+      // tudo, esse horário "envelhece" e fica no passado. Antes disso travava a
+      // venda com um erro confuso, o que levava a pessoa a simplesmente desligar
+      // o agendamento pra conseguir finalizar (caso real do Arlen, 15/07/2026,
+      // resultou em vendas sem nenhum compromisso criado na agenda). Agora o
+      // sistema ajusta sozinho pra daqui a 15 minutos em vez de travar.
+      let dataAgendamentoFinal = dados.dataAgendamento
+      let horaAgendamentoFinal = dados.horaAgendamento
+
       if (dados.agendar) {
         const horario = await fetch('/api/sistema/horario').then(r => r.json()).catch(() => null)
         if (horario?.agora) {
           const agora = new Date(horario.agora)
-          const horarioAgendado = new Date(`${dados.dataAgendamento}T${dados.horaAgendamento}:00-03:00`)
+          const horarioAgendado = new Date(`${dataAgendamentoFinal}T${horaAgendamentoFinal}:00-03:00`)
           if (horarioAgendado <= agora) {
-            setErroValidacao('O horário de agendamento já passou. Selecione um horário futuro.')
-            return
+            const novoHorario = new Date(agora.getTime() + 15 * 60_000)
+            dataAgendamentoFinal = novoHorario.toISOString().split('T')[0]
+            horaAgendamentoFinal = `${String(novoHorario.getHours()).padStart(2, '0')}:${String(novoHorario.getMinutes()).padStart(2, '0')}`
+            setDados(d => ({ ...d, dataAgendamento: dataAgendamentoFinal, horaAgendamento: horaAgendamentoFinal }))
           }
         }
       }
@@ -614,7 +629,7 @@ export function NovaVendaWizard({
         desconto:           0,
         observacoes:        obsExtra,
         agendamento: dados.agendar ? {
-          data: dados.dataAgendamento, hora: dados.horaAgendamento, duracao: dados.duracaoAgendamento,
+          data: dataAgendamentoFinal, hora: horaAgendamentoFinal, duracao: dados.duracaoAgendamento,
         } : undefined,
       }
 
@@ -623,7 +638,10 @@ export function NovaVendaWizard({
       })
       const result = await res.json()
       if (!res.ok) { setErroValidacao(result.erro ?? 'Erro ao criar pedido'); return }
-      setPedidoCriado({ id: result.id, numero: result.numero, safewebProtocolo: result.safewebProtocolo, hopeUrlDocumentos: result.hopeUrlDocumentos })
+      setPedidoCriado({
+        id: result.id, numero: result.numero, safewebProtocolo: result.safewebProtocolo, hopeUrlDocumentos: result.hopeUrlDocumentos,
+        agendaSolicitado: dados.agendar, agendaOk: result.agendaOk ?? null,
+      })
     } catch { setErroValidacao('Erro de conexão') }
     finally { setLoading(false) }
   }
@@ -652,6 +670,15 @@ export function NovaVendaWizard({
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pedido gerado com sucesso!</h2>
             <p className="text-sm text-gray-500 mt-1">Pedido <strong className="font-mono">{pedidoCriado.numero}</strong></p>
           </div>
+
+          {pedidoCriado.agendaSolicitado && pedidoCriado.agendaOk === false && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 text-left border border-amber-200 dark:border-amber-800 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                <strong>O pedido foi criado, mas não consegui agendar na Google Agenda.</strong> Crie o compromisso manualmente pra não perder o horário com o cliente.
+              </p>
+            </div>
+          )}
 
           {protocoloAuto ? (
             /* Protocolo criado automaticamente */
