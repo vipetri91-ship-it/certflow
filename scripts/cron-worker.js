@@ -56,6 +56,10 @@ const jobs = [
   // fim do dia, depois que a produção do dia já foi lançada, pra fotografar
   // o indicador do mês e gerar as sugestões de IA que aparecem no dashboard.
   { nome: 'calcular-indicador-diario', cronExpr: '50 2 * * *', metodo: 'POST' }, // 23h50 BRT diário
+  // Robô Financeiro (16/07/2026, a pedido do Vinicius) — cobrança de
+  // vencidos com aprovação por Telegram. Roda de manhã, junto com os outros
+  // robôs financeiros/de e-mail.
+  { nome: 'robo-cobranca-financeira', cronExpr: '20 12 * * *', metodo: 'POST' }, // 9h20 BRT diário
 ]
 
 for (const job of jobs) {

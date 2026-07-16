@@ -485,6 +485,29 @@ async function migrate() {
     // raiz (banco + código-fonte, somente leitura) antes de avisar. Ver
     // src/lib/robo/diagnostico/.
     `ALTER TABLE "auditoria_robo" ADD COLUMN IF NOT EXISTS "diagnosticos" JSONB`,
+
+    // Robô Financeiro (cobrança de vencidos) — 16/07/2026, a pedido do
+    // Vinicius. Ver src/lib/financeiro/cobranca-*.ts e docs/changelog.md.
+    `DO $$ BEGIN
+      CREATE TYPE "StatusCobrancaAprovacao" AS ENUM ('PENDENTE', 'APROVADO', 'REJEITADO', 'ENVIADO', 'ERRO_ENVIO');
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+    `CREATE TABLE IF NOT EXISTS "cobranca_aprovacoes" (
+      "id" TEXT NOT NULL,
+      "lancamentoId" TEXT NOT NULL,
+      "mensagemRascunho" TEXT NOT NULL,
+      "diasAtraso" INTEGER NOT NULL,
+      "valorSnapshot" DECIMAL(10,2) NOT NULL,
+      "status" "StatusCobrancaAprovacao" NOT NULL DEFAULT 'PENDENTE',
+      "telegramChatId" TEXT,
+      "telegramMessageId" TEXT,
+      "erro" TEXT,
+      "respondidoEm" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "cobranca_aprovacoes_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "cobranca_aprovacoes_lancamentoId_fkey" FOREIGN KEY ("lancamentoId") REFERENCES "lancamentos"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    )`,
+    `CREATE INDEX IF NOT EXISTS "cobranca_aprovacoes_lancamentoId_idx" ON "cobranca_aprovacoes"("lancamentoId")`,
   ]
 
   for (const q of queries) {

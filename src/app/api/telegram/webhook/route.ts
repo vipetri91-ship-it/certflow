@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { buscarRelatorioAgrDigital, formatarRelatorioAgrDigital } from '@/lib/relatorios/agr-digital'
 import { buscarRelatorioAuditor, formatarRelatorioAuditor } from '@/lib/relatorios/auditor'
+import { processarCallbackQuery } from '@/lib/financeiro/cobranca-aprovacao'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID
@@ -416,7 +417,13 @@ consulta informações. Para ações, oriente acessar https://certflow-nine.verc
 
 export async function POST(req: NextRequest) {
   try {
-    const body    = await req.json()
+    const body = await req.json()
+
+    if (body?.callback_query) {
+      await processarCallbackQuery(body.callback_query)
+      return NextResponse.json({ ok: true })
+    }
+
     const message = body?.message
     if (!message) return NextResponse.json({ ok: true })
 

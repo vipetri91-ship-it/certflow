@@ -5,6 +5,40 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 16/07/2026 (4)
+
+### feat: Robô Financeiro — baixa automática confiável + cobrança de vencidos com aprovação no Telegram
+
+**Origem:** Vinicius pediu para auditar a saúde da emissão de boletos do Inter e, junto disso, pediu um robô financeiro: baixa automática confiável quando o cliente paga, e — quando o boleto vence sem pagamento — um robô que identifica os clientes vencidos, escreve uma cobrança em tom amigável e manda pra aprovação dele no Telegram, só disparando ao cliente depois de aprovado.
+
+**Problema de segurança encontrado e corrigido primeiro:** o webhook do Inter (`src/app/api/inter/webhook/route.ts`) não verificava autenticidade nenhuma — aceitava qualquer POST dizendo que uma cobrança foi paga, usando só o `nossoNumero` (impresso no próprio boleto, não é secreto) pra achar o lançamento e marcar como pago. Qualquer pessoa com o próprio boleto em mãos poderia, em tese, forjar uma confirmação de pagamento falsa. Auditoria completa não encontrou nenhum caso real de exploração (o volume de cobranças geradas até agora é baixo e nenhuma fraude foi identificada), mas o gap foi corrigido antes de ligar a baixa automática de vez.
+
+- **`src/app/api/inter/webhook/route.ts`** — reescrito: o POST agora é só um **gatilho**, nunca a fonte de verdade. Ao receber `COBRANCA_LIQUIDADA`, o sistema reconfirma direto com a API autenticada do Inter (`consultarCobranca`, com retry). Só dá baixa (`status: PAGO`) se a API confirmar `situacao: "RECEBIDO"` **e** o valor recebido bater **exatamente** com o valor do lançamento — qualquer diferença, falha de rede ou situação diferente bloqueia a baixa automática e manda alerta pro Telegram pra revisão manual.
+- **`src/lib/inter.ts`** — `DetalhesCobranca` documentado com o contrato real da API, confirmado testando contra uma cobrança de teste (R$2,50) paga de verdade: não pago = `"A_RECEBER"`, pago = `"RECEBIDO"` (a documentação pública do Inter é enganosa aqui), com `valorTotalRecebido` (string) e `origemRecebimento` só aparecendo depois de pago.
+
+**Robô de cobrança de vencidos (novo):**
+
+- **`prisma/schema.prisma`** / **`scripts/migrate.js`** — nova tabela `cobranca_aprovacoes` (model `CobrancaAprovacao`): guarda cada rascunho de cobrança gerado, status (`PENDENTE`/`APROVADO`/`REJEITADO`/`ENVIADO`/`ERRO_ENVIO`) e o vínculo com o Telegram.
+- **`src/lib/telegram.ts`** — ganhou suporte a botões inline (`enviarTelegramComBotoes`, `editarMensagemTelegram`, `responderCallbackQuery`), que não existia antes (o bot só respondia chat).
+- **`src/app/api/telegram/webhook/route.ts`** + **`src/lib/financeiro/cobranca-aprovacao.ts`** (novo) — processa o toque de aprovar/rejeitar/tentar de novo com proteção contra duplo-toque (compare-and-swap no banco). Só aceita comandos do chat do Vinicius (`TELEGRAM_ADMIN_CHAT_ID`).
+- **`src/lib/financeiro/cobranca-vencidos.ts`** (novo) — job diário: marca lançamentos vencidos (`PENDENTE → VENCIDO`, transição que nunca era gravada antes, só calculada na hora), gera uma cobrança por cliente vencido usando **sempre a mesma mensagem padrão fixa** (nunca gerada por IA, nunca variada — pedido explícito do Vinicius pra manter previsibilidade no texto), manda cada uma pra aprovação no Telegram com botões, e reforça automaticamente após alguns dias sem resposta ou sem pagamento — sempre pedindo aprovação de novo, nunca reenviando sozinho.
+- **Timing do aviso corrigido antes de ir pro ar:** o primeiro teste ao vivo mostrou o robô avisando no **próprio dia do vencimento** (porque a comparação usava a hora atual, e o vencimento é gravado à meia-noite do dia). Vinicius esclareceu a regra: só avisar a partir do **dia seguinte** ao vencimento (ex.: vence 18/07, só avisa a partir do dia 19). Corrigido comparando com o início do dia de hoje, não a hora atual.
+- **`src/lib/financeiro/mensagem-cobranca.ts`** — ganhou `montarMensagemPadraoCobranca()` (texto fixo: "Olá {cliente}! Gostaríamos de lembrar que o pagamento do seu certificado digital no valor de R$ {valor} está aguardando sua confirmação..."), usada pelo robô de cobrança. Primeira versão citava "Pedido {número}", mas o Vinicius não usa esse conceito no dia a dia (aqui tudo se baseia em protocolo de atendimento) — ajustado pra "seu certificado digital", que é o que o cliente reconhece. O restante do arquivo (montagem da mensagem final com boleto/Pix anexado) é reaproveitado também pelo envio manual existente (`src/app/api/inter/cobranca/enviar/route.ts`). Disparo por **WhatsApp e e-mail**, os dois.
+- **`src/app/api/jobs/robo-cobranca-financeira/route.ts`** + `scripts/cron-worker.js` (roda 9h20 BRT diário) + `src/lib/robo/verificacao-leve.ts` (monitorado como os outros robôs).
+- Guardrail de volume: limite diário de novas cobranças geradas e interruptor de emergência (`Configuracao`, mesmo padrão do Robô Diagnosticador) — evita que um bug gere uma avalanche de avisos num só dia.
+
+**Testado:**
+- `tsc --noEmit` e `eslint` sem erros em todos os arquivos novos/modificados.
+- Baixa automática testada **end-to-end contra produção de verdade**: criei uma cobrança de teste real (R$2,50), paguei via Pix, e enviei o webhook de teste — confirmado que o lançamento foi corretamente marcado `PAGO` com a data certa, só depois de reconfirmar com a API do Inter (não com o corpo do POST).
+- Robô diário rodado de verdade contra produção (só leitura + geração de rascunhos): encontrou os vencidos reais existentes, gerou os rascunhos e mandou pro Telegram com os botões funcionando — nenhum foi aprovado/disparado por mim, decisão ficou 100% com o Vinicius. Foi esse teste que revelou o bug de timing (aviso no dia do vencimento), corrigido antes do deploy.
+- `processarCallbackQuery` testado isoladamente com dados sintéticos (lançamento de teste sem cliente vinculado, pra garantir que nenhuma mensagem real pudesse ser disparada): rejeitar, aprovar, duplo-toque simultâneo, tentar de novo e remetente não autorizado — os 5 cenários se comportaram como esperado.
+- Mensagem padrão e a correção de data testadas isoladamente (script descartável, sem tocar produção): texto sempre idêntico, e o corte de data confirmado nos dois sentidos (vence hoje → não avisa; venceu ontem → avisa).
+- Todos os dados de teste (lançamentos, cobranças de aprovação, `.env` local) foram limpos ao final.
+
+**Risco:** Médio-baixo — mexe em fluxo financeiro real (baixa de pagamento), mas a mudança é estritamente mais rigorosa que o comportamento anterior (antes dava baixa em qualquer POST; agora só dá baixa com confirmação exata e autenticada). O robô de cobrança é 100% aditivo e não dispara nada sem aprovação explícita do Vinicius.
+
+---
+
 ## 16/07/2026 (3)
 
 ### fix: forma de pagamento "Bonificado" não zerava o valor da venda

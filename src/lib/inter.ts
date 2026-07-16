@@ -137,8 +137,19 @@ export async function criarCobranca(params: ParamsCobranca): Promise<ResultadoCo
   }
 }
 
+// Valores confirmados testando contra a API de verdade (16/07/2026, cobrança
+// de teste real paga via Pix) — a documentação pública não é confiável aqui:
+// - Não pago: situacao = "A_RECEBER" (não "PAGO" como uma doc antiga sugeria).
+// - Pago: situacao = "RECEBIDO", e só então aparecem valorTotalRecebido
+//   (string, ex.: "2.50") e origemRecebimento (ex.: "PIX").
 export interface DetalhesCobranca {
-  cobranca: { situacao: string; dataSituacao?: string }
+  cobranca: {
+    situacao: string
+    dataSituacao?: string
+    valorNominal?: number
+    valorTotalRecebido?: string
+    origemRecebimento?: string
+  }
   boleto?:  { nossoNumero: string; codigoBarras: string; linhaDigitavel: string }
   pix?:     { txid: string; pixCopiaECola: string }
 }

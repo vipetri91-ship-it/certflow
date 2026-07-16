@@ -5,7 +5,7 @@ import { baixarPdfCobranca } from '@/lib/inter'
 import { enviarWhatsApp } from '@/lib/digisac'
 import { enviarEmail } from '@/lib/email/enviar'
 import { gerarTokenPublico } from '@/lib/token-publico'
-import { format } from 'date-fns'
+import { montarMensagemWhatsApp, montarHtmlEmailCobranca } from '@/lib/financeiro/mensagem-cobranca'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -27,8 +27,6 @@ export async function POST(req: NextRequest) {
   const cliente = lancamento.pedido?.cliente
   if (!cliente) return NextResponse.json({ erro: 'Cliente não encontrado' }, { status: 422 })
 
-  const valorFmt = Number(lancamento.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-  const vencimentoFmt = format(lancamento.dataVencimento, 'dd/MM/yyyy')
   const token = gerarTokenPublico(lancamentoId)
   const linkPdf = `${process.env.NEXTAUTH_URL}/api/inter/cobranca/pdf-publico?lancamentoId=${lancamentoId}&token=${token}`
 
@@ -37,15 +35,14 @@ export async function POST(req: NextRequest) {
       if (!cliente.celular && !cliente.telefone) {
         return NextResponse.json({ erro: 'Cliente sem telefone cadastrado' }, { status: 422 })
       }
-      const primeiroNome = cliente.nome.split(' ')[0]
-      const mensagem =
-        `📋 *Cobrança — ${lancamento.descricao}*\n\n` +
-        `Olá, ${primeiroNome}! Segue sua cobrança:\n\n` +
-        `💰 Valor: R$ ${valorFmt}\n` +
-        `📅 Vencimento: ${vencimentoFmt}\n\n` +
-        (lancamento.pixCopiaECola ? `📲 *Pix Copia e Cola:*\n${lancamento.pixCopiaECola}\n\n` : '') +
-        `📄 Boleto em PDF:\n${linkPdf}\n\n` +
-        `_V&G Certificação Digital_`
+      const mensagem = montarMensagemWhatsApp({
+        descricao: lancamento.descricao,
+        valor: Number(lancamento.valor),
+        dataVencimento: lancamento.dataVencimento,
+        pixCopiaECola: lancamento.pixCopiaECola,
+        nomeCliente: cliente.nome,
+        linkPdfBoleto: linkPdf,
+      })
 
       const resultado = await enviarWhatsApp({
         telefone: cliente.celular ?? cliente.telefone ?? '',
@@ -57,14 +54,14 @@ export async function POST(req: NextRequest) {
       if (!cliente.email) return NextResponse.json({ erro: 'Cliente sem e-mail cadastrado' }, { status: 422 })
 
       const pdfBase64 = await baixarPdfCobranca(lancamento.interCodigoSolicitacao)
-      const html = `
-        <p>Olá, ${cliente.nome.split(' ')[0]}!</p>
-        <p>Segue sua cobrança referente a <strong>${lancamento.descricao}</strong>:</p>
-        <p>💰 Valor: <strong>R$ ${valorFmt}</strong><br/>📅 Vencimento: <strong>${vencimentoFmt}</strong></p>
-        ${lancamento.pixCopiaECola ? `<p>Pix Copia e Cola:<br/><code>${lancamento.pixCopiaECola}</code></p>` : ''}
-        <p>O boleto está em anexo (PDF).</p>
-        <p>V&G Certificação Digital</p>
-      `
+      const html = montarHtmlEmailCobranca({
+        descricao: lancamento.descricao,
+        valor: Number(lancamento.valor),
+        dataVencimento: lancamento.dataVencimento,
+        pixCopiaECola: lancamento.pixCopiaECola,
+        nomeCliente: cliente.nome,
+        linkPdfBoleto: linkPdf,
+      })
       await enviarEmail({
         clienteId: cliente.id,
         tipo: 'COBRANCA_FINANCEIRA',

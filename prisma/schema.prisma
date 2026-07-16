@@ -605,6 +605,7 @@ model Lancamento {
   pedido    Pedido?              @relation(fields: [pedidoId], references: [id])
   parceiro  Parceiro?            @relation(fields: [parceiroId], references: [id])
   comissoesPedido ComissaoPedido[]
+  cobrancasAprovacao CobrancaAprovacao[]
 
   @@map("lancamentos")
 }
@@ -984,4 +985,37 @@ model SugestaoIA {
   createdAt DateTime @default(now())
 
   @@map("sugestoes_ia_performance")
+}
+
+// ─── ROBÔ FINANCEIRO — COBRANÇA DE VENCIDOS ───────────────────────────────────
+// Criado 16/07/2026 a pedido do Vinicius: quando um boleto/Pix vence sem
+// pagamento, o robô diário gera um rascunho de cobrança em tom amigável e
+// manda pra aprovação dele no Telegram (botões inline) — só dispara ao
+// cliente depois de aprovado. Ver src/lib/financeiro/cobranca-*.ts.
+
+enum StatusCobrancaAprovacao {
+  PENDENTE   // aguardando decisão no Telegram
+  APROVADO   // aprovado, despacho em andamento (estado transitório)
+  REJEITADO
+  ENVIADO    // aprovado e efetivamente disparado ao cliente
+  ERRO_ENVIO // aprovado mas o disparo falhou — pode tentar de novo
+}
+
+model CobrancaAprovacao {
+  id                String                  @id @default(cuid())
+  lancamentoId      String
+  lancamento        Lancamento              @relation(fields: [lancamentoId], references: [id])
+  mensagemRascunho  String                  @db.Text
+  diasAtraso        Int
+  valorSnapshot     Decimal                 @db.Decimal(10, 2)
+  status            StatusCobrancaAprovacao @default(PENDENTE)
+  telegramChatId    String?
+  telegramMessageId String?
+  erro              String?                 @db.Text
+  respondidoEm      DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([lancamentoId])
+  @@map("cobranca_aprovacoes")
 }

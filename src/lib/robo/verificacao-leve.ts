@@ -22,6 +22,7 @@ const NOME_AMIGAVEL: Record<string, string> = {
   'reativacao-clientes': 'campanha de reativação de clientes',
   'pesquisa-nps': 'pesquisa de satisfação (NPS)',
   'calcular-indicador-diario': 'cálculo diário do Índice CertFlow (ICF)',
+  'robo-cobranca-financeira': 'robô de cobrança de vencidos',
 }
 
 const NOME_STATUS_PEDIDO: Record<string, string> = {
@@ -43,6 +44,7 @@ const JOBS_MONITORADOS: { job: string; intervaloMin: number; toleranciaMin: numb
   { job: 'reativacao-clientes', intervaloMin: 24 * 60, toleranciaMin: 30 },
   { job: 'pesquisa-nps', intervaloMin: 24 * 60, toleranciaMin: 30 },
   { job: 'calcular-indicador-diario', intervaloMin: 24 * 60, toleranciaMin: 30 },
+  { job: 'robo-cobranca-financeira', intervaloMin: 24 * 60, toleranciaMin: 30 },
 ]
 
 // Conta quantas vezes seguidas (numa janela de 24h) a mesma falha de
