@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 16/07/2026 (5)
+
+### fix: e-mail automático que trava em "pendente" nunca era reenviado (silencioso)
+
+**Origem:** Vinicius reportou que continuava recebendo alertas no Telegram sobre falha de e-mail, mesmo depois do fix de ontem (15/07). Investigação encontrou dois problemas distintos:
+
+1. `BREVO_API_KEY` esteve genuinamente falhando ao longo do dia de hoje (confirmado no histórico de auditoria: 7 falhas entre 14h e 17h20) — a chave foi adicionada/corrigida no Railway, mas só passou a valer de fato depois do deploy do Robô Financeiro desta sessão, que reiniciou o serviço. Testei a chave direto contra a conta Brevo (sem enviar e-mail) e confirmei que está válida agora.
+2. **Bug mais grave, achado de bônus:** se o envio de um e-mail automático é interrompido no meio (ex.: um deploy derruba o container durante o envio), o registro (`EmailLog`) fica travado em `PENDENTE` para sempre — nunca vira `ENVIADO` nem `ERRO`. Como o job diário (`processar-emails`) considera "já tentado" qualquer `EmailLog` daquele tipo, **um registro travado bloqueia o reenvio automático pra sempre, em silêncio** — o cliente nunca recebe o e-mail e ninguém é avisado. Achado real: `sphort_pira@hotmail.com` ficou sem o e-mail de pós-emissão desde as 13h58 de hoje por causa disso.
+
+- **`src/lib/robo/verificacao-leve.ts`** — nova checagem (a cada 20 min, junto com as outras): `EmailLog` parado em `PENDENTE` há mais de 15 minutos (tempo bem maior que as 3 tentativas normais, que terminam em segundos) é tratado como travado — apaga o registro (libera o reenvio automático) e avisa no Telegram.
+- **`scripts/cron-worker.js`** — ajustado o horário do robô de cobrança de vencidos de 9h20 pra 9h00 BRT (pedido do Vinicius, pra bater exatamente com o horário desejado).
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Causa raiz confirmada consultando o histórico real de `AuditoriaRobo` em produção e testando a chave do Brevo direto (sem side-effect, endpoint de consulta de conta, não de envio). Depois do deploy, disparei manualmente os jobs `robo-verificacao-leve` e `processar-emails` contra produção pra liberar e reenviar de verdade o e-mail que ficou preso.
+
+**Risco:** Baixo — a nova checagem só apaga `EmailLog` que já está inequivocamente travado (>15 min em PENDENTE, tempo impossível pro fluxo normal), e apagar libera reenvio automático em vez de deixar perdido pra sempre.
+
+---
+
 ## 16/07/2026 (4)
 
 ### feat: Robô Financeiro — baixa automática confiável + cobrança de vencidos com aprovação no Telegram

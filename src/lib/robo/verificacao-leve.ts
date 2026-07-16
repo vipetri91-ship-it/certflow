@@ -194,5 +194,28 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     }
   }
 
+  // 4. E-mails travados em PENDENTE — o envio (3 tentativas com espera entre
+  // elas, em src/lib/email/enviar.ts) deveria terminar em segundos. Se ainda
+  // está PENDENTE depois de 15 minutos, o processo que estava enviando foi
+  // interrompido no meio (ex.: um deploy derrubou o container durante o
+  // envio) e o registro nunca vai se resolver sozinho. Isso é mais grave que
+  // um erro comum: enquanto existir, `processar-emails` acha que aquele
+  // e-mail "já foi tentado" e nunca reenvia — o cliente fica sem avisos pra
+  // sempre, em silêncio (achado real: sphort_pira@hotmail.com ficou sem o
+  // e-mail de pós-emissão por causa disso, 16/07/2026).
+  const quinzeMinAtras = new Date(agora.getTime() - 15 * 60 * 1000)
+  const travadosPendente = await prisma.emailLog.findMany({
+    where: { status: 'PENDENTE', createdAt: { lt: quinzeMinAtras } },
+    select: { id: true, tipo: true, destinatario: true },
+  })
+  for (const log of travadosPendente) {
+    achados.push(achado(
+      `Um e-mail automático pro cliente ${log.destinatario} ficou travado (nunca terminou de enviar nem registrou erro) — provavelmente interrompido no meio por um reinício do servidor.`,
+      'EMAIL_ERRO_TRANSIENTE', `email-travado:${log.id}`
+    ))
+    await prisma.emailLog.delete({ where: { id: log.id } })
+    correcoes.push(`Liberei o e-mail travado de ${log.destinatario} pra ser enviado de novo automaticamente na próxima rodada.`)
+  }
+
   return { achados, achadosInformativos, correcoes }
 }

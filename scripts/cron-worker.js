@@ -59,7 +59,7 @@ const jobs = [
   // Robô Financeiro (16/07/2026, a pedido do Vinicius) — cobrança de
   // vencidos com aprovação por Telegram. Roda de manhã, junto com os outros
   // robôs financeiros/de e-mail.
-  { nome: 'robo-cobranca-financeira', cronExpr: '20 12 * * *', metodo: 'POST' }, // 9h20 BRT diário
+  { nome: 'robo-cobranca-financeira', cronExpr: '0 12 * * *', metodo: 'POST' }, // 9h BRT diário
 ]
 
 for (const job of jobs) {
