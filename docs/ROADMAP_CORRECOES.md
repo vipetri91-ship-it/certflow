@@ -369,12 +369,13 @@ normal da empresa: próximo pedido emitido deve gerar exatamente 1
 - **Onda**: ONDA 4.
 
 ### P2.4 — Documentar áreas mapeadas na seção 2 da auditoria
-- **Descrição**: 14 áreas/rotas existem no código sem documentação
+- **Descrição**: 13 áreas/rotas existem no código sem documentação
   dedicada em `/docs` (Regra 1) — certificados, perfil, sessão/heartbeat,
-  sistema/horário, calculadora de deslocamento, `pedidos/novo`, busca de
+  sistema/horário, calculadora de deslocamento, busca de
   série A3, liberar emissão online, configurações de permissões,
   auditoria, categorias financeiras, rate limiting, admin/diagnóstico,
-  notificações.
+  notificações. (`pedidos/novo` foi removida em 16/07/2026 — era código
+  legado, não precisa mais de documentação.)
 - **Risco**: baixo direto, mas aumenta risco de decisões erradas em
   mudanças futuras por falta de contexto documentado (Regra 1).
 - **Impacto**: nenhum no código — apenas documentação. Recomenda-se

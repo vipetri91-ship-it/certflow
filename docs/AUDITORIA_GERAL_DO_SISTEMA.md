@@ -83,7 +83,7 @@ dedicada** em `/docs` (violação potencial da Regra 1):
 | Sessão / Heartbeat | `src/app/api/sessao/heartbeat/route.ts` | Endpoint não documentado |
 | Sistema/Horário | `src/app/api/sistema/horario/route.ts` | Sem documentação |
 | Calculadora de Deslocamento | `src/app/api/calculadora/deslocamento/route.ts` | Citada como widget, não como funcionalidade própria |
-| `pedidos/novo` (rota distinta de `nova-venda`) | `src/app/(dashboard)/pedidos/novo/` | Não mencionada no MAPA — checar se é rota ativa ou legado |
+| ~~`pedidos/novo` (rota distinta de `nova-venda`)~~ | ~~`src/app/(dashboard)/pedidos/novo/`~~ | **REMOVIDA em 16/07/2026** — era legado, causava vendas sem agendamento (ver changelog). Única tela de criar venda agora é `pedidos/nova-venda`. |
 | Buscar série A3 | `src/app/api/pedidos/buscar-serie-a3/route.ts` | Sem documentação |
 | Liberar emissão online | `src/app/api/pedidos/[id]/liberar-emissao-online/route.ts` | Citada como funcionalidade, sem detalhamento técnico |
 | Endpoints de teste em produção | `src/app/api/test-db` | Não documentado — `test-auth`, `test-email` e `test-whatsapp` removidos em 15/06/2026 (ver `docs/endpoints-removidos.md`) |
@@ -418,5 +418,8 @@ precisam de checagem antes de qualquer ação:
   prioridade (ver seção 7).
 - `src/app/(dashboard)/pedidos/[id]/page.tsx` — confirmar se exibe
   CPF/CNPJ completo sem mascaramento.
-- `src/app/(dashboard)/pedidos/novo/` — confirmar se é rota ativa ou
-  código legado a ser removido.
+- ~~`src/app/(dashboard)/pedidos/novo/` — confirmar se é rota ativa ou
+  código legado a ser removido.~~ ✅ Resolvido em 16/07/2026: era código
+  legado (causou vendas sem agendamento na agenda), removido junto com o
+  `POST` de `src/app/api/pedidos/route.ts` (o `GET` foi mantido — é usado
+  pelo wizard Nova Venda e pelo Financeiro).

@@ -5,6 +5,23 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 16/07/2026 (2)
+
+### refactor: removida a tela legada "Novo Pedido" — só existe "Nova Venda" agora
+
+**Origem:** fechamento da pendência registrada mais cedo hoje (investigação do agendamento do Arlen). O Vinicius não sabia que essa tela antiga existia e pediu pra remover, deixando só um caminho de criar venda no sistema.
+
+- **Removido:** `src/app/(dashboard)/pedidos/novo/` (page.tsx + form.tsx) inteiro.
+- **`src/app/api/pedidos/route.ts`** — removido só o `POST` (usado exclusivamente pela tela antiga) e seus imports/schemas exclusivos (`zod`, `registrarAuditoria`, `gerarNumero`). **O `GET` foi mantido intacto** — descobri que é usado de verdade pelo wizard "Nova Venda" (histórico de pedidos do cliente, 3 chamadas em `wizard.tsx`) e pela busca de pedido em Financeiro → Contas a Receber. Apagar o arquivo inteiro quebraria essas duas coisas.
+- **Segundo botão encontrado, que nem o Vinicius nem eu sabíamos que existia**: a tela de Certificados (`src/app/(dashboard)/certificados/page.tsx`) também tinha um botão "Novo Pedido" apontando pra rota antiga. Repontado, junto com o botão da própria tela de Pedidos, pra `/pedidos/nova-venda` (renomeados pra "Nova Venda").
+- **Docs atualizadas** (Regra 1/8 da Governança): `docs/AUDITORIA_GERAL_DO_SISTEMA.md` (2 pendências fechadas) e `docs/ROADMAP_CORRECOES.md` (item ajustado).
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros (cache do Next.js limpo e recheado após a remoção — os únicos erros que apareceram eram de arquivo de tipos autogerado apontando pra rota já apagada, não código real).
+
+**Risco:** Baixo — a única tela de criação de venda que sobra (`Nova Venda`) já era a oficial e a mais usada; a rota removida não tinha nenhum outro consumidor confirmado via busca em todo o `src/`.
+
+---
+
 ## 16/07/2026
 
 ### fix: vendas do Arlen não estavam gerando agendamento na Google Agenda

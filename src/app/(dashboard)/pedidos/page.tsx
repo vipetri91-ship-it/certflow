@@ -29,11 +29,11 @@ export default async function PedidosPage() {
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''}</p>
           <Link
-            href="/pedidos/novo"
+            href="/pedidos/nova-venda"
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
           >
             <Plus className="w-4 h-4" />
-            Novo Pedido
+            Nova Venda
           </Link>
         </div>
 

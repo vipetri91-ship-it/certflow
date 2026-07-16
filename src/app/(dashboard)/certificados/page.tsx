@@ -72,11 +72,11 @@ export default async function CertificadosPage({ searchParams }: Props) {
               {certificados.length} certificado{certificados.length !== 1 ? 's' : ''}
             </p>
             <Link
-              href="/pedidos/novo"
+              href="/pedidos/nova-venda"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
               <Plus className="w-4 h-4" />
-              Novo Pedido
+              Nova Venda
             </Link>
           </div>
           <div className="overflow-x-auto">
