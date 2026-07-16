@@ -208,6 +208,7 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     where: { status: 'PENDENTE', createdAt: { lt: quinzeMinAtras } },
     select: { id: true, tipo: true, destinatario: true },
   })
+  console.log(`[DEBUG-MARCA-16072026] verificação de e-mail travado rodou, encontrados: ${travadosPendente.length}, corte: ${quinzeMinAtras.toISOString()}`)
   for (const log of travadosPendente) {
     achados.push(achado(
       `Um e-mail automático pro cliente ${log.destinatario} ficou travado (nunca terminou de enviar nem registrou erro) — provavelmente interrompido no meio por um reinício do servidor.`,
