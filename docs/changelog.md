@@ -5,6 +5,20 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 16/07/2026 (3)
+
+### fix: forma de pagamento "Bonificado" não zerava o valor da venda
+
+**Origem:** Vinicius pediu que, ao selecionar "Bonificado" no wizard Nova Venda, o valor seja zerado automaticamente. Investigação encontrou o motivo real: `src/lib/reconciliar-emitidos.ts` decide se um pedido é bonificado olhando **se o valor final é zero** (`Number(pedido.valorFinal) === 0`), não a forma de pagamento escolhida. Ou seja, selecionar "Bonificado" sem zerar o valor faria o financeiro tratar a venda como uma cobrança normal — o cliente correria o risco de ser cobrado por um certificado que era pra ser de graça.
+
+- **`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`** — selecionar "Bonificado" zera automaticamente o campo "Valor da Venda" e o desabilita (evita digitar um valor de volta enquanto Bonificado estiver selecionado).
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros.
+
+**Risco:** Baixo — mudança de UI aditiva, sem alterar a lógica de cálculo do financeiro.
+
+---
+
 ## 16/07/2026 (2)
 
 ### refactor: removida a tela legada "Novo Pedido" — só existe "Nova Venda" agora

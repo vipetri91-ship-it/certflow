@@ -1127,10 +1127,20 @@ export function NovaVendaWizard({
               </Campo>
               <Campo label="Valor da Venda (R$)" required>
                 <Input type="number" step="0.01" min={0} value={dados.valorVenda}
+                  disabled={dados.formaPagamento === 'Bonificado'}
                   onChange={e => set('valorVenda', Number(e.target.value))} />
               </Campo>
               <Campo label="Forma de Pagamento">
-                <Sel value={dados.formaPagamento} onChange={e => set('formaPagamento', e.target.value)}>
+                <Sel value={dados.formaPagamento} onChange={e => {
+                  const forma = e.target.value
+                  // O financeiro identifica um pedido bonificado pelo valor final
+                  // ser zero (src/lib/reconciliar-emitidos.ts), não pela forma de
+                  // pagamento — por isso zerar aqui é obrigatório, senão o
+                  // cliente acabaria sendo cobrado por um certificado que era
+                  // pra ser de graça.
+                  if (forma === 'Bonificado') set('valorVenda', 0)
+                  set('formaPagamento', forma)
+                }}>
                   {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
                 </Sel>
               </Campo>
