@@ -84,7 +84,7 @@ export function WidgetRFB() {
           <input value={cpf} onChange={e => setCpf(mascaraCPF(e.target.value))}
             placeholder="CPF do responsável" className={inp} required />
           <input value={dataNasc} onChange={e => setDataNasc(mascaraData(e.target.value))}
-            placeholder="Data de nascimento (DD/MM/AAAA)" className={inp} />
+            placeholder="Data de nascimento (DD/MM/AAAA)" className={inp} required />
           <button type="submit" disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
             {loading

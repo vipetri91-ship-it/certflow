@@ -1,118 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { realizarConsultaPrevia } from '@/lib/safeweb'
 
-interface QSANorm {
-  nome_socio:         string
-  cnpj_cpf_do_socio:  string
-  qualificacao_socio: string
-}
-
-interface CNPJNorm {
-  razaoSocial: string
-  situacao:    string
-  qsa:         QSANorm[]
-}
-
-// Receita Federal mascara primeiro 3 e último 2 dígitos: ***027.448-**
-// Compara os 6 dígitos centrais com o CPF informado
-function cpfMatchesMasked(cpfInput: string, masked: string): boolean {
-  const clean = cpfInput.replace(/\D/g, '')
-  if (clean.length !== 11) return false
-  const visivel     = clean.slice(3, 9)          // 6 dígitos centrais do CPF
-  const maskedDigits = masked.replace(/\D/g, '') // só os dígitos visíveis (remove *, ., -)
-  return maskedDigits === visivel
-}
-
-async function buscarBrasilAPI(cnpj: string): Promise<CNPJNorm | null> {
-  try {
-    const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(10000),
-    })
-    if (!r.ok) return null
-    const d = await r.json()
-    return {
-      razaoSocial: d.razao_social ?? '',
-      situacao:    (d.situacao_cadastral ?? '').toUpperCase(),
-      qsa: (d.qsa ?? []).map((m: Record<string, unknown>) => ({
-        nome_socio:         (m.nome_socio as string) ?? '',
-        cnpj_cpf_do_socio:  (m.cnpj_cpf_do_socio as string) ?? '',
-        qualificacao_socio: typeof m.qualificacao_socio === 'object'
-          ? ((m.qualificacao_socio as Record<string, unknown>)?.descricao as string ?? '')
-          : (m.qualificacao_socio as string) ?? '',
-      })),
-    }
-  } catch { return null }
-}
-
-async function buscarCNPJws(cnpj: string): Promise<CNPJNorm | null> {
-  try {
-    const r = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(10000),
-    })
-    if (!r.ok) return null
-    const d = await r.json()
-    return {
-      razaoSocial: (d.razao_social ?? '') as string,
-      situacao:    ((d.estabelecimento?.situacao_cadastral ?? 'ATIVA') as string).toUpperCase(),
-      qsa: ((d.socios ?? []) as Record<string, unknown>[]).map(s => ({
-        nome_socio:         (s.nome as string) ?? '',
-        cnpj_cpf_do_socio:  ((s.cpf_cnpj_socio ?? s.cpf) as string) ?? '',   // campo correto cnpj.ws
-        qualificacao_socio: ((s.qualificacao_socio as Record<string,unknown>)?.descricao as string)?.trim() ?? '',
-      })),
-    }
-  } catch { return null }
+// Converte DD/MM/AAAA (formato do formulário) pra AAAA-MM-DD (formato exigido pela Safeweb)
+function paraIso(data: string): string {
+  const m = data.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : data
 }
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
+  if (!session) return NextResponse.json({ erro: 'Não autorizado', permitido: false }, { status: 401 })
 
-  const { cnpj, cpf } = await req.json()
-  const cnpjNum = cnpj?.replace(/\D/g, '')
-  const cpfNum  = cpf?.replace(/\D/g, '')
+  const { cnpj, cpf, dataNascimento } = await req.json().catch(() => ({}))
+  const cnpjNum = String(cnpj ?? '').replace(/\D/g, '')
+  const cpfNum  = String(cpf ?? '').replace(/\D/g, '')
 
-  if (!cnpjNum || cnpjNum.length !== 14) return NextResponse.json({ erro: 'CNPJ inválido' }, { status: 422 })
-  if (!cpfNum  || cpfNum.length  !== 11) return NextResponse.json({ erro: 'CPF inválido'  }, { status: 422 })
+  if (cnpjNum.length !== 14) return NextResponse.json({ erro: 'CNPJ inválido', permitido: false }, { status: 422 })
+  if (cpfNum.length !== 11)  return NextResponse.json({ erro: 'CPF inválido', permitido: false }, { status: 422 })
+  if (!dataNascimento)       return NextResponse.json({ erro: 'Data de nascimento obrigatória', permitido: false }, { status: 422 })
 
-  // Tenta BrasilAPI primeiro, depois CNPJ.ws
-  const dados = (await buscarBrasilAPI(cnpjNum)) ?? (await buscarCNPJws(cnpjNum))
+  // Checagem oficial da Safeweb (Consulta Prévia) — mesma fonte usada no
+  // wizard de Nova Venda. Única autoridade: não há mais reforço local via
+  // QSA da Receita Federal (BrasilAPI/cnpj.ws), que dava falso negativo com
+  // QSA desatualizado ou vazio (Empresário Individual/MEI) — ver changelog
+  // de 17/07/2026.
+  const resultado = await realizarConsultaPrevia({
+    documento: cnpjNum,
+    documentoTipo: '2',
+    dtNascimento: paraIso(dataNascimento),
+    cpfResponsavel: cpfNum,
+  })
 
-  if (!dados) {
-    return NextResponse.json({ erro: 'CNPJ não encontrado na Receita Federal' }, { status: 404 })
+  if (!resultado.ok) {
+    return NextResponse.json({ erro: resultado.erro ?? 'Erro ao consultar a Safeweb', permitido: false }, { status: 502 })
   }
 
-  if (dados.situacao && !dados.situacao.includes('ATIVA') && !dados.situacao.includes('ATIVA')) {
-    return NextResponse.json({
-      erro: `Empresa com situação "${dados.situacao}" na Receita Federal`,
-      empresa: dados.razaoSocial,
-      permitido: false,
-    })
-  }
-
-  if (!dados.qsa.length) {
-    return NextResponse.json({
-      erro: 'Nenhum sócio/administrador encontrado para este CNPJ',
-      empresa: dados.razaoSocial,
-      permitido: false,
-    })
-  }
-
-  const match = dados.qsa.find(m => m.cnpj_cpf_do_socio && cpfMatchesMasked(cpfNum, m.cnpj_cpf_do_socio))
-
-  if (!match) {
-    return NextResponse.json({
-      erro: 'CPF não corresponde a nenhum responsável desta empresa',
-      empresa: dados.razaoSocial,
-      permitido: false,
-    })
-  }
-
+  const liberado = resultado.codigo === 0
   return NextResponse.json({
-    nome:      match.nome_socio,
-    empresa:   dados.razaoSocial,
-    cargo:     match.qualificacao_socio,
-    permitido: true,
+    nome:      resultado.nome || undefined,
+    permitido: liberado,
+    erro:      liberado ? undefined : `Código ${resultado.codigo} - ${resultado.mensagem}`,
   })
 }

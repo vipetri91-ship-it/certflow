@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026
+
+### fix: "Código: 27" bloqueava venda com responsável correto — removido reforço local por QSA, Safeweb passa a ser autoridade única
+
+**Origem:** Arlen reportou (segunda vez, com clientes diferentes) que a validação de CNPJ no wizard "Nova Venda" recusava o CPF do responsável com "Código: 27 - O CPF do responsável não corresponde ao responsável na RFB", mesmo confirmando no Controller, no K-tech e na própria Receita Federal que a cliente é a titular e não houve troca de sócio.
+
+**Causa raiz encontrada:** quando a biometria da Safeweb não confirma o CPF de primeira, o wizard reforçava a checagem comparando o CPF contra o QSA (quadro de sócios) do CNPJ, obtido via BrasilAPI/cnpj.ws — uma fonte paralela, não a Safeweb. Testei o CNPJ real do caso (67.526.910/0001-83) direto na BrasilAPI: `natureza_juridica: "Empresário (Individual)"`, `qsa: []` — vazio. Empresário Individual não tem "sócio" no sentido tradicional (o titular é a própria razão social), então esse reforço nunca tem o que comparar pra esse tipo de empresa. Esse já era o **segundo motivo diferente** pro mesmo erro (o primeiro, 15/07, foi QSA desatualizado após troca de responsável, caso Yacht Club/Giuseppe Orto) — o Vinicius pediu explicitamente pra não corrigir mais um caso pontual e sim eliminar a causa: **a Consulta Prévia oficial da Safeweb já resolve isso sozinha e deve ser a única autoridade**, sem nenhum reforço/bloqueio local paralelo.
+
+- **`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`** (`validarCNPJ`) — removido por completo o reforço local via biometria (`/api/biometria`) + QSA da Receita Federal. Agora usa só a Consulta Prévia oficial da Safeweb (mesmo endpoint que já era usado como checagem final), igual ao fluxo de Pessoa Física (`validarPF`) já fazia — os dois fluxos agora seguem o mesmo padrão.
+- **`src/app/api/rfb/responsavel/route.ts`** — encontrado um **segundo lugar com o mesmo problema**: a ferramenta manual "Responsável RFB" (tela separada, usada pra consulta avulsa) também comparava CPF contra QSA da BrasilAPI/cnpj.ws e nunca chegava a consultar a Safeweb de verdade. Reescrita pra chamar a mesma Consulta Prévia oficial (`realizarConsultaPrevia`, `src/lib/safeweb.ts`).
+- **`src/app/(dashboard)/dashboard/widget-rfb.tsx`** — campo "Data de nascimento" passou a ser obrigatório (a Consulta Prévia da Safeweb exige; antes era opcional porque a checagem antiga não usava esse campo).
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros nos 3 arquivos. Causa raiz confirmada consultando a BrasilAPI direto com o CNPJ real do caso. Tentei testar a Consulta Prévia da Safeweb contra produção com um CPF propositalmente inválido (não é dado de cliente real) via `railway run`, mas o request travou em timeout duas vezes seguidas — indício de que a Safeweb só aceita conexões vindas do IP do Railway (mesmo padrão de outras integrações sensíveis), então esse teste específico só é possível a partir do ambiente já implantado. Validação final: testar o endpoint em produção logo após o deploy (CPF inválido, sem tocar cliente real) e pedir pro Arlen tentar a venda de novo.
+
+**Risco:** Baixo-médio — muda o critério de aprovação de CPF-responsável pra depender só da Safeweb, mas essa já era a checagem final/decisiva mesmo antes (o reforço local só podia *bloquear a mais*, nunca liberar algo que a Safeweb reprovasse). Resultado prático: nenhuma venda que a Safeweb aprovaria deixa de ser bloqueada por engano; vendas que a Safeweb reprovaria continuam bloqueadas, agora com o motivo real dela.
+
+---
+
 ## 16/07/2026 (5)
 
 ### fix: e-mail automático que trava em "pendente" nunca era reenviado (silencioso)
