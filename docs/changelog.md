@@ -5,6 +5,25 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026 (3)
+
+### fix: Secretária dizia "tudo rodando perfeito" sem checar nada de verdade
+
+**Origem:** Vinicius reportou, alarmado, que clientes não estavam recebendo e-mails de pós-venda/nutrição, apesar de receber diariamente no Telegram a mensagem da Secretária dizendo que os robôs de e-mail/WhatsApp estavam "rodando 24h, tudo funcionando".
+
+**Auditoria com dados reais de produção:**
+- E-mails de pós-emissão: **funcionando corretamente** — 30 enviados nos últimos 7 dias, **todos os 30 com confirmação real de entrega** (evento `delivered` do próprio Brevo via webhook, não só nosso sistema dizendo "enviei"), 14 abertos pelo cliente, zero bounce/falha.
+- E-mails de vencimento (0 enviados) e nutrição (0 novos): checado certificado por certificado — **não é bug**. O certificado mais próximo do vencimento está a 92 dias (a régua de aviso é 60), e o único certificado elegível pra nutrição já tinha recebido corretamente os e-mails de 3 e 6 meses antes; o de 9 meses só dispara aos 270 dias. Não existe hoje nenhum cliente dentro da janela — não é o robô que está quebrado, é que ainda não chegou a hora de ninguém.
+- **Causa raiz da falsa sensação de segurança:** a mensagem diária da Secretária (`src/app/api/jobs/secretaria-diaria/route.ts`) tinha uma linha de texto **fixa**, sempre igual, dizendo que os robôs "continuam rodando 24h, tudo funcionando" — sem checar heartbeat, sem checar se algum e-mail saiu, nada. Ela diria exatamente essa frase mesmo se os robôs estivessem parados há dias.
+
+- **`src/app/api/jobs/secretaria-diaria/route.ts`** — a frase fixa foi substituída por status real: confere o heartbeat de `processar-emails` e `processar-whatsapp` (rodaram hoje ou não) e conta quantos e-mails foram processados no dia. Se algum dos dois não rodou hoje, avisa isso explicitamente em vez de reafirmar que está tudo bem.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Toda a investigação foi feita com consultas de leitura direto em produção (heartbeat, `EmailLog`, `Certificado`, webhook da Brevo) — nenhum dado alterado.
+
+**Risco:** Baixo — só troca o conteúdo de uma mensagem informativa por dados reais; não muda nenhuma lógica de envio.
+
+---
+
 ## 17/07/2026 (2)
 
 ### feat: robô de retry para agendamento na Google Agenda — nenhuma venda fica sem compromisso criado

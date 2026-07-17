@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { enviarTelegram } from '@/lib/telegram'
-import { registrarHeartbeat } from '@/lib/robo/heartbeat'
+import { registrarHeartbeat, buscarUltimaExecucao } from '@/lib/robo/heartbeat'
 import { startOfDay, endOfDay, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const inicio = startOfDay(hoje)
   const fim = endOfDay(hoje)
 
-  const [pedidosDia, clientesDia, receitaDia, vencendo7, vencidosNaoRenovados, pedidosTravados] = await Promise.all([
+  const [pedidosDia, clientesDia, receitaDia, vencendo7, vencidosNaoRenovados, pedidosTravados, ultimaEmail, ultimaWhats, emailsHoje] = await Promise.all([
     prisma.pedido.findMany({
       where: { createdAt: { gte: inicio, lte: fim }, ignorarMetricasVendas: false },
       include: { cliente: { select: { nome: true } } },
@@ -50,6 +50,9 @@ export async function POST(req: NextRequest) {
       select: { numero: true, cliente: { select: { nome: true } } },
       take: 5,
     }),
+    buscarUltimaExecucao('processar-emails'),
+    buscarUltimaExecucao('processar-whatsapp'),
+    prisma.emailLog.count({ where: { createdAt: { gte: inicio, lte: fim } } }),
   ])
 
   const valorPedidosDia = pedidosDia.reduce((acc, p) => acc + Number(p.valorFinal), 0)
@@ -87,7 +90,24 @@ export async function POST(req: NextRequest) {
     partes.push('✅ Nada travado, nada vencendo essa semana — sistema em dia.')
   }
 
-  partes.push('\nOs robôs de e-mail e WhatsApp continuam rodando 24h cuidando do controle de vencimento. Qualquer coisa, é só me chamar.')
+  // Antes essa linha era um texto fixo ("os robôs continuam rodando 24h,
+  // tudo funcionando") que aparecia todo dia sem checar nada de verdade —
+  // diria "tudo perfeito" mesmo se os robôs estivessem parados. Achado
+  // 17/07/2026, a pedido do Vinicius, depois de receber essa mensagem
+  // repetidamente enquanto investigava se e-mails estavam mesmo saindo.
+  // Agora é status real, batido contra o heartbeat de cada robô.
+  const rodouEmailHoje = ultimaEmail !== null && ultimaEmail >= inicio
+  const rodouWhatsHoje = ultimaWhats !== null && ultimaWhats >= inicio
+  if (rodouEmailHoje && rodouWhatsHoje) {
+    partes.push(`\n✅ Robô de e-mail rodou hoje às ${format(ultimaEmail!, 'HH:mm')} (${emailsHoje} e-mail${emailsHoje !== 1 ? 's' : ''} processado${emailsHoje !== 1 ? 's' : ''} no dia) e o robô de WhatsApp rodou às ${format(ultimaWhats!, 'HH:mm')}.`)
+  } else {
+    const faltando = [
+      !rodouEmailHoje && 'e-mail',
+      !rodouWhatsHoje && 'WhatsApp',
+    ].filter(Boolean).join(' e ')
+    partes.push(`\n🚨 O robô de ${faltando} de vencimento NÃO rodou hoje — precisa verificar.`)
+  }
+  partes.push('Qualquer coisa, é só me chamar.')
 
   const texto = partes.join('\n')
   const envio = await enviarTelegram(texto)
