@@ -5,6 +5,24 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026 (8)
+
+### fix: bloqueio do secret_token do Telegram revertido pra "modo observação" — estava rejeitando mensagem real
+
+**Origem:** logo depois de ativar o bloqueio (item anterior do changelog de hoje), uma mensagem real enviada pelo Vinicius pro bot foi rejeitada (`secret_token não bateu`). Causa raiz ainda não confirmada — hipóteses: o `setWebhook` da primeira tentativa (que deu timeout no meu lado) pode ter sido processado pela Telegram mesmo assim com outro valor, ou alguma diferença entre o valor gravado no Railway e o enviado no registro do webhook.
+
+**Decisão:** não dá pra deixar o bot travado durante a noite — isso bloquearia inclusive os botões de aprovar/rejeitar cobrança do Robô Financeiro, que usam o mesmo webhook. Em vez de insistir no bloqueio sem confirmar a causa, a checagem voltou a modo "observa e loga, mas não rejeita": toda mensagem real continua sendo processada normalmente, e o log mostra os primeiros caracteres de cada lado (nunca o segredo inteiro) pra eu comparar na próxima sessão.
+
+- **`src/app/api/telegram/webhook/route.ts`** — `origemVerificada()` sempre retorna `true` por enquanto; o mismatch fica só registrado em log. Comentário `TODO` deixado no código apontando exatamente o que reativar depois de confirmar a causa com um teste real.
+
+**Pendência pra próxima sessão:** pedir pro Vinicius mandar uma mensagem de teste pro bot, ler o log `[Telegram Webhook] secret_token não bateu...`, comparar os prefixos, corrigir a causa raiz (bug ou re-registrar o webhook com o valor certo), e só então reativar o bloqueio de verdade.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros.
+
+**Risco:** Nenhum novo — volta exatamente ao comportamento de antes de hoje (checagem por chat_id apenas), sem regressão. A melhoria de segurança fica pausada, não perdida.
+
+---
+
 ## 17/07/2026 (7)
 
 ### fix: webhook do Telegram passa a verificar origem (secret_token)

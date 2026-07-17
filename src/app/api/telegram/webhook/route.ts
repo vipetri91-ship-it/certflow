@@ -425,18 +425,25 @@ function origemVerificada(req: NextRequest): boolean {
   const esperado = process.env.TELEGRAM_WEBHOOK_SECRET
   if (!esperado) return true // ainda não configurado — não bloqueia, só não reforça
   const recebido = req.headers.get('x-telegram-bot-api-secret-token')
-  // DEBUG temporário 17/07/2026 — remover depois de diagnosticar por que uma
-  // mensagem real do Telegram foi rejeitada.
-  console.log(`[DEBUG-TELEGRAM-SECRET] recebido=${recebido ? `"${recebido.slice(0,4)}...(${recebido.length} chars)"` : 'AUSENTE'} esperado="${esperado.slice(0,4)}...(${esperado.length} chars)" bate=${recebido === esperado}`)
-  return recebido === esperado
+  const bate = recebido === esperado
+  // 17/07/2026: uma mensagem real do Telegram foi rejeitada por engano
+  // depois de ligar essa checagem (causa ainda não diagnosticada). Em vez de
+  // deixar o bot travado durante a noite — o que bloquearia inclusive os
+  // botões de aprovar/rejeitar cobrança do Robô Financeiro — voltou a modo
+  // "observa e loga" até eu confirmar a causa real com dado de um teste ao
+  // vivo. Ver TODO logo abaixo.
+  if (!bate) {
+    console.warn(`[Telegram Webhook] secret_token não bateu (modo observação, não bloqueou) — recebido=${recebido ? `"${recebido.slice(0,4)}...(${recebido.length} chars)"` : 'AUSENTE'} esperado="${esperado.slice(0,4)}...(${esperado.length} chars)"`)
+  }
+  return true
 }
 
+// TODO (17/07/2026): reativar o bloqueio de verdade (trocar `return true`
+// acima por `return bate`) assim que o log de um teste real confirmar que
+// `recebido` bate com `esperado` — ver docs/changelog.md do dia pra contexto.
 export async function POST(req: NextRequest) {
   try {
-    if (!origemVerificada(req)) {
-      console.warn('[Telegram Webhook] secret_token ausente/inválido — requisição rejeitada')
-      return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
-    }
+    origemVerificada(req) // ainda não bloqueia — ver TODO acima
 
     const body = await req.json()
 
