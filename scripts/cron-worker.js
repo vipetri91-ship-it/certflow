@@ -60,6 +60,11 @@ const jobs = [
   // vencidos com aprovação por Telegram. Roda de manhã, junto com os outros
   // robôs financeiros/de e-mail.
   { nome: 'robo-cobranca-financeira', cronExpr: '0 12 * * *', metodo: 'POST' }, // 9h BRT diário
+  // Backup diário completo do banco (17/07/2026, a pedido do Vinicius, achado
+  // da auditoria de segurança/dados) — até aqui a única proteção contra perda
+  // de dado era o PITR do Neon, de só 6 horas. Roda de madrugada, fora do
+  // horário comercial.
+  { nome: 'backup-diario', cronExpr: '0 6 * * *', metodo: 'POST' }, // 3h BRT diário
 ]
 
 for (const job of jobs) {

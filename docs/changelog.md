@@ -5,6 +5,23 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026 (6)
+
+### feat: backup diário completo do banco, criptografado
+
+**Origem:** achado mais crítico da auditoria de dados de hoje — a única proteção contra perda de dado era o PITR do Neon, de apenas 6 horas. Depois disso, qualquer problema (bug, erro humano) perderia dado real, inclusive financeiro, pra sempre.
+
+- **`src/lib/backup.ts`** (novo) — exporta todas as 37 tabelas do banco em JSON, criptografa com AES-256-GCM (chave dedicada `BACKUP_ENCRYPTION_KEY`, gerada agora e configurada direto no Railway, nunca exposta no chat) e sobe pro Vercel Blob já existente. A store existente é do tipo "pública" (criar uma store privada nova exigiria provisionar infraestrutura à parte) — por isso o conteúdo vai criptografado: mesmo que a URL vaze, os dados (CPF, CNPJ, financeiro) não abrem sem a chave. Mantém 14 dias de histórico, apagando backups mais antigos automaticamente.
+- **`src/app/api/jobs/backup-diario/route.ts`** (novo) — roda o backup, registra heartbeat, alerta no Telegram só se falhar.
+- **`scripts/cron-worker.js`** — agendado pra 3h BRT diário (fora do horário comercial).
+- **`src/lib/robo/verificacao-leve.ts`** — monitorado como os outros robôs (se não rodar em 25h, gera alerta).
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Rodei o backup de ponta a ponta contra produção de verdade: 37 tabelas, 2.549 linhas, ~927KB. Testei a restauração também — baixei o arquivo real do Blob, descriptografei, e confirmei os números batendo exatamente com o banco real (73 clientes, 53 pedidos). Um backup que não abre não serve pra nada — não bastava só confirmar que subiu.
+
+**Risco:** Baixo — é aditivo (só lê o banco pra exportar, não altera nada) e roda de madrugada, fora do horário de uso.
+
+---
+
 ## 17/07/2026 (5)
 
 ### fix: auditoria de segurança e dados — 4 correções aplicadas (webhook Safeweb, rate limiting do portal, auditoria de PII/financeiro)
