@@ -531,6 +531,27 @@ model Pedido {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
+  // ─── Agendamento na Google Agenda ─────────────────────────────────────────
+  // Antes o resultado (sucesso/falha) só existia como console.log efêmero —
+  // se a tentativa na hora da venda falhasse (rede, Google fora do ar por um
+  // instante), o compromisso do cliente se perdia pra sempre e ninguém tinha
+  // como saber (achado 17/07/2026, vendas do Arlen). Persistido aqui pra um
+  // robô conseguir encontrar e tentar de novo sozinho até dar certo.
+  // Payload já resolvido (título/descrição/agr-calendário/tipo) gravado uma
+  // vez na criação — o robô de retry só reenvia o mesmo payload, sem
+  // precisar reconstruir nada a partir de relações que podem já ter mudado.
+  agendaSolicitado Boolean   @default(false)
+  agendaInicio     DateTime?
+  agendaDuracaoMin Int?
+  agendaTitulo     String?
+  agendaDescricao  String?   @db.Text
+  agendaAgrCalend  String?   // vinicius | ana | arlen | pessoal — já resolvido pro Apps Script
+  agendaTipo       String?   // presencial | videoconferencia | bonificado | pessoal — já resolvido
+  agendaOk         Boolean?  // null = não solicitado; false = pendente/tentando; true = criado
+  agendaEventoId   String?
+  agendaTentativas Int       @default(0)
+  agendaUltimoErro String?   @db.Text
+
   cliente      Cliente      @relation(fields: [clienteId], references: [id])
   parceiro     Parceiro?    @relation(fields: [parceiroId], references: [id])
   usuario      Usuario      @relation(fields: [usuarioId], references: [id])

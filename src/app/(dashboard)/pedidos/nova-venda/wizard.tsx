@@ -212,6 +212,10 @@ export function NovaVendaWizard({
   const cpfAbortRef     = useRef<AbortController | null>(null)
   const cpfDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cnpjBuscaRef    = useRef(new BuscaCancelavel())
+  // true assim que o Vinicius mexer manualmente em Data/Hora do agendamento
+  // — a partir daí o valor escolhido por ele é respeitado e o relógio para
+  // de atualizar sozinho.
+  const agendamentoTocadoRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -220,6 +224,29 @@ export function NovaVendaWizard({
       cnpjBuscaRef.current.cancelar()
     }
   }, [])
+
+  // O horário padrão do agendamento não pode ficar parado no momento em que
+  // a venda começou — antes ficava "congelado" no horário de quando o
+  // wizard abriu (INITIAL), e o preenchimento dos outros passos podia levar
+  // vários minutos, fazendo o agendamento sair com um horário defasado sem o
+  // Vinicius perceber (achado 17/07/2026). Enquanto ele não editar Data/Hora
+  // manualmente, o valor acompanha o horário real, atualizando a cada 30s
+  // enquanto o passo de agendamento estiver na tela.
+  useEffect(() => {
+    if (step !== 5 || agendamentoTocadoRef.current) return
+    const atualizarParaAgora = () => {
+      if (agendamentoTocadoRef.current) return
+      const agora = new Date()
+      setDados(d => ({
+        ...d,
+        dataAgendamento: agora.toISOString().split('T')[0],
+        horaAgendamento: `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`,
+      }))
+    }
+    atualizarParaAgora()
+    const id = setInterval(atualizarParaAgora, 30000)
+    return () => clearInterval(id)
+  }, [step])
 
   function set<K extends keyof WizardDados>(k: K, v: WizardDados[K]) {
     setDados(d => ({ ...d, [k]: v }))
@@ -280,16 +307,37 @@ export function NovaVendaWizard({
       const cpfNums = dados.cpfResponsavel.replace(/\D/g,'')
       let nomeRfb: string | undefined
 
+      // Nome do responsável pra preencher a tela — só informativo, nunca
+      // bloqueia nada (quem decide se pode emitir é só a Consulta Prévia
+      // abaixo). NÃO vem do campo "Mensagem" da Consulta Prévia: pra
+      // documentoTipo=2 (CNPJ) esse campo traz o nome da EMPRESA, não da
+      // pessoa — foi isso que causou o "Nome do Responsável" vir preenchido
+      // com a razão social (achado 17/07/2026). Duas fontes, nessa ordem:
+      // 1º o QSA da Receita Federal (se o CPF bater com algum sócio); 2º pra
+      // Empresário Individual/MEI, que não tem QSA, a razão social já vem no
+      // formato "{raiz do CNPJ} {NOME DO TITULAR}" — extrai removendo esse
+      // prefixo numérico.
+      if (cpfNums.length === 11) {
+        const qsa = (data.qsa ?? []) as { nome: string; cpfMascarado: string }[]
+        const cpfUltimos = cpfNums.slice(-8, -2)
+        const socioMatch = qsa.find(s => s.cpfMascarado?.includes(cpfUltimos))
+        if (socioMatch) {
+          nomeRfb = socioMatch.nome
+        } else {
+          const semPrefixoEI = (data.razaoSocial ?? '').replace(/^\d{2}\.\d{3}\.\d{3}\s+/, '').trim()
+          if (semPrefixoEI && semPrefixoEI !== data.razaoSocial) nomeRfb = semPrefixoEI
+        }
+      }
+
       // Checagem oficial da Safeweb (Consulta Prévia — mesmo endpoint que a
-      // própria Safeweb usa antes de liberar a emissão): única fonte de
-      // verdade pra saber se esse CPF é o responsável autorizado pra esse
-      // CNPJ. Não existe mais reforço local via QSA da Receita Federal
-      // (BrasilAPI/cnpj.ws) — ele dava falso negativo tanto com QSA
-      // desatualizado (15/07/2026, caso Yacht Club São Francisco) quanto com
-      // QSA vazio de Empresário Individual/MEI, que não tem "sócio" no
-      // sentido tradicional (17/07/2026). A Safeweb já resolve os dois casos
-      // corretamente sozinha — se ela liberar, prossegue; se não liberar, o
-      // motivo dela é que aparece pro usuário, ponto.
+      // própria Safeweb usa antes de liberar a emissão): única autoridade
+      // que decide se pode emitir. Não existe mais reforço local que bloqueia
+      // sozinho via QSA da Receita Federal (BrasilAPI/cnpj.ws) — ele dava
+      // falso negativo tanto com QSA desatualizado (15/07/2026, caso Yacht
+      // Club São Francisco) quanto com QSA vazio de Empresário Individual/
+      // MEI (17/07/2026). A Safeweb já resolve os dois casos corretamente
+      // sozinha — se ela liberar, prossegue; se não liberar, o motivo dela é
+      // que aparece pro usuário, ponto.
       if (cpfNums.length === 11 && dados.dataNascimento) {
         const previa = await consultarPrevia(cnpj, '2', dados.dataNascimento, cpfNums)
         if (previa && !previa.liberado) {
@@ -298,7 +346,6 @@ export function NovaVendaWizard({
           setHistorico([])
           return
         }
-        nomeRfb = previa?.nome ?? undefined
       }
 
       const clienteId = data.clienteExistente?.id ?? ''
@@ -314,6 +361,11 @@ export function NovaVendaWizard({
         nome:             cli?.responsavel ?? nomeRfb ?? d.nome,
         cpfResponsavel:   cli?.cpf ? cli.cpf.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : d.cpfResponsavel,
         dataNascimento:   cli?.dataNascimento ? cli.dataNascimento.split('T')[0] : d.dataNascimento,
+        // "Data Nasc. Responsável" (passo 3, Dados do Responsável) é um campo
+        // separado de `dataNascimento` (passo 1, validação) — sem isso, o
+        // passo 3 ficava sempre em branco mesmo já tendo validado a data no
+        // passo 1 (achado 17/07/2026).
+        dataNasc:         cli?.dataNascimento ? cli.dataNascimento.split('T')[0] : d.dataNascimento,
         email:       cli?.email ?? d.email,
         ...telefoneFromCelular(cli?.celular, cli?.ddd, { ddd: d.ddd, telefone: d.telefone }),
         cepEmpresa:  data.cep ? fmtCEP(data.cep) : d.cepEmpresa,
@@ -1148,8 +1200,8 @@ export function NovaVendaWizard({
               </Campo>
               {dados.agendar && (
                 <>
-                  <Campo label="Data"><Input type="date" value={dados.dataAgendamento} onChange={e => set('dataAgendamento', e.target.value)} /></Campo>
-                  <Campo label="Hora"><Input type="time" value={dados.horaAgendamento} onChange={e => set('horaAgendamento', e.target.value)} /></Campo>
+                  <Campo label="Data"><Input type="date" value={dados.dataAgendamento} onChange={e => { agendamentoTocadoRef.current = true; set('dataAgendamento', e.target.value) }} /></Campo>
+                  <Campo label="Hora"><Input type="time" value={dados.horaAgendamento} onChange={e => { agendamentoTocadoRef.current = true; set('horaAgendamento', e.target.value) }} /></Campo>
                   <div className="sm:col-span-2">
                     <Campo label="Duração">
                       <Sel value={dados.duracaoAgendamento} onChange={e => set('duracaoAgendamento', Number(e.target.value))}>

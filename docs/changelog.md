@@ -5,6 +5,38 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026 (2)
+
+### feat: robô de retry para agendamento na Google Agenda — nenhuma venda fica sem compromisso criado
+
+**Origem:** Vinicius reportou 3 problemas na mesma sessão de venda:
+1. No passo "Dados do Responsável" (PJ), o nome vinha errado (razão social da empresa) e a data de nascimento vinha em branco.
+2. O horário padrão do agendamento ficava "congelado" no momento em que a venda começou, mesmo o preenchimento levando vários minutos.
+3. Os agendamentos do Arlen continuavam sem criar o compromisso na Google Agenda, mesmo depois do fix de 15/07.
+
+**1. Nome/data do responsável (PJ) errados** — a Consulta Prévia da Safeweb (fonte usada desde o fix de ontem) retorna, pra CNPJ, o nome da **empresa** no campo antes usado pro nome do responsável — não o nome da pessoa. `nomeResponsavel`/`nome` agora vêm do QSA da Receita Federal (quando o CPF bate com um sócio) ou, pra Empresário Individual/MEI (sem QSA), extraindo o nome do titular da própria razão social (formato "{raiz do CNPJ} {NOME}"). Além disso, a "Data Nasc. Responsável" do passo 3 usava um campo (`dataNasc`) diferente do campo já validado no passo 1 (`dataNascimento`) — nunca eram sincronizados; agora são.
+- **`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`**
+
+**2. Relógio do agendamento parado** — o horário padrão agora acompanha o horário real (atualiza a cada 30s) enquanto o Vinicius não editar manualmente Data/Hora — a partir daí, respeita o que ele escolher.
+- **`src/app/(dashboard)/pedidos/nova-venda/wizard.tsx`**
+
+**3. Agendamento do Arlen — causa raiz não identificada, sistema tornado à prova de falha:** dados reais confirmaram 5 de 5 vendas do Arlen falhando hoje (`agendaOk: false`) contra 1 de 1 sucesso do Vinicius no mesmo período. Testei a chamada real ao Apps Script isoladamente (mesmo CNPJ/CPF/horário/pedidoId dos casos reais, inclusive com horário no passado) e todas funcionaram — não é calendário quebrado nem bug estrutural óbvio, aponta pra falha intermitente de rede/Google na hora exata da venda. O primeiro instinto (avisar no Telegram quando falhar) foi rejeitado pelo Vinicius com razão: "de que adianta mandar no Telegram falando que deu falha? Preciso que seja resolvido." Resposta: em vez de só alertar, o sistema agora **resolve sozinho**:
+- **`prisma/schema.prisma`** — `Pedido` ganha campos pra persistir o pedido de agendamento (`agendaSolicitado`, `agendaInicio`, `agendaDuracaoMin`, `agendaTitulo`, `agendaDescricao`, `agendaAgrCalend`, `agendaTipo`, `agendaOk`, `agendaEventoId`, `agendaTentativas`, `agendaUltimoErro`) — antes o resultado só existia como `console.log` efêmero, perdido em minutos nos logs voláteis do Railway.
+- **`src/lib/agenda.ts`** (novo) — chamada ao Apps Script extraída num helper único, com retry (2 tentativas, timeout de 15s), reaproveitado tanto na hora da venda quanto pelo robô de retry.
+- **`src/app/api/pedidos/nova-venda/route.ts`** — persiste o payload já resolvido no Pedido *antes* de tentar (sobrevive a um crash/deploy no meio) e usa o helper.
+- **`src/lib/robo/verificacao-leve.ts`** (roda a cada 20 min) — nova seção 5: busca pedidos com `agendaSolicitado=true AND agendaOk=false` e tenta de novo, até 6 rodadas (~2h). Só alerta no Telegram se esgotar as 6 tentativas sem conseguir — nesse ponto sim é hora de intervenção manual.
+- **`src/lib/robo/tipos.ts`** — nova categoria `AGENDA_FALHA`.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros em todos os arquivos. Migração rodada contra produção (`prisma/schema.prisma` + `scripts/migrate.js`), confirmada. Testei o robô de retry de ponta a ponta contra produção com um pedido/cliente sintéticos (claramente marcados como teste, apagados ao final): criou o evento real na agenda do Arlen com sucesso, atualizou `agendaOk`/`agendaEventoId` corretamente.
+
+**Pendência real que não dá pra recuperar:** as 5 vendas do Arlen que já falharam hoje não entram no retry automático, porque o horário original agendado nunca foi salvo antes deste fix (só existia no corpo da requisição, perdido). Pedidos: PED-202607-29797, PED-202607-34612, PED-202607-99955, PED-202607-41494, PED-202607-95981 — precisam ser agendados manualmente. A partir deste deploy, isso nunca mais se perde.
+
+**Aviso:** ficaram eventos de teste no calendário "Arlen - Video" (título "TESTE DIAGNÓSTICO"/"TESTE AUTOMATIZADO") criados durante a investigação — podem ser apagados.
+
+**Risco:** Baixo-médio — mexe no fluxo de criação de pedido (persistência adicional, não bloqueante) e adiciona um robô novo que só cria eventos com dados já resolvidos e validados na hora da venda, nunca inventa dados.
+
+---
+
 ## 17/07/2026
 
 ### fix: "Código: 27" bloqueava venda com responsável correto — removido reforço local por QSA, Safeweb passa a ser autoridade única

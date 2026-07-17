@@ -12,6 +12,7 @@ export type CategoriaAchado =
   | 'SAFEWEB_CATALOGO'
   | 'SEGURANCA_TOKEN'
   | 'PEDIDO_TRAVADO'
+  | 'AGENDA_FALHA'
 
 export interface AchadoRobo {
   texto: string

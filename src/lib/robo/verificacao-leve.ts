@@ -3,6 +3,7 @@ import { ptBR } from 'date-fns/locale'
 import { prisma } from '../prisma'
 import { buscarUltimaExecucao, estaAtrasado } from './heartbeat'
 import { achado, type AchadoRobo } from './tipos'
+import { criarEventoAgenda } from '../agenda'
 
 export interface ResultadoVerificacaoLeve {
   achados: AchadoRobo[]         // urgentes — falha técnica, dispara Telegram
@@ -215,6 +216,48 @@ export async function executarVerificacaoLeve(): Promise<ResultadoVerificacaoLev
     ))
     await prisma.emailLog.delete({ where: { id: log.id } })
     correcoes.push(`Liberei o e-mail travado de ${log.destinatario} pra ser enviado de novo automaticamente na próxima rodada.`)
+  }
+
+  // 5. Agendamentos que falharam na hora da venda — tenta de novo sozinho,
+  // várias rodadas, antes de pedir ajuda humana. "Toda venda de quem quer
+  // que seja tem que ir pra agenda" (pedido explícito do Vinicius,
+  // 17/07/2026, depois de vendas do Arlen ficarem sem compromisso criado) —
+  // um alerta sozinho, sem resolver, não ajuda ninguém. O payload já foi
+  // resolvido e persistido na hora da venda (src/app/api/pedidos/nova-venda/
+  // route.ts), então aqui é só reenviar o mesmo evento até dar certo.
+  const LIMITE_TENTATIVAS_AGENDA = 6
+  const pendentesAgenda = await prisma.pedido.findMany({
+    where: { agendaSolicitado: true, agendaOk: false, agendaTentativas: { lt: LIMITE_TENTATIVAS_AGENDA } },
+    select: {
+      id: true, numero: true, agendaInicio: true, agendaDuracaoMin: true,
+      agendaTitulo: true, agendaDescricao: true, agendaAgrCalend: true, agendaTipo: true,
+      agendaTentativas: true,
+    },
+    take: 20,
+  })
+  for (const p of pendentesAgenda) {
+    if (!p.agendaInicio || !p.agendaDuracaoMin || !p.agendaTitulo || !p.agendaDescricao || !p.agendaAgrCalend || !p.agendaTipo) continue
+
+    const resultado = await criarEventoAgenda({
+      titulo: p.agendaTitulo, descricao: p.agendaDescricao, inicio: p.agendaInicio,
+      duracaoMin: p.agendaDuracaoMin, agrCalendario: p.agendaAgrCalend, tipo: p.agendaTipo, pedidoId: p.id,
+    })
+    const tentativas = p.agendaTentativas + 1
+
+    if (resultado.ok) {
+      await prisma.pedido.update({ where: { id: p.id }, data: { agendaOk: true, agendaEventoId: resultado.eventoId, agendaTentativas: tentativas } })
+      correcoes.push(`Consegui criar o evento na agenda do pedido ${p.numero} (tentativa ${tentativas}) — não precisa fazer nada.`)
+    } else if (tentativas >= LIMITE_TENTATIVAS_AGENDA) {
+      // Esgotou as tentativas automáticas — aqui sim vale alertar, porque já
+      // tentamos resolver sozinhos e não deu: é hora de intervenção manual.
+      achados.push(achado(
+        `Não consegui criar o evento na agenda do pedido ${p.numero} depois de ${tentativas} tentativas — desisti de insistir sozinho, precisa criar manualmente. Último erro: ${resultado.erro}`,
+        'AGENDA_FALHA', `agenda-esgotada:${p.numero}`
+      ))
+      await prisma.pedido.update({ where: { id: p.id }, data: { agendaTentativas: tentativas, agendaUltimoErro: resultado.erro } })
+    } else {
+      await prisma.pedido.update({ where: { id: p.id }, data: { agendaTentativas: tentativas, agendaUltimoErro: resultado.erro } })
+    }
   }
 
   return { achados, achadosInformativos, correcoes }

@@ -16,9 +16,17 @@ interface Integracao {
 function getIntegracoes(): Integracao[] {
   const digisacOk = !!(process.env.DIGISAC_URL && process.env.DIGISAC_TOKEN && process.env.DIGISAC_CHANNEL_ID)
   const googleOk  = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
-  const smtpOk    = !!(process.env.SMTP_HOST && process.env.SMTP_PASS && process.env.SMTP_USER)
-  const safewebOk = !!(process.env.SAFEWEB_API_URL && process.env.SAFEWEB_API_KEY)
-  const boletoOk  = !!(process.env.BOLETO_API_URL && process.env.BOLETO_API_KEY)
+  // Envio de e-mail é via API HTTP do Brevo (src/lib/email/transporte.ts),
+  // não SMTP de verdade (Railway bloqueia portas SMTP de saída) — SMTP_FROM
+  // ainda é usado só pra definir o remetente.
+  const smtpOk    = !!(process.env.BREVO_API_KEY && process.env.SMTP_FROM)
+  // Nomes reais das variáveis (src/lib/safeweb.ts e src/lib/inter.ts) — os
+  // nomes antigos (SAFEWEB_API_URL/API_KEY, BOLETO_API_URL/API_KEY) nunca
+  // existiram de verdade no ambiente, então essas duas integrações sempre
+  // apareciam como não configuradas mesmo já estando ativas (achado
+  // 17/07/2026, a pedido do Vinicius).
+  const safewebOk = !!(process.env.SAFEWEB_IDENTIFICADOR && process.env.SAFEWEB_SEGREDO && process.env.SAFEWEB_CODIGO_AR && process.env.SAFEWEB_CNPJ_AR)
+  const boletoOk  = !!(process.env.INTER_CERT_B64 && process.env.INTER_KEY_B64 && process.env.INTER_CLIENT_ID && process.env.INTER_CLIENT_SECRET)
   const anthropicOk = !!(process.env.ANTHROPIC_API_KEY)
 
   return [
@@ -27,28 +35,28 @@ function getIntegracoes(): Integracao[] {
       nome: 'Digisac — WhatsApp',
       descricao: 'Envio automático de mensagens WhatsApp para clientes. Usado nos alertas de vencimento e notificações.',
       status: digisacOk ? 'ativo' : 'pendente',
-      detalhe: digisacOk ? 'Canal e token configurados' : 'Configure DIGISAC_URL, DIGISAC_TOKEN e DIGISAC_CHANNEL_ID no Vercel',
+      detalhe: digisacOk ? 'Canal e token configurados' : 'Configure DIGISAC_URL, DIGISAC_TOKEN e DIGISAC_CHANNEL_ID no Railway',
     },
     {
       icone: '📅',
       nome: 'Google Calendar',
       descricao: 'Integração com a agenda do Google. Cria eventos automaticamente ao finalizar pedidos com agendamento.',
       status: googleOk ? 'ativo' : 'pendente',
-      detalhe: googleOk ? 'OAuth configurado' : 'Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no Vercel',
+      detalhe: googleOk ? 'OAuth configurado' : 'Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no Railway',
     },
     {
       icone: '✉️',
       nome: 'Brevo — E-mail',
-      descricao: 'Disparo de e-mails automáticos de vencimento, pós-emissão e nutrição de clientes via SMTP.',
+      descricao: 'Disparo de e-mails automáticos de vencimento, pós-emissão e nutrição de clientes via API HTTP do Brevo.',
       status: smtpOk ? 'ativo' : 'pendente',
-      detalhe: smtpOk ? `SMTP: ${process.env.SMTP_HOST}` : 'Configure as variáveis SMTP no Vercel',
+      detalhe: smtpOk ? `Remetente: ${process.env.SMTP_FROM}` : 'Configure BREVO_API_KEY e SMTP_FROM no Railway',
     },
     {
       icone: '✨',
       nome: 'Claude AI (ZOE)',
       descricao: 'Inteligência artificial da ZOE — consultas ao banco de dados, base de conhecimento e atendimento interno.',
       status: anthropicOk ? 'ativo' : 'pendente',
-      detalhe: anthropicOk ? 'API key configurada (Haiku 4.5)' : 'Configure ANTHROPIC_API_KEY no Vercel',
+      detalhe: anthropicOk ? 'API key configurada (Haiku 4.5)' : 'Configure ANTHROPIC_API_KEY no Railway',
     },
     {
       icone: '🏦',

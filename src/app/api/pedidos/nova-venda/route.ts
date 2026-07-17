@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { registrarAuditoria } from '@/lib/audit'
 import { adicionarVideoconferencia, integracaoHope, buscarProduto, validarCertificadoOnline, type EnderecoSafeweb } from '@/lib/safeweb'
+import { criarEventoAgenda } from '@/lib/agenda'
 import { z } from 'zod'
 
 function gerarNumero(): string {
@@ -424,6 +425,14 @@ export async function POST(req: NextRequest) {
   // agendaOk fica null quando não foi solicitado agendamento — o front-end só
   // mostra aviso de falha quando agendaSolicitado for true e isso for false
   // (nunca quando o agendamento nem foi pedido).
+  //
+  // O payload é sempre PERSISTIDO no Pedido antes de tentar, e o resultado
+  // (sucesso ou falha) também — se a tentativa daqui falhar (rede, Google
+  // fora do ar por um instante), o robô de retry (verificacao-leve.ts,
+  // roda a cada 20 min) encontra pelo agendaOk=false e tenta de novo
+  // sozinho, várias vezes, até dar certo — em vez de só avisar que falhou e
+  // deixar o compromisso do cliente perdido pra sempre (achado 17/07/2026,
+  // vendas do Arlen).
   let agendaOk: boolean | null = null
   if (!agendamento) {
     console.log('[Agenda] sem agendamento no pedido', pedido.numero, '— evento não criado')
@@ -475,42 +484,45 @@ export async function POST(req: NextRequest) {
         ? `${cliente?.nome} — ${pedidoDados.contabilidade}`
         : `${cliente?.nome}`
 
-      const scriptUrl   = process.env.APPS_SCRIPT_URL
-      const scriptToken = process.env.APPS_SCRIPT_TOKEN
+      // Persiste o payload já resolvido ANTES de tentar — se o processo cair
+      // no meio (deploy, crash), o robô de retry ainda encontra tudo que
+      // precisa pra tentar de novo sozinho.
+      await prisma.pedido.update({
+        where: { id: pedido.id },
+        data: {
+          agendaSolicitado: true,
+          agendaInicio:     inicio,
+          agendaDuracaoMin: agendamento.duracao,
+          agendaTitulo:     tituloEvento,
+          agendaDescricao:  descricao,
+          agendaAgrCalend:  agrAgenda ?? 'pessoal',
+          agendaTipo:       tipoAgenda,
+        },
+      })
 
-      if (!scriptUrl) {
-        console.warn('[Agenda] APPS_SCRIPT_URL não configurado — evento não criado para', pedido.numero)
+      const resultado = await criarEventoAgenda({
+        titulo: tituloEvento, descricao, inicio, duracaoMin: agendamento.duracao,
+        agrCalendario: agrAgenda ?? 'pessoal', tipo: tipoAgenda, pedidoId: pedido.id,
+      })
+
+      if (resultado.ok) {
+        agendaOk = true
+        await prisma.pedido.update({ where: { id: pedido.id }, data: { agendaOk: true, agendaEventoId: resultado.eventoId } })
+        console.log('[Agenda] evento criado', pedido.numero, resultado.eventoId, 'em', resultado.calendario)
       } else {
-        // Chama o Apps Script diretamente (sem passar pelo /api/agenda que exige
-        // autenticação via cookie — chamadas servidor-a-servidor podem falhar).
-        const respAgenda = await fetch(scriptUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            titulo:    tituloEvento,
-            descricao,
-            inicio:    inicio.toISOString(),
-            duracao:   agendamento.duracao,
-            agr:       agrAgenda ?? 'vinicius',
-            tipo:      tipoAgenda,
-            pedidoId:  pedido.id,
-            token:     scriptToken,
-          }),
-          redirect: 'follow',
-        })
-        const textoResposta = await respAgenda.text().catch(() => '')
-        let dadosAgenda: Record<string, unknown> = {}
-        try { dadosAgenda = JSON.parse(textoResposta) } catch { /* resposta não é JSON (ex: HTML de erro) */ }
-        if (!dadosAgenda.ok) {
-          const resumo = textoResposta.length > 200 ? textoResposta.slice(0, 200) + '…' : textoResposta
-          console.error('[Agenda] falha ao criar evento para', pedido.numero, dadosAgenda.msg ?? resumo)
-        } else {
-          agendaOk = true
-          console.log('[Agenda] evento criado', pedido.numero, dadosAgenda.eventoId, 'em', dadosAgenda.calendario)
-        }
+        // Não alerta aqui — alertar sem resolver não ajuda ninguém (pedido
+        // explícito do Vinicius, 17/07/2026). O robô de retry tenta de novo
+        // sozinho nas próximas rodadas; só escala pro Telegram se de fato
+        // esgotar as tentativas sem conseguir.
+        await prisma.pedido.update({ where: { id: pedido.id }, data: { agendaOk: false, agendaTentativas: 1, agendaUltimoErro: resultado.erro } })
+        console.error('[Agenda] falha ao criar evento para', pedido.numero, resultado.erro)
       }
     } catch (err) {
       console.error('[Agenda] exceção ao criar evento para o pedido', pedido.numero, err)
+      await prisma.pedido.update({
+        where: { id: pedido.id },
+        data: { agendaSolicitado: true, agendaOk: false, agendaTentativas: 1, agendaUltimoErro: String(err) },
+      }).catch(() => {})
     }
   }
 

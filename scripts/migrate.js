@@ -508,6 +508,19 @@ async function migrate() {
       CONSTRAINT "cobranca_aprovacoes_lancamentoId_fkey" FOREIGN KEY ("lancamentoId") REFERENCES "lancamentos"("id") ON DELETE RESTRICT ON UPDATE CASCADE
     )`,
     `CREATE INDEX IF NOT EXISTS "cobranca_aprovacoes_lancamentoId_idx" ON "cobranca_aprovacoes"("lancamentoId")`,
+    // Retry automático de agendamento na Google Agenda (17/07/2026) — ver
+    // src/lib/agenda.ts e a seção 5 de src/lib/robo/verificacao-leve.ts.
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaSolicitado" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaInicio" TIMESTAMP(3)`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaDuracaoMin" INTEGER`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaTitulo" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaDescricao" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaAgrCalend" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaTipo" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaOk" BOOLEAN`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaEventoId" TEXT`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaTentativas" INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "agendaUltimoErro" TEXT`,
   ]
 
   for (const q of queries) {
