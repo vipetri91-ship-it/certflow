@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { registrarAuditoria } from '@/lib/audit'
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -58,6 +59,18 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
       })
     )
   )
+
+  // Configuração de comissão (afeta quanto cada parceiro recebe por venda)
+  // não deixava nenhum rastro de quem alterou (achado 17/07/2026, auditoria
+  // de segurança).
+  await registrarAuditoria({
+    usuarioId: session.user.id,
+    acao: 'UPDATE',
+    entidade: 'Comissao',
+    entidadeId: id,
+    dados: { parceiroId: id, itensAlterados: body.length },
+    ip: req.headers.get('x-forwarded-for') ?? undefined,
+  })
 
   const atualizadas = await prisma.comissao.findMany({
     where: { parceiroId: id },

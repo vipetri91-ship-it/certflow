@@ -142,6 +142,14 @@ export async function POST(req: NextRequest) {
         data: { ...dadosCliente, cpf: cpf || undefined, cnpj: cnpj || undefined },
       })
       idCliente = novoCliente.id
+      await registrarAuditoria({
+        usuarioId: session.user.id,
+        acao: 'CREATE',
+        entidade: 'Cliente',
+        entidadeId: novoCliente.id,
+        dados: { nome: novoCliente.nome, tipoPessoa: novoCliente.tipoPessoa, origem: 'nova-venda' },
+        ip: req.headers.get('x-forwarded-for') ?? undefined,
+      })
     }
   }
 
@@ -172,6 +180,14 @@ export async function POST(req: NextRequest) {
     } else {
       const novoPF = await prisma.cliente.create({ data: { ...dadosPF, cpf: cpfPF } })
       pfId = novoPF.id
+      await registrarAuditoria({
+        usuarioId: session.user.id,
+        acao: 'CREATE',
+        entidade: 'Cliente',
+        entidadeId: novoPF.id,
+        dados: { nome: novoPF.nome, tipoPessoa: 'PF', origem: 'nova-venda:responsavel-pj' },
+        ip: req.headers.get('x-forwarded-for') ?? undefined,
+      })
     }
     // Grava vínculo no PJ: qual PF é seu responsável
     await prisma.cliente.update({ where: { id: idCliente }, data: { responsavelClienteId: pfId } })

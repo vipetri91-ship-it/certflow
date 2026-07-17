@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { registrarAuditoria } from './audit'
 
 export interface ResultadoReconciliacao {
   certificadosCriados: string[]
@@ -40,7 +41,7 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
       const dataVencimento = new Date(dataEmissao)
       dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
 
-      await prisma.certificado.create({
+      const certificado = await prisma.certificado.create({
         data: {
           clienteId:     pedido.clienteId,
           modeloId:      item.modeloId,
@@ -53,6 +54,13 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
       })
       resultado.certificadosCriados.push(pedido.numero)
       console.log(`[Reconciliação] Certificado criado: ${pedido.numero}`)
+      // Criação automática (robô de reconciliação) não deixava rastro de
+      // auditoria — sem usuarioId porque não é uma ação de pessoa, é do
+      // sistema (achado 17/07/2026, auditoria de segurança).
+      await registrarAuditoria({
+        acao: 'CREATE', entidade: 'Certificado', entidadeId: certificado.id,
+        dados: { pedidoNumero: pedido.numero, origem: 'robo-reconciliacao' },
+      })
     } catch (e) {
       const msg = `${pedido.numero}: erro ao criar certificado — ${(e as Error).message}`
       resultado.erros.push(msg)
@@ -77,7 +85,7 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
   for (const pedido of semLancamento) {
     const isBonificado = Number(pedido.valorFinal) === 0
     try {
-      await prisma.lancamento.create({
+      const lancamento = await prisma.lancamento.create({
         data: {
           tipo:           'RECEBER',
           descricao:      `${pedido.cliente.nome} — Pedido ${pedido.numero}`,
@@ -94,6 +102,10 @@ export async function reconciliarEmitidos(): Promise<ResultadoReconciliacao> {
       })
       resultado.lancamentosCriados.push(pedido.numero)
       console.log(`[Reconciliação] Lançamento criado: ${pedido.numero} — R$ ${pedido.valorFinal}`)
+      await registrarAuditoria({
+        acao: 'CREATE', entidade: 'Lancamento', entidadeId: lancamento.id,
+        dados: { pedidoNumero: pedido.numero, valor: Number(pedido.valorFinal), bonificado: isBonificado, origem: 'robo-reconciliacao' },
+      })
     } catch (e) {
       const msg = `${pedido.numero}: erro ao criar lançamento — ${(e as Error).message}`
       resultado.erros.push(msg)

@@ -292,8 +292,16 @@ export async function adicionarVideoconferencia(
   protocoloOrigem?: string,        // Add/5 apenas: protocolo do cert A3 PF retornado por EmitirCertificadoOnline
 ): Promise<ResultadoProtocolo> {
   const { codigoAR, cnpjAR } = cfg()
-  const webhookUrl = process.env.SAFEWEB_WEBHOOK_URL
+  // O webhook não tinha nenhuma autenticação — qualquer POST com um número de
+  // protocolo válido (não é segredo, aparece em comprovante/e-mail do
+  // cliente) conseguia criar Certificado + Lancamento financeiro de verdade.
+  // Mesmo padrão já usado no job token e no webhook do Brevo: token na
+  // query string, comparado no recebimento (achado 17/07/2026, auditoria de
+  // segurança). Só vale pra protocolos criados a partir de agora — os poucos
+  // já em andamento continuam com a URL antiga sem token.
+  const baseWebhookUrl = process.env.SAFEWEB_WEBHOOK_URL
     ?? `${process.env.NEXTAUTH_URL}/api/safeweb/webhook`
+  const webhookUrl = `${baseWebhookUrl}?token=${process.env.AUTH_SECRET}`
 
   try {
     let payload: Record<string, unknown>

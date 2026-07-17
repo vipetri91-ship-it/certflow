@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
       numeroCompra:   true,
       valorFinal:     true,
       formaPagamento: true,
+      createdAt:      true,
       itens: {
         select: {
           modeloId: true,
@@ -141,6 +142,23 @@ export async function POST(req: NextRequest) {
   if (!pedido) {
     console.warn(`[Safeweb Webhook] Protocolo ${protocolo} não encontrado no CertFlow`)
     return NextResponse.json({ ok: true, aviso: 'Protocolo não encontrado' })
+  }
+
+  // O webhook não tinha nenhuma autenticação — qualquer POST com um
+  // protocolo válido (não é segredo, aparece em comprovante do cliente)
+  // conseguia criar Certificado + Lancamento financeiro de verdade. A partir
+  // de 17/07/2026 toda nova solicitação registra a URL com token (ver
+  // src/lib/safeweb.ts). Protocolos criados antes disso ainda não têm o
+  // token na URL cadastrada na Safeweb, então são aceitos sem token só
+  // enquanto estiverem em andamento — não dá pra trocar a URL de um
+  // protocolo já em curso.
+  const CORTE_TOKEN_WEBHOOK = new Date('2026-07-17T19:00:00Z')
+  const tokenRecebido = req.nextUrl.searchParams.get('token')
+  const tokenValido = tokenRecebido === process.env.AUTH_SECRET
+  const protocoloAnterior = pedido.createdAt < CORTE_TOKEN_WEBHOOK
+  if (!tokenValido && !protocoloAnterior) {
+    console.warn(`[Safeweb Webhook] Token ausente/inválido pro protocolo ${protocolo} (pedido ${pedido.numero}, criado ${pedido.createdAt.toISOString()})`)
+    return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
   }
 
   // Complementa o log com os dados do pedido agora que o encontramos
@@ -245,6 +263,26 @@ export async function POST(req: NextRequest) {
             protocolo,
           },
         })
+
+        // Certificado e Lançamento são criados dentro da mesma transação
+        // acima, mas não deixavam rastro próprio de auditoria — só o Pedido
+        // era auditado (achado 17/07/2026, auditoria de segurança).
+        const [certCriado, lancCriado] = await Promise.all([
+          prisma.certificado.findFirst({ where: { pedidoId: pedido.id }, select: { id: true } }),
+          prisma.lancamento.findFirst({ where: { pedidoId: pedido.id }, select: { id: true, valor: true } }),
+        ])
+        if (certCriado) {
+          await registrarAuditoria({
+            acao: 'CREATE', entidade: 'Certificado', entidadeId: certCriado.id,
+            dados: { pedidoNumero: pedido.numero, origem: 'webhook-safeweb' },
+          })
+        }
+        if (lancCriado) {
+          await registrarAuditoria({
+            acao: 'CREATE', entidade: 'Lancamento', entidadeId: lancCriado.id,
+            dados: { pedidoNumero: pedido.numero, valor: Number(lancCriado.valor), origem: 'webhook-safeweb' },
+          })
+        }
 
         console.log(`[Safeweb Webhook] ${pedido.numero} ${pedido.status} → EMITIDO (${evento})`)
 

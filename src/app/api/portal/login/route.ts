@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { criarToken, cookieName } from '@/lib/portal-session'
+import { verificarRateLimit, registrarFalha, registrarSucesso } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   const { login, senha } = await req.json()
@@ -10,12 +11,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: 'Login e senha são obrigatórios' }, { status: 400 })
   }
 
+  // Rate limiting por IP (anti força-bruta) — mesmo mecanismo já usado no
+  // login principal (src/lib/auth.ts). O portal do parceiro expõe dado
+  // bancário/Pix na sessão, então não pode ficar sem essa proteção
+  // (achado 17/07/2026, auditoria de segurança).
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const { bloqueado } = verificarRateLimit(ip)
+  if (bloqueado) {
+    return NextResponse.json({ erro: 'Muitas tentativas. Tente novamente em 30 minutos.' }, { status: 429 })
+  }
+
   const parceiro = await prisma.parceiro.findUnique({
     where: { loginParceiro: login },
     select: { id: true, senhaParceiro: true, statusPainel: true, nome: true },
   })
 
   if (!parceiro || !parceiro.senhaParceiro) {
+    registrarFalha(ip)
     return NextResponse.json({ erro: 'Usuário ou senha incorretos' }, { status: 401 })
   }
 
@@ -25,9 +37,11 @@ export async function POST(req: NextRequest) {
 
   const senhaValida = await bcrypt.compare(senha, parceiro.senhaParceiro)
   if (!senhaValida) {
+    registrarFalha(ip)
     return NextResponse.json({ erro: 'Usuário ou senha incorretos' }, { status: 401 })
   }
 
+  registrarSucesso(ip)
   const token = criarToken(parceiro.id)
 
   const res = NextResponse.json({ ok: true })

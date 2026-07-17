@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { registrarAuditoria } from '@/lib/audit'
 import * as XLSX from 'xlsx'
 
 export const maxDuration = 60 // segundos — necessário para arquivos grandes
@@ -207,6 +208,19 @@ export async function POST(req: NextRequest) {
     const chunk = novos.slice(i, i + CHUNK)
     const result = await prisma.cliente.createMany({ data: chunk, skipDuplicates: true })
     importados += result.count
+  }
+
+  // Importação em massa de PII não deixava nenhum rastro de auditoria — um
+  // registro só (não um por cliente, seriam centenas) com a contagem, nunca
+  // o dado pessoal em si (achado 17/07/2026, auditoria de segurança).
+  if (importados > 0) {
+    await registrarAuditoria({
+      usuarioId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'Cliente',
+      dados: { origem: 'importacao-planilha', importados, pulados, totalLinhas: total },
+      ip: req.headers.get('x-forwarded-for') ?? undefined,
+    })
   }
 
   return NextResponse.json({ total, importados, pulados, totalGrupos, erros })

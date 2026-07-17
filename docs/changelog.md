@@ -5,6 +5,34 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026 (5)
+
+### fix: auditoria de segurança e dados — 4 correções aplicadas (webhook Safeweb, rate limiting do portal, auditoria de PII/financeiro)
+
+**Origem:** a pedido do Vinicius, auditoria real (não teórica) de segurança e integridade de dados do CertFlow, feita lendo o código de produção inteiro e consultando o banco real (só leitura). Corrigidos os 4 achados mais urgentes; os demais (backup além do PITR de 6h do Neon, mecanismo de exclusão de dado por LGPD, segregação do `AUTH_SECRET` reusado em 5 propósitos, verificação de origem dos webhooks Telegram/Digisac) ficam para decisão/planejamento com o Vinicius — não são "código", são decisão de negócio ou investimento.
+
+**1. Webhook da Safeweb sem nenhuma autenticação** — qualquer POST com um protocolo válido (não é segredo, aparece em comprovante do cliente) conseguia criar `Certificado` e `Lancamento` financeiro de verdade.
+- **`src/lib/safeweb.ts`** — toda nova solicitação (`adicionarVideoconferencia`) registra a URL do webhook já com um token na query string.
+- **`src/app/api/safeweb/webhook/route.ts`** — exige o token pra processar o evento. Só 3 protocolos estavam em andamento no momento do deploy (criados antes do corte); esses continuam aceitos sem token até serem concluídos, pois não dá pra trocar a URL de um protocolo já registrado na Safeweb — se a Safeweb chamar o webhook deles e algo parecer estranho, verificar manualmente: **PED-202607-42136, PED-202607-90440, PED-202607-75433**.
+
+**2. Login do Portal do Parceiro sem limite de tentativas** — a sessão do portal expõe dado bancário/Pix do parceiro; força-bruta era possível sem nenhum bloqueio.
+- **`src/app/api/portal/login/route.ts`** — mesmo rate limiting do login principal (5 tentativas/15min, bloqueio de 30min).
+
+**3. Rota de relatório mensal sem autenticação** — única entre ~20 rotas de robô sem a checagem `x-job-token`.
+- **`src/app/api/jobs/relatorio-atividade/route.ts`** — checagem adicionada, igual as demais.
+
+**4. Furos reais de auditoria em pontos sensíveis (PII em massa e dinheiro)** — confirmado com número real de produção: 73 clientes cadastrados, só 2 no log de auditoria; 38 lançamentos financeiros criados automaticamente, só 2 auditados.
+- **`src/app/api/pedidos/nova-venda/route.ts`** — auditoria ao criar `Cliente` (titular e responsável PJ).
+- **`src/app/api/clientes/importar/route.ts`** — auditoria da importação em massa (só contagem, nunca o dado pessoal em si).
+- **`src/lib/reconciliar-emitidos.ts`**, **`src/app/api/safeweb/webhook/route.ts`**, **`src/app/api/pedidos/[id]/route.ts`** — auditoria em toda criação automática de `Certificado`/`Lancamento`.
+- **`src/app/api/parceiros/[id]/comissoes/route.ts`** — auditoria ao alterar comissão de parceiro (afeta quanto cada um recebe por venda). *Observação à parte: essa rota só exige sessão, não checa role ADMIN/GERENTE como as outras rotas financeiras — não alterei isso agora por ser uma decisão de regra de negócio, não um achado de auditoria; sinalizando pro Vinicius decidir.*
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros novos em nenhum dos 9 arquivos (confirmado comparando com o estado anterior ao commit). Testei o formato real de resposta da API da Safeweb antes de usar qualquer campo dela — não usei `consultarProtocolo` (função nunca testada em produção, endpoint aparentemente incorreto) pra evitar inventar comportamento.
+
+**Risco:** Baixo — a exigência de token no webhook da Safeweb tem uma janela de transição pros 3 protocolos já em andamento (sinalizados acima); as demais mudanças são estritamente aditivas (mais rate limiting, mais auditoria), sem alterar nenhuma lógica de negócio existente.
+
+---
+
 ## 17/07/2026 (4)
 
 ### fix: saudação da Secretária ("Boa noite") era texto fixo, não olhava a hora real

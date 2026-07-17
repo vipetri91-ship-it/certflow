@@ -102,7 +102,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         const dataVencimento = new Date()
         dataVencimento.setMonth(dataVencimento.getMonth() + item.modelo.validadeMeses)
 
-        await prisma.certificado.create({
+        const certificado = await prisma.certificado.create({
           data: {
             clienteId:     pedidoCompleto!.clienteId,
             modeloId:      item.modeloId,
@@ -113,6 +113,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
             numeroSerie:   antigo.numeroCompra ?? undefined,
           },
         })
+        // Não deixava rastro próprio de auditoria — só o Pedido era auditado
+        // no fim da rota (achado 17/07/2026, auditoria de segurança).
+        await registrarAuditoria({
+          usuarioId: session.user.id, acao: 'CREATE', entidade: 'Certificado', entidadeId: certificado.id,
+          dados: { pedidoNumero: pedido.numero, origem: 'pedidos/[id]-patch' },
+          ip: req.headers.get('x-forwarded-for') ?? undefined,
+        })
       }
     }
 
@@ -122,7 +129,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (!lancamentoExistente) {
       const isBonificado = Number(pedido.valorFinal) === 0
       const cliente = await prisma.cliente.findUnique({ where: { id: antigo.clienteId }, select: { nome: true } })
-      await prisma.lancamento.create({
+      const lancamento = await prisma.lancamento.create({
         data: {
           tipo:           'RECEBER',
           descricao:      `${cliente?.nome ?? 'Cliente'} — Pedido ${pedido.numero}`,
@@ -136,6 +143,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
           bonificado:     isBonificado,
           ...(pedido.parceiroId ? { parceiroId: pedido.parceiroId } : {}),
         },
+      })
+      await registrarAuditoria({
+        usuarioId: session.user.id, acao: 'CREATE', entidade: 'Lancamento', entidadeId: lancamento.id,
+        dados: { pedidoNumero: pedido.numero, valor: Number(pedido.valorFinal), bonificado: isBonificado, origem: 'pedidos/[id]-patch' },
+        ip: req.headers.get('x-forwarded-for') ?? undefined,
       })
     }
   }

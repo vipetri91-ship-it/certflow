@@ -1,7 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+
+function verificarToken(req: NextRequest): boolean {
+  const token = req.headers.get('x-job-token')
+  return token === process.env.AUTH_SECRET
+}
 
 async function enviarTelegram(texto: string) {
   const token  = process.env.TELEGRAM_BOT_TOKEN
@@ -21,7 +26,11 @@ function fmtTempo(minutos: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}min`
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!verificarToken(req)) {
+    return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
+  }
+
   const hoje     = new Date()
   const mesAnterior = subMonths(hoje, 1)
   const inicio   = startOfMonth(mesAnterior)
