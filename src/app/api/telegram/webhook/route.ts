@@ -424,7 +424,11 @@ consulta informações. Para ações, oriente acessar https://certflow-nine.verc
 function origemVerificada(req: NextRequest): boolean {
   const esperado = process.env.TELEGRAM_WEBHOOK_SECRET
   if (!esperado) return true // ainda não configurado — não bloqueia, só não reforça
-  return req.headers.get('x-telegram-bot-api-secret-token') === esperado
+  const recebido = req.headers.get('x-telegram-bot-api-secret-token')
+  // DEBUG temporário 17/07/2026 — remover depois de diagnosticar por que uma
+  // mensagem real do Telegram foi rejeitada.
+  console.log(`[DEBUG-TELEGRAM-SECRET] recebido=${recebido ? `"${recebido.slice(0,4)}...(${recebido.length} chars)"` : 'AUSENTE'} esperado="${esperado.slice(0,4)}...(${esperado.length} chars)" bate=${recebido === esperado}`)
+  return recebido === esperado
 }
 
 export async function POST(req: NextRequest) {
