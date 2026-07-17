@@ -5,6 +5,22 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026 (4)
+
+### fix: saudação da Secretária ("Boa noite") era texto fixo, não olhava a hora real
+
+**Origem:** Vinicius recebeu a mensagem corrigida da Secretária (disparada manualmente à tarde pra validar o fix anterior) começando com "Boa noite!" — reportou como possível bug de fuso horário.
+
+**Causa real:** não era fuso horário — a saudação era **texto fixo** no código, sempre "Boa noite!", independente da hora. Só coincidia de fazer sentido porque o job normalmente só roda automaticamente às 18h05 BRT; qualquer disparo fora desse horário (manual, ou um catch-up do robô de verificação leve caso o job atrase) mandava a saudação errada.
+
+- **`src/app/api/jobs/secretaria-diaria/route.ts`** — saudação agora calculada de verdade a partir da hora do servidor (Railway roda em UTC, convertido pra BRT/UTC-3): Bom dia / Boa tarde / Boa noite conforme o horário real de envio.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros.
+
+**Risco:** Muito baixo — só a saudação, sem mudar nenhum dado reportado.
+
+---
+
 ## 17/07/2026 (3)
 
 ### fix: Secretária dizia "tudo rodando perfeito" sem checar nada de verdade

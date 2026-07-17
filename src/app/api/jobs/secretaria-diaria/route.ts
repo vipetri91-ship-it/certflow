@@ -59,8 +59,17 @@ export async function POST(req: NextRequest) {
   const receitaTotal = Number(receitaDia._sum.valor ?? 0)
   const dataFormatada = format(hoje, "EEEE, dd 'de' MMMM", { locale: ptBR })
 
+  // Antes "Boa noite!" era texto fixo — sempre a mesma saudação, não olhava
+  // a hora real nenhuma. Só coincidia de fazer sentido porque o job normalmente
+  // só roda às 18h05 BRT; qualquer disparo fora do horário (manual, catch-up
+  // do robô de verificação leve) mandava a saudação errada (achado
+  // 17/07/2026). Railway roda em UTC — converte pra BRT (UTC-3) antes de
+  // decidir bom dia / boa tarde / boa noite.
+  const horaBRT = (hoje.getUTCHours() - 3 + 24) % 24
+  const saudacao = horaBRT < 12 ? 'Bom dia' : horaBRT < 18 ? 'Boa tarde' : 'Boa noite'
+
   const partes: string[] = []
-  partes.push(`👋 Boa noite! Aqui é a Secretária com o resumo de ${dataFormatada}.\n`)
+  partes.push(`👋 ${saudacao}! Aqui é a Secretária com o resumo de ${dataFormatada}.\n`)
 
   if (pedidosDia.length === 0) {
     partes.push('Hoje não fechamos nenhum pedido novo.')
