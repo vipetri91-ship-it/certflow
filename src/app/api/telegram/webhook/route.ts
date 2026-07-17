@@ -415,8 +415,25 @@ consulta informações. Para ações, oriente acessar https://certflow-nine.verc
 
 // ── Webhook ───────────────────────────────────────────────────────────────────
 
+// O Telegram reenvia esse header em toda chamada quando o webhook é
+// registrado com secret_token (ver scripts/registrar-webhook-telegram.mjs).
+// Sem isso, qualquer um que descobrisse o chat ID do admin conseguia forjar
+// um POST direto (sem passar pelo Telegram de verdade) e, por exemplo,
+// aprovar uma cobrança financeira real via callback_query (achado
+// 17/07/2026, auditoria de segurança).
+function origemVerificada(req: NextRequest): boolean {
+  const esperado = process.env.TELEGRAM_WEBHOOK_SECRET
+  if (!esperado) return true // ainda não configurado — não bloqueia, só não reforça
+  return req.headers.get('x-telegram-bot-api-secret-token') === esperado
+}
+
 export async function POST(req: NextRequest) {
   try {
+    if (!origemVerificada(req)) {
+      console.warn('[Telegram Webhook] secret_token ausente/inválido — requisição rejeitada')
+      return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 })
+    }
+
     const body = await req.json()
 
     if (body?.callback_query) {
@@ -432,7 +449,7 @@ export async function POST(req: NextRequest) {
     if (!chatId || !texto) return NextResponse.json({ ok: true })
 
     if (!ADMIN_CHAT_ID) {
-      await enviar(chatId, `🤖 Bot ativo! Seu Chat ID: \`${chatId}\`\nAdicione como TELEGRAM_ADMIN_CHAT_ID no Vercel.`)
+      await enviar(chatId, `🤖 Bot ativo! Seu Chat ID: \`${chatId}\`\nAdicione como TELEGRAM_ADMIN_CHAT_ID no Railway.`)
       return NextResponse.json({ ok: true })
     }
 

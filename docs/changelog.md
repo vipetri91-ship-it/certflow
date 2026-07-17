@@ -5,6 +5,23 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 17/07/2026 (7)
+
+### fix: webhook do Telegram passa a verificar origem (secret_token)
+
+**Origem:** item seguinte da auditoria de segurança, priorizado pelo Vinicius por ser o único achado restante ligado diretamente a dinheiro se movendo de verdade — o callback do Telegram aprova/rejeita cobranças financeiras reais (Robô Financeiro).
+
+**Causa:** o webhook só checava se `chat_id`/`from.id` batia com `TELEGRAM_ADMIN_CHAT_ID` — não confirmava que a requisição realmente veio do Telegram. Quem descobrisse o chat ID do admin (o próprio bot já chegou a imprimir isso em texto claro quando `TELEGRAM_ADMIN_CHAT_ID` não estava configurado) podia forjar um POST direto pro webhook, sem passar pelo Telegram, e acionar `processarCallbackQuery` — aprovando ou reenviando uma cobrança de verdade pro cliente.
+
+- **`scripts/registrar-webhook-telegram.mjs`** (novo) — re-registra o webhook via `setWebhook` com um `secret_token` dedicado (`TELEGRAM_WEBHOOK_SECRET`, gerado agora e configurado direto no Railway, nunca exposto no chat). Já executado contra produção antes do deploy do código, na ordem certa — registrar o segredo primeiro, senão o bot ficaria bloqueado até o deploy completar.
+- **`src/app/api/telegram/webhook/route.ts`** — verifica o header `X-Telegram-Bot-Api-Secret-Token` (que o Telegram reenvia em toda chamada quando o webhook é registrado com secret_token) antes de processar qualquer coisa. Também corrigida uma referência antiga à Vercel na mensagem de "bot ativo" (deveria dizer Railway).
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros. Webhook re-registrado com sucesso contra a API real do Telegram (`setWebhook` + `getWebhookInfo` confirmando a URL correta).
+
+**Risco:** Baixo — a checagem só bloqueia se `TELEGRAM_WEBHOOK_SECRET` estiver configurada (já está) e o header não bater; como o webhook foi re-registrado com o segredo certo antes do deploy, o bot continua funcionando normalmente pro uso real.
+
+---
+
 ## 17/07/2026 (6)
 
 ### feat: backup diário completo do banco, criptografado
