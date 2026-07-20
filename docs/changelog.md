@@ -5,11 +5,11 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
-## 17/07/2026 (9)
+## 20/07/2026
 
 ### feat: interruptor único pra pausar todas as mensagens de robô no Telegram
 
-**Origem:** pedido explícito do Vinicius, depois de um dia com volume alto de mensagens ("não estão sendo eficazes") — "pause o envio das mensagens dos robôs no telegram". Perguntei o alcance antes de agir (informativas apenas, ou tudo incluindo a aprovação de cobrança) — ele confirmou **tudo, sem exceção**, ciente de que isso inclui os botões de aprovar/rejeitar cobrança do Robô Financeiro e os alertas de falha crítica (backup, agendamento esgotado).
+**Origem:** pedido explícito do Vinicius — "pause o envio das mensagens dos robôs no telegram pois não estão sendo eficazes", referência ao volume alto de mensagens do dia 17/07. Perguntei o alcance antes de agir (informativas apenas, ou tudo incluindo a aprovação de cobrança) — ele confirmou **tudo, sem exceção**, ciente de que isso inclui os botões de aprovar/rejeitar cobrança do Robô Financeiro e os alertas de falha crítica (backup, agendamento esgotado).
 
 - **`src/lib/telegram.ts`** — as 4 funções (`enviarTelegram`, `enviarTelegramComBotoes`, `editarMensagemTelegram`, `responderCallbackQuery`) checam um interruptor central (`Configuracao` chave `robo:telegram:pausado`) antes de qualquer chamada à API do Telegram. Os robôs continuam rodando normalmente por trás (retries, reconciliação, backup, heartbeats) — só a notificação/aprovação via Telegram fica muda.
 - Flag ativada em produção logo em seguida (`robo:telegram:pausado = 'true'`).
