@@ -1,7 +1,26 @@
 // Integração com Telegram — usada como canal de alerta crítico (HTTPS/443,
 // não sujeito ao bloqueio de portas SMTP observado no Railway).
+import { prisma } from './prisma'
+
+// Interruptor único e central — pedido explícito do Vinicius em 17/07/2026
+// ("pause o envio das mensagens dos robôs no telegram... sem exceção"),
+// depois de um dia com muito volume de mensagem. Pausa TODAS as mensagens
+// de robô, inclusive os botões de aprovação de cobrança do Robô Financeiro —
+// ele foi avisado explicitamente dessa consequência antes de confirmar.
+// Reativar: mudar a Configuracao "robo:telegram:pausado" pra "false" (ou
+// apagar a linha).
+export async function telegramPausado(): Promise<boolean> {
+  try {
+    const registro = await prisma.configuracao.findUnique({ where: { chave: 'robo:telegram:pausado' } })
+    return registro?.valor === 'true'
+  } catch {
+    return false // se a checagem falhar, não bloqueia silenciosamente um alerta real
+  }
+}
 
 export async function enviarTelegram(mensagem: string): Promise<{ ok: boolean; erro?: string }> {
+  if (await telegramPausado()) return { ok: false, erro: 'Mensagens do Telegram pausadas' }
+
   const token  = process.env.TELEGRAM_BOT_TOKEN
   const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID
 
@@ -37,6 +56,8 @@ export async function enviarTelegramComBotoes(
   mensagem: string,
   botoes: BotaoInline[][]
 ): Promise<{ ok: boolean; messageId?: number; erro?: string }> {
+  if (await telegramPausado()) return { ok: false, erro: 'Mensagens do Telegram pausadas' }
+
   const token  = process.env.TELEGRAM_BOT_TOKEN
   const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID
 
@@ -70,6 +91,8 @@ export async function editarMensagemTelegram(
   novoTexto: string,
   botoes?: BotaoInline[][]
 ): Promise<{ ok: boolean; erro?: string }> {
+  if (await telegramPausado()) return { ok: false, erro: 'Mensagens do Telegram pausadas' }
+
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) return { ok: false, erro: 'TELEGRAM_BOT_TOKEN não configurado' }
 
@@ -97,6 +120,7 @@ export async function editarMensagemTelegram(
 // Sempre precisa ser chamado depois de um callback_query, mesmo sem texto —
 // senão o botão fica com o "carregando" preso no app do Telegram.
 export async function responderCallbackQuery(callbackQueryId: string, texto?: string): Promise<void> {
+  if (await telegramPausado()) return
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) return
   try {
