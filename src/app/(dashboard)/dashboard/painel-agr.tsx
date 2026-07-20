@@ -119,8 +119,8 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact,
   // Modo compacto — horizontal para mobile
   if (compact) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-3">
-        <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-2">Performance do Mês</p>
+      <div className="bg-panel rounded-2xl shadow-[var(--shadow)] border border-stroke p-3">
+        <p className="text-xs font-medium text-mut-2 uppercase tracking-wide mb-2">Performance do Mês</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {performanceAgr.map(a => {
             const c = AGR_COLORS[a.agr] ?? AGR_COLORS.vinicius
@@ -133,7 +133,7 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact,
                   <span className={`text-xs font-semibold ${c.text} ${c.darkText} truncate`}>{AGR_LABELS[a.agr]?.split(' ')[0]}</span>
                 </div>
                 <p className={`text-xl font-black ${c.text} ${c.darkText}`}>{a.vendas}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">{fmt(a.valorVendas)}</p>
+                <p className="text-xs text-mut-2">{fmt(a.valorVendas)}</p>
               </div>
             )
           })}
@@ -144,7 +144,7 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact,
 
   return (
     <>
-      <div className="w-72 shrink-0 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col overflow-hidden">
+      <div className="w-72 shrink-0 bg-panel rounded-2xl shadow-[var(--shadow)] border border-stroke flex flex-col overflow-hidden">
 
         {/* Header do painel */}
         <div className={`${cor.bg} p-5 text-white`}>
@@ -212,7 +212,7 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact,
 
         {/* Stats */}
         <div className="p-4 space-y-3 flex-1">
-          <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wide">
+          <div className="flex items-center gap-1.5 text-xs text-mut-2 font-medium uppercase tracking-wide">
             <TrendingUp className="w-3.5 h-3.5" />
             Produção de Hoje
           </div>
@@ -223,34 +223,34 @@ export function PainelAGR({ performanceAgr, isAdmin, userName, userAgr, compact,
               { label: 'Emissões', valor: agrAtual.emissoesHoje.toString() },
             ].map(s => (
               <div key={s.label} className={`${cor.light} ${cor.darkLight} rounded-xl p-3`}>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mb-0.5">{s.label}</p>
-                <p className={`text-xl font-black ${cor.text} ${cor.darkText}`}>{s.valor}</p>
+                <p className="text-xs text-mut mb-0.5">{s.label}</p>
+                <p className={`text-xl font-black font-display tabnum ${cor.text} ${cor.darkText}`}>{s.valor}</p>
               </div>
             ))}
           </div>
 
           <div className={`${cor.light} ${cor.darkLight} rounded-xl p-3`}>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mb-0.5">Faturamento</p>
-            <p className={`text-lg font-black ${cor.text} ${cor.darkText}`}>{fmt(agrAtual.valorVendasHoje)}</p>
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Média do mês: {agrAtual.mediadiaria.toFixed(1)} vendas/dia</p>
+            <p className="text-xs text-mut mb-0.5">Faturamento</p>
+            <p className={`text-lg font-black font-display tabnum ${cor.text} ${cor.darkText}`}>{fmt(agrAtual.valorVendasHoje)}</p>
+            <p className="text-xs text-mut-2 mt-0.5">Média do mês: {agrAtual.mediadiaria.toFixed(1)} vendas/dia</p>
           </div>
 
           {/* Barra de progresso comparativa — só admin */}
           {isAdmin && (
             <div className="space-y-2 pt-1">
-              <p className="text-xs text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wide">Ranking da equipe</p>
+              <p className="text-xs text-mut-2 font-medium uppercase tracking-wide">Ranking da equipe</p>
               {[...performanceAgr].sort((a, b) => b.vendas - a.vendas).map(a => {
                 const c = AGR_COLORS[a.agr] ?? AGR_COLORS.vinicius
                 const pct = Math.round((a.vendas / maxVendas) * 100)
                 return (
                   <div key={a.agr}>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className={`font-medium ${a.agr === agrAtual.agr ? `${c.text} ${c.darkText}` : 'text-gray-500 dark:text-slate-400'}`}>
+                      <span className={`font-medium ${a.agr === agrAtual.agr ? `${c.text} ${c.darkText}` : 'text-mut'}`}>
                         {AGR_LABELS[a.agr]}
                       </span>
-                      <span className="text-gray-400 dark:text-slate-500">{a.vendas}</span>
+                      <span className="text-mut-2 tabnum">{a.vendas}</span>
                     </div>
-                    <div className="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-track rounded-full overflow-hidden">
                       <div className={`h-full ${c.bg} rounded-full`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>

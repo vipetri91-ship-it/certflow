@@ -72,32 +72,32 @@ export function KpiCarousel({ slides, mediaDiaria, projecaoMensal }: Props) {
       {/* Card carrossel principal */}
       <div
         onClick={() => clicavel && setModalAberto(true)}
-        className={`bg-white dark:bg-[#252942] rounded-2xl border border-gray-100 dark:border-[rgba(255,255,255,0.06)] p-4 relative overflow-hidden shadow-sm select-none h-full ${clicavel ? 'cursor-pointer hover:shadow-md transition-all' : ''}`}
+        className={`bg-panel rounded-2xl border border-stroke p-4 relative overflow-hidden shadow-[var(--shadow)] select-none h-full ${clicavel ? 'cursor-pointer hover:shadow-md transition-all' : ''}`}
       >
         <div className="relative">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5">
-              <p className="text-gray-400 dark:text-slate-500 text-xs font-medium uppercase tracking-wide">{slide.label}</p>
+              <p className="text-mut-2 text-xs font-medium uppercase tracking-wide">{slide.label}</p>
               {clicavel && (
-                <span className="text-xs bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded-full text-gray-500 dark:text-slate-400 hidden lg:inline">
+                <span className="text-xs bg-panel-2 px-1.5 py-0.5 rounded-full text-mut hidden lg:inline">
                   ver detalhes
                 </span>
               )}
             </div>
             <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setIdx(i => (i - 1 + slides.length) % slides.length)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-slate-400">
+              <button onClick={() => setIdx(i => (i - 1 + slides.length) % slides.length)} className="p-1 rounded-full hover:bg-panel-2 transition text-mut">
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => setIdx(i => (i + 1) % slides.length)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition text-gray-500 dark:text-slate-400">
+              <button onClick={() => setIdx(i => (i + 1) % slides.length)} className="p-1 rounded-full hover:bg-panel-2 transition text-mut">
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          <p className="text-4xl font-black mb-0.5 text-blue-500 dark:text-blue-400">{slide.vendas}</p>
-          <p className="text-gray-400 dark:text-slate-500 text-xs">vendas no {slide.periodo}</p>
+          <p className="text-4xl font-black mb-0.5 text-violet font-display tabnum">{slide.vendas}</p>
+          <p className="text-mut-2 text-xs">vendas no {slide.periodo}</p>
 
-          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-white/10">
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-divider">
             {[
               { label: 'Emissões', valor: String(slide.emissoes) },
               { label: 'Faturamento', valor: fmt(slide.faturamento) },
@@ -105,8 +105,8 @@ export function KpiCarousel({ slides, mediaDiaria, projecaoMensal }: Props) {
               { label: 'Projeção', valor: `${Math.round(projecaoMensal)}` },
             ].map((item) => (
               <div key={item.label}>
-                <p className="text-gray-400 dark:text-slate-500 text-xs">{item.label}</p>
-                <p className="font-bold text-sm text-blue-500 dark:text-blue-400">{item.valor}</p>
+                <p className="text-mut-2 text-xs">{item.label}</p>
+                <p className="font-bold text-sm text-violet font-display tabnum">{item.valor}</p>
               </div>
             ))}
           </div>
@@ -116,7 +116,7 @@ export function KpiCarousel({ slides, mediaDiaria, projecaoMensal }: Props) {
         <div className="flex gap-1.5 mt-3" onClick={e => e.stopPropagation()}>
           {slides.map((_, i) => (
             <button key={i} onClick={() => setIdx(i)}
-              className={`rounded-full transition-all ${i === idx ? 'w-5 h-1.5 bg-blue-500 dark:bg-[#7c6fcd]' : 'w-1.5 h-1.5 bg-gray-200 dark:bg-white/20'}`}
+              className={`rounded-full transition-all ${i === idx ? 'w-5 h-1.5 bg-violet' : 'w-1.5 h-1.5 bg-track'}`}
             />
           ))}
         </div>

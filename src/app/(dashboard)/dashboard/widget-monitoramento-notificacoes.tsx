@@ -27,14 +27,14 @@ export async function WidgetMonitoramentoNotificacoes() {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col" style={{ height: '100%' }}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-700 shrink-0">
+    <div className="bg-panel rounded-xl border border-stroke shadow-[var(--shadow)] overflow-hidden flex flex-col" style={{ height: '100%' }}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-stroke shrink-0">
         <div className="flex items-center gap-2">
-          <BellRing className="w-4 h-4 text-blue-500" />
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Notificações Automáticas</p>
+          <BellRing className="w-4 h-4 text-violet" />
+          <p className="text-sm font-semibold text-txt-strong">Notificações Automáticas</p>
         </div>
         <Link href={totalErros > 0 ? '/monitoramento/emails?status=ERRO' : '/monitoramento/emails'}
-          className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1 transition">
+          className="text-xs text-violet hover:text-violet-2 flex items-center gap-1 transition">
           Detalhes <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
@@ -42,22 +42,22 @@ export async function WidgetMonitoramentoNotificacoes() {
       {/* Resumo */}
       <div className="grid grid-cols-3 gap-2 px-4 py-3 shrink-0">
         <div className="text-center">
-          <p className="text-lg font-bold text-gray-900 dark:text-white">{totalEnviados}</p>
-          <p className="text-[11px] text-gray-400 dark:text-slate-500">E-mails (30d)</p>
+          <p className="text-lg font-bold text-txt-strong font-display tabnum">{totalEnviados}</p>
+          <p className="text-[11px] text-mut-2">E-mails (30d)</p>
         </div>
         <div className="text-center">
-          <p className="text-lg font-bold text-teal-600">{taxaAbertura !== null ? `${taxaAbertura}%` : '—'}</p>
-          <p className="text-[11px] text-gray-400 dark:text-slate-500">Taxa abertura</p>
+          <p className="text-lg font-bold text-cyan font-display tabnum">{taxaAbertura !== null ? `${taxaAbertura}%` : '—'}</p>
+          <p className="text-[11px] text-mut-2">Taxa abertura</p>
         </div>
         <div className="text-center">
-          <p className={`text-lg font-bold ${totalErros > 0 ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>{totalErros}</p>
-          <p className="text-[11px] text-gray-400 dark:text-slate-500">Falharam</p>
+          <p className={`text-lg font-bold font-display tabnum ${totalErros > 0 ? 'text-red' : 'text-txt-strong'}`}>{totalErros}</p>
+          <p className="text-[11px] text-mut-2">Falharam</p>
         </div>
       </div>
 
       {totalErros > 0 && (
         <div className="px-4 pb-2 shrink-0">
-          <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg px-2.5 py-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-red bg-r-soft rounded-lg px-2.5 py-1.5">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             {totalErros} e-mail{totalErros !== 1 ? 's' : ''} falharam no envio
           </div>
@@ -69,22 +69,22 @@ export async function WidgetMonitoramentoNotificacoes() {
         <div className="grid grid-cols-2 gap-x-3 gap-y-1">
           {Object.entries(TIPO_EMAIL_LABELS).map(([tipo, info]) => (
             <div key={tipo} className="flex items-center justify-between text-xs py-0.5">
-              <span className="text-gray-500 dark:text-slate-400 truncate flex items-center gap-1">
+              <span className="text-mut truncate flex items-center gap-1">
                 <span>{info.icone}</span>
                 <span className="truncate">{info.label.replace(' antes do vencimento', '').replace(' após emissão', '')}</span>
               </span>
-              <span className="font-semibold text-gray-700 dark:text-slate-300 shrink-0 ml-1">{contagemTipo(tipo)}</span>
+              <span className="font-semibold text-txt shrink-0 ml-1 tabnum">{contagemTipo(tipo)}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* WhatsApp */}
-      <div className="px-4 py-2.5 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between shrink-0">
-        <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
-          <MessageCircle className="w-3.5 h-3.5 text-green-500" /> WhatsApp (30d)
+      <div className="px-4 py-2.5 border-t border-stroke flex items-center justify-between shrink-0">
+        <span className="flex items-center gap-1.5 text-xs text-mut">
+          <MessageCircle className="w-3.5 h-3.5 text-grn" /> WhatsApp (30d)
         </span>
-        <span className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+        <span className="text-xs font-semibold text-txt tabnum">
           {whatsappEnviados} enviadas
         </span>
       </div>

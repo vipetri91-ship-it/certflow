@@ -5,6 +5,67 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 20/07/2026 (2)
+
+### feat: redesign visual "Aurora/Midnight" — tema claro/escuro do app inteiro
+
+**Origem:** handoff de design (`certflow-redesign-handoff.md`) pedindo um novo par de
+temas visuais (Aurora = claro, Midnight = escuro), com o Vinicius confirmando
+explicitamente que o tema deveria substituir o app inteiro, não só o dashboard.
+Regra 0 do handoff (inviolável): trabalho puramente visual, zero mudança de
+lógica de negócio/API/schema/contrato de dados — nenhum componente teve
+comportamento ou dado alterado, só classes CSS/Tailwind.
+
+- **`src/app/globals.css`** — reescrito com um sistema de tokens via `@theme`
+  do Tailwind v4 (`--color-panel`, `--color-txt`, `--color-violet`,
+  `--color-grn`, `--color-red`, `--color-amb`, `--color-cyan`, etc.), valores
+  claros em `:root` e escuros em `.dark`. Mantidas as centenas de regras de
+  override já existentes (`.dark .bg-white`, `.dark .text-gray-*`...), agora
+  apontando pros tokens novos em vez de hex fixo.
+- **`src/app/layout.tsx`** — adicionada a fonte Space Grotesk (`--font-space-grotesk`),
+  reservada para números de KPI/valores monetários/medidor/ranking (Inter
+  continua no resto do texto).
+
+**Bug real encontrado e corrigido (causa raiz do modo escuro não renderizar
+visualmente apesar de todo o estado interno — classe `.dark`, variáveis CSS —
+estar correto):** o `<body>` em `layout.tsx` tinha a classe Tailwind
+`bg-gray-50` fixa, e uma regra de override pré-existente
+(`.dark .bg-gray-50 { background-color: var(--color-panel-2) !important }`)
+sobrescrevia com `!important` o gradiente de fundo (`--page-bg`) que devia
+aparecer no modo escuro. Corrigido removendo `bg-gray-50` do `body` (o fundo
+correto por modo já é aplicado via `html:not(.dark) body` / `html.dark body`
+em `globals.css`). Também removida uma indireção morta (`--background: var(--color-panel-2)`)
+que não tinha mais uso depois da correção.
+
+**Restilizados para usar os tokens novos (em vez de cor fixa com variante
+`dark:` própria):** `kpi-carousel.tsx`, `widget-financeiro.tsx`,
+`widget-financeiro-pagar.tsx`, `widget-meta-vendas.tsx` (medidor SVG agora lê
+`var(--color-txt-strong)`/`var(--gauge-track)` em vez de hex fixo),
+`painel-agr.tsx` (mantida a paleta por pessoa — violeta/azul/verde/rosa —
+só os elementos genéricos de card viraram token), `widget-monitoramento-notificacoes.tsx`,
+`widget-agenda-pessoal.tsx`.
+
+**Verificado em produção local (banco real via overlay `.env`, somente
+leitura):** `tsc --noEmit` limpo, `next build` completo sem erros (os únicos
+`prisma:error` no log são de páginas tentando buscar dado durante a geração
+estática sem conexão de banco no ambiente de build — pré-existente, não
+relacionado a esta mudança). Testado visualmente nos dois modos em Dashboard,
+Pedidos, Clientes, Financeiro, Parceiros e Performance via Playwright —
+consistente em todas.
+
+**Pendências para uma próxima sessão (não bloqueiam este deploy):** sparkline
+reutilizável no KPI card (não implementado — exigiria série histórica que
+`getDashboardData()` não calcula hoje; por Regra 0, preferível não fabricar
+dado só pra preencher o gráfico), e os widgets específicos de papéis não-admin
+(`WidgetRFB`, `WidgetCalculadora`, `WidgetEmail`, `PedidosAbertos`) ainda usam
+cor fixa própria em vez dos tokens novos.
+
+**Risco:** Baixo — mudança puramente visual, sem alteração de lógica, schema
+ou binding de dado; testada em build de produção e no navegador nos dois
+modos antes do deploy.
+
+---
+
 ## 20/07/2026
 
 ### feat: interruptor único pra pausar todas as mensagens de robô no Telegram

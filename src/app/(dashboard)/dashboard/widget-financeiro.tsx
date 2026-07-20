@@ -17,17 +17,17 @@ export function WidgetFinanceiro({ aReceber, aReceberVencidos, aReceberQtd, aRec
   const temVencidos = aReceberVencidosQtd > 0
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col overflow-hidden" style={{ height: '100%' }}>
+    <div className="bg-panel rounded-2xl border border-stroke shadow-[var(--shadow)] flex flex-col overflow-hidden" style={{ height: '100%' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-50 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-            <DollarSign className="w-3.5 h-3.5 text-green-600" />
+          <div className="w-7 h-7 bg-g-soft rounded-lg flex items-center justify-center">
+            <DollarSign className="w-3.5 h-3.5 text-grn" />
           </div>
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Contas a Receber</p>
+          <p className="text-sm font-semibold text-txt-strong">Contas a Receber</p>
         </div>
-        <Link href="/financeiro/contas-a-receber" className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1">
+        <Link href="/financeiro/contas-a-receber" className="text-xs text-violet hover:text-violet-2 flex items-center gap-1">
           Ver <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
@@ -35,12 +35,12 @@ export function WidgetFinanceiro({ aReceber, aReceberVencidos, aReceberQtd, aRec
       <div className="flex-1 flex flex-col px-4 pb-4 gap-2 min-h-0">
 
         {/* Total em aberto */}
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3 text-center">
-          <p className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Total em Aberto</p>
-          <p className="text-2xl font-black text-green-700 dark:text-green-400">{fmt(aReceber)}</p>
+        <div className="bg-g-soft rounded-xl px-4 py-3 text-center">
+          <p className="text-xs font-medium text-mut uppercase tracking-wide mb-0.5">Total em Aberto</p>
+          <p className="text-2xl font-black text-grn tabnum">{fmt(aReceber)}</p>
           <div className="flex items-center justify-center gap-1.5 mt-1">
-            <Users className="w-3 h-3 text-gray-400" />
-            <p className="text-xs text-gray-400 dark:text-slate-500">
+            <Users className="w-3 h-3 text-mut-2" />
+            <p className="text-xs text-mut-2">
               {aReceberQtd} conta{aReceberQtd !== 1 ? 's' : ''} pendente{aReceberQtd !== 1 ? 's' : ''}
             </p>
           </div>
@@ -49,34 +49,32 @@ export function WidgetFinanceiro({ aReceber, aReceberVencidos, aReceberQtd, aRec
         {/* Vencidos */}
         <Link href="/financeiro/contas-a-receber?status=VENCIDO"
           className={`rounded-xl px-4 py-2.5 flex items-center justify-between transition ${
-            temVencidos
-              ? 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30'
-              : 'bg-gray-50 dark:bg-slate-700/50'
+            temVencidos ? 'bg-r-soft hover:opacity-90' : 'bg-panel-2'
           }`}>
           <div className="flex items-center gap-2">
-            <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${temVencidos ? 'text-red-500' : 'text-gray-300 dark:text-slate-600'}`} />
+            <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${temVencidos ? 'text-red' : 'text-mut-2'}`} />
             <div>
-              <p className={`text-xs font-semibold ${temVencidos ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
+              <p className={`text-xs font-semibold ${temVencidos ? 'text-red' : 'text-mut-2'}`}>
                 Vencidos
               </p>
-              <p className="text-xs text-gray-400 dark:text-slate-500">{aReceberVencidosQtd} conta{aReceberVencidosQtd !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-mut-2">{aReceberVencidosQtd} conta{aReceberVencidosQtd !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          <p className={`text-base font-black ${temVencidos ? 'text-red-600 dark:text-red-400' : 'text-gray-300 dark:text-slate-600'}`}>
+          <p className={`text-base font-black tabnum ${temVencidos ? 'text-red' : 'text-mut-2'}`}>
             {fmt(aReceberVencidos)}
           </p>
         </Link>
 
         {/* No prazo */}
-        <div className="bg-teal-50 dark:bg-teal-900/20 rounded-xl px-4 py-2.5 flex items-center justify-between">
+        <div className="bg-c-soft rounded-xl px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <DollarSign className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+            <DollarSign className="w-3.5 h-3.5 text-cyan shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-teal-700 dark:text-teal-400">No prazo</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500">{emDiaQtd} conta{emDiaQtd !== 1 ? 's' : ''}</p>
+              <p className="text-xs font-semibold text-cyan">No prazo</p>
+              <p className="text-xs text-mut-2">{emDiaQtd} conta{emDiaQtd !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          <p className="text-base font-black text-teal-600 dark:text-teal-400">{fmt(emDia)}</p>
+          <p className="text-base font-black text-cyan tabnum">{fmt(emDia)}</p>
         </div>
 
       </div>
