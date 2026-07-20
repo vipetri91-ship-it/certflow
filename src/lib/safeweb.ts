@@ -301,7 +301,7 @@ export async function adicionarVideoconferencia(
   // já em andamento continuam com a URL antiga sem token.
   const baseWebhookUrl = process.env.SAFEWEB_WEBHOOK_URL
     ?? `${process.env.NEXTAUTH_URL}/api/safeweb/webhook`
-  const webhookUrl = `${baseWebhookUrl}?token=${process.env.AUTH_SECRET}`
+  const webhookUrl = `${baseWebhookUrl}?token=${encodeURIComponent(process.env.AUTH_SECRET ?? '')}`
 
   try {
     let payload: Record<string, unknown>

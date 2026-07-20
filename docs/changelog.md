@@ -5,6 +5,63 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 20/07/2026 (3)
+
+### fix: token do webhook da Safeweb corrompido na URL — 2 pedidos travados em GERADO apesar de já emitidos
+
+**Origem:** o Vinicius perguntou por que o popup "Certificado Emitido" não
+apareceu num pedido dele (PED-202607-91508, cliente OMRAN MOHAMAD ABOU JOKH)
+que ele sabia ter sido aprovado. Investigando o pedido, achei que o `status`
+no banco ainda estava `GERADO`, mesmo a Safeweb já tendo mandado os eventos de
+Solicitação, Validação, Confirmação de Cadastro (Aprovado) e Emissão — todos
+registrados em `EventoWebhook`, mas todos com `pedidoId: null`.
+
+**Causa raiz:** desde 17/07/2026 o webhook da Safeweb exige um token
+(`?token=<AUTH_SECRET>`) na URL registrada em cada solicitação
+(`src/lib/safeweb.ts`). O token era interpolado cru na URL, sem
+`encodeURIComponent`. O `AUTH_SECRET` atual contém um caractere que vira
+espaço quando a URL é reinterpretada como query string (`+`), corrompendo o
+token — a Safeweb chama de volta com um token que nunca bate com
+`process.env.AUTH_SECRET`, e o webhook responde 401 antes de conseguir
+atualizar o pedido. Confirmado em produção, sem expor o segredo: comparando
+o valor original com o resultado de montar-a-URL-e-reler-via-URLSearchParams,
+a corrupção é 100% reprodutível na posição 16 da string.
+
+**Alcance real (checado em produção):** dos 10 pedidos criados desde o corte
+de 17/07, 8 foram emitidos normalmente (criados antes do `AUTH_SECRET` atual
+entrar em uso — o valor mudou em algum momento entre 16h46 e 18h11 de
+20/07/2026). Só 2 ficaram presos, os dois de hoje:
+- **PED-202607-97741** (FISCHER SOLUÇÕES ADMINISTRATIVAS LTDA) — emitido pela
+  Safeweb às 23:03.
+- **PED-202607-91508** (OMRAN MOHAMAD ABOU JOKH) — emitido pela Safeweb às
+  22:19.
+
+**Correção:** `src/lib/safeweb.ts` — `encodeURIComponent()` no token antes de
+montar `webhookUrl`. Testado em produção (sem expor o valor real): montar a
+URL com o token corrigido e reler via `URLSearchParams` agora retorna
+exatamente o valor original.
+
+**Recuperação dos 2 pedidos presos:** com autorização explícita do Vinicius,
+reenviados os payloads reais de "Emissão" (já armazenados em `EventoWebhook`,
+dados genuínos da Safeweb, nada inventado) direto pro endpoint de produção
+com um token válido — mesmo caminho de código que teria rodado originalmente
+se o token não tivesse corrompido, criando Certificado + Lançamento e
+disparando o e-mail pós-emissão normalmente.
+
+**Importante:** protocolos já em andamento continuam com a URL antiga
+(token corrompido) registrada na Safeweb — não dá pra trocar a URL de um
+protocolo já em curso. Se algum dos 8 pedidos "EMITIDO" tiver um evento
+posterior (ex.: instalação pelo cliente) depois da rotação do `AUTH_SECRET`,
+esse evento também vai falhar. Vale monitorar nos próximos dias.
+
+**Risco:** Baixo no código (mudança de uma linha, comportamento idêntico
+exceto pela codificação correta). Médio na recuperação manual dos 2 pedidos
+(dado financeiro/certificado real), mitigado por usar os dados que a própria
+Safeweb já enviou, sem inventar nada, e por rodar o mesmo código de produção
+em vez de escrever direto no banco.
+
+---
+
 ## 20/07/2026 (2)
 
 ### feat: redesign visual "Aurora/Midnight" — tema claro/escuro do app inteiro
