@@ -5,6 +5,57 @@ Registro de alterações no CertFlow, conforme Regra 5 da
 
 ---
 
+## 23/07/2026
+
+### fix: relógio do agendamento nascia travado pra quem emenda vendas seguidas (Arlen, Ana, Laryssa)
+
+**Origem:** o Vinicius reportou que os pedidos que ele mesmo gera são agendados
+perfeitamente, mas os da Ana, Arlen e Laryssa não vão pra agenda — aparecendo
+"pedido gerado, mas não foi possível agendar". Pediu investigação completa do
+projeto pra achar a causa raiz.
+
+**Investigação:** auditei o wizard (`wizard.tsx`), a página que o carrega, a
+rota de criação (`nova-venda/route.ts`) e a integração com a Google Agenda
+(`agenda.ts`) — nenhum desses lugares trata usuários diferente por `role` ou
+por AGR selecionado. O dado real do banco mostrou que, pra Arlen/Ana/Laryssa,
+o campo `agendaSolicitado` fica `false` em 100% dos pedidos (não é "tentou e
+falhou", é "nunca tentou") — ou seja, o formulário estava sendo enviado sem
+nenhuma informação de agendamento.
+
+Perguntei diretamente ao Vinicius, que confirmou com a equipe: o toggle
+"Agendar" estava em "Sim", mas o campo de Data/Hora nascia **travado** no
+horário em que a venda começou a ser gerada, obrigando-os a corrigir
+manualmente o horário pra frente toda vez.
+
+**Causa raiz:** o relógio do agendamento só se auto-atualiza a cada 30s
+enquanto uma ref (`agendamentoTocadoRef`) continuar `false`. Assim que a
+pessoa edita manualmente Data/Hora uma vez (comportamento correto, pra
+respeitar a escolha manual), essa ref vira `true` — e o relógio some de
+verdade, só que **para sempre, mesmo depois de reiniciado o formulário**: o
+botão "Nova Venda" (usado por quem emenda várias vendas seguidas sem
+recarregar a página) resetava todos os campos do formulário, mas nunca
+resetava essa ref. A partir da segunda venda em diante, na mesma sessão do
+navegador, o relógio já nascia travado. Como o Vinicius normalmente abre o
+formulário do zero a cada venda (recarregando a página), ele nunca via o
+problema — daí o padrão "meu funciona, o deles não".
+
+**Correção:** `src/app/(dashboard)/pedidos/nova-venda/wizard.tsx` — o clique
+em "Nova Venda" agora reseta `agendamentoTocadoRef.current = false` junto com
+o resto do formulário.
+
+**Testado:** `tsc --noEmit` e `eslint` sem erros novos (3 warnings
+pré-existentes no arquivo, não relacionados a esta mudança, confirmados via
+`git diff --stat`: só 8 linhas alteradas).
+
+**Acompanhamento necessário:** pedir pra Arlen/Ana/Laryssa testarem uma venda
+depois do deploy e confirmar que o relógio não trava mais mesmo emendando
+vendas seguidas, e que `agendaSolicitado` vira `true` de verdade.
+
+**Risco:** Baixo — mudança de 1 linha, reset de uma variável interna que já
+existia pra esse exato propósito em outros pontos do fluxo.
+
+---
+
 ## 20/07/2026 (3)
 
 ### fix: token do webhook da Safeweb corrompido na URL — 2 pedidos travados em GERADO apesar de já emitidos

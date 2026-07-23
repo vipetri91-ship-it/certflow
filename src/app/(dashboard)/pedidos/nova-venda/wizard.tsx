@@ -212,9 +212,13 @@ export function NovaVendaWizard({
   const cpfAbortRef     = useRef<AbortController | null>(null)
   const cpfDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cnpjBuscaRef    = useRef(new BuscaCancelavel())
-  // true assim que o Vinicius mexer manualmente em Data/Hora do agendamento
-  // — a partir daí o valor escolhido por ele é respeitado e o relógio para
-  // de atualizar sozinho.
+  // true assim que a pessoa mexer manualmente em Data/Hora do agendamento —
+  // a partir daí o valor escolhido é respeitado e o relógio para de
+  // atualizar sozinho. Precisa ser resetado pra false ao iniciar uma nova
+  // venda (botão "Nova Venda" mais abaixo) — senão, pra quem faz várias
+  // vendas seguidas sem recarregar a página, o relógio nasce travado no
+  // horário em que a venda anterior tocou o campo, não no horário real
+  // (achado 23/07/2026: só afetava AGRs que emendam vendas na mesma sessão).
   const agendamentoTocadoRef = useRef(false)
 
   useEffect(() => {
@@ -741,7 +745,7 @@ export function NovaVendaWizard({
               className="flex-1 py-2.5 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
               Ir para Monitoramento
             </button>
-            <button onClick={() => { setDados(INITIAL(defaultAgr)); setPedidoCriado(null); setStep(1); setHistorico([]) }}
+            <button onClick={() => { agendamentoTocadoRef.current = false; setDados(INITIAL(defaultAgr)); setPedidoCriado(null); setStep(1); setHistorico([]) }}
               className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
               Nova Venda
             </button>
